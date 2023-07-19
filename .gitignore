@@ -1,0 +1,11 @@
+.DS_Store
+
+*.log
+
+.vscode/
+
+.env
+
+dist/
+
+build/
