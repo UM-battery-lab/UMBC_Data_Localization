@@ -1,7 +1,20 @@
 import shutil
 import os
+from concurrent.futures import ThreadPoolExecutor
+from logger_config import setup_logger
 
-from constants import ROOT_PATH
+from constants import ROOT_PATH, JSON_FILE_PATH
+from utils import load_dev_name, save_to_json, load_directory_structure
+from concurrent.futures import ThreadPoolExecutor
+
+# Setup logger
+logger = setup_logger()
+
+def delete_file(file_path):
+    try:
+        os.remove(file_path)
+    except Exception as e:
+        logger.error(f'Error while deleting file {file_path}: {e}')
 
 def delete_test_data(devs):
     """"
@@ -16,14 +29,24 @@ def delete_test_data(devs):
     -------
     None
     """
-    for device in devs:
-        device_folder = os.path.join(ROOT_PATH, device.name)
+    dir_structure = load_directory_structure()
+    existing_dev_names = load_dev_name(dir_structure)
 
-    if os.path.exists(device_folder):
-        for root, dirs, files in os.walk(device_folder):
-            for file in files:
-                if file.endswith('.pickle'):
-                    os.remove(os.path.join(root, file))
+    for device in devs:
+        if device.name in existing_dev_names:
+            device_folder = os.path.join(ROOT_PATH, device.name)
+            if os.path.exists(device_folder):
+                with ThreadPoolExecutor() as executor:
+                    for root, dirs, files in os.walk(device_folder):
+                        for file in files:
+                            if file.endswith('.pickle'):
+                                file_path = os.path.join(root, file)
+                                executor.submit(delete_file, file_path)
+            
+            dir_structure = [record for record in dir_structure if record['tr_name'] != device.name]
+            save_to_json(dir_structure, JSON_FILE_PATH)
+        else:
+            logger.info(f"No test data found for device {device.name}")
 
 def delete_folders(devs):
     """"
@@ -40,6 +63,5 @@ def delete_folders(devs):
     """
     for device in devs:
         device_folder = os.path.join(ROOT_PATH, device.name)
-
         if os.path.exists(device_folder):
             shutil.rmtree(device_folder)
