@@ -1,4 +1,4 @@
-from utils import create_dev_dic, load_uuid_from_directory_structure, save_test_data_update_dict
+from utils import create_dev_dic, load_uuid, save_test_data_update_dict, load_directory_structure
 from logger_config import setup_logger
 
 # Setup logger
@@ -20,7 +20,8 @@ def update_test_data(trs, devs):
     None
     """
     # Load existing directory structure
-    existing_uuids = load_uuid_from_directory_structure()
+    dir_structure = load_directory_structure()
+    existing_uuids = load_uuid(dir_structure)
 
     # Filter out existing test records
     # TODO: Potential problem: if the old test record is updated, we should still save it

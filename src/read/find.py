@@ -2,6 +2,7 @@ import json
 from datetime import datetime
 
 from constants import DATE_FORMAT, TIME_TOLERANCE, JSON_FILE_PATH
+from utils import load_directory_structure
 
 
 def find_records(device_id=None, device_name_substring=None, start_time=None):
@@ -25,8 +26,7 @@ def find_records(device_id=None, device_name_substring=None, start_time=None):
         The list of paths of the dataframes that match the specified device id or name, and start time
     """
     # Load the directory structure file
-    with open('directory_structure.json', 'r') as f:
-        dir_structure = json.load(f)
+    dir_structure = load_directory_structure()
 
     if start_time is not None:
         # Convert start_time to a datetime object for comparison

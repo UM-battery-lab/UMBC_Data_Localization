@@ -22,11 +22,23 @@ def save_to_pickle(data, file_path):
 
 def save_to_json(data, file_path):
     try:
-        with open(file_path, 'wb') as f:
+        with open(file_path, 'w') as f:
             json.dump(data, f)
     except Exception as err:
         logger.error(f'Error occurred while writing file {file_path}: {err}')
 
+def load_directory_structure():
+    """
+    Load the directory structure file
+
+    Returns
+    -------
+    list of dict
+        The list of directory structure information
+    """ 
+    with open(JSON_FILE_PATH, 'r') as f:
+            dir_structure = json.load(f)
+    return dir_structure
 
 def create_dev_dic(devs):
     """
@@ -44,37 +56,40 @@ def create_dev_dic(devs):
     """
     device_paths = {}
     for dev in devs:
-        device_folder = os.path.join(ROOT_PATH, dev.name)
-        if not os.path.exists(device_folder):
-            os.makedirs(device_folder)
+        device_folder = os.path.join(ROOT_PATH, dev.name)   
+        create_directory(device_folder)
         device_paths[dev.id] = device_folder
     return device_paths
 
 
-def load_uuid_from_directory_structure():
+def load_uuid(dir_structure):
     """
     Load the uuids from the directory structure file
+
+    Parameters
+    ----------
+    dir_structure: list of dict
 
     Returns
     -------
     set of str
         The set of uuids
     """ 
-    with open(JSON_FILE_PATH, 'r') as f:
-            dir_structure = json.load(f)
     return {record['uuid'] for record in dir_structure}
 
-def load_dev_name_from_directory_structure():
+def load_dev_name(dir_structure):
     """
     Load the device names from the directory structure file
+
+    Parameters
+    ----------
+    dir_structure: list of dict
 
     Returns
     -------
     set of str
         The set of device names
     """ 
-    with open(JSON_FILE_PATH, 'r') as f:
-            dir_structure = json.load(f)
     return {record['tr_name'] for record in dir_structure}
 
 def save_test_data_update_dict(trs, device_paths):
@@ -93,6 +108,10 @@ def save_test_data_update_dict(trs, device_paths):
     None
     """
     dir_structure = []
+    # Load existing directory structure if it exists
+    if os.path.exists(JSON_FILE_PATH):
+        dir_structure = load_directory_structure()
+
     for tr in trs:
         device_folder = device_paths.get(tr.device_id)
         if device_folder is None:
