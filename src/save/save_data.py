@@ -1,44 +1,11 @@
 import os
-import pickle
-import json
-from logger_config import setup_logger
+
+from save.file_io import create_directory, save_to_pickle, save_to_json, load_directory_structure
 from constants import ROOT_PATH, JSON_FILE_PATH, DATE_FORMAT
+from logger_config import setup_logger
 
 # Setup logger
 logger = setup_logger()
-
-def create_directory(directory_path):
-    try:
-        os.makedirs(directory_path, exist_ok=True)
-    except Exception as err:
-        logger.error(f'Error occurred while creating directory {directory_path}: {err}')
-
-def save_to_pickle(data, file_path):
-    try:
-        with open(file_path, 'wb') as f:
-            pickle.dump(data, f)
-    except Exception as err:
-        logger.error(f'Error occurred while writing file {file_path}: {err}')
-
-def save_to_json(data, file_path):
-    try:
-        with open(file_path, 'w') as f:
-            json.dump(data, f)
-    except Exception as err:
-        logger.error(f'Error occurred while writing file {file_path}: {err}')
-
-def load_directory_structure():
-    """
-    Load the directory structure file
-
-    Returns
-    -------
-    list of dict
-        The list of directory structure information
-    """ 
-    with open(JSON_FILE_PATH, 'r') as f:
-            dir_structure = json.load(f)
-    return dir_structure
 
 def create_dev_dic(devs):
     """
@@ -61,38 +28,7 @@ def create_dev_dic(devs):
         device_paths[dev.id] = device_folder
     return device_paths
 
-
-def load_uuid(dir_structure):
-    """
-    Load the uuids from the directory structure file
-
-    Parameters
-    ----------
-    dir_structure: list of dict
-
-    Returns
-    -------
-    set of str
-        The set of uuids
-    """ 
-    return {record['uuid'] for record in dir_structure}
-
-def load_dev_name(dir_structure):
-    """
-    Load the device names from the directory structure file
-
-    Parameters
-    ----------
-    dir_structure: list of dict
-
-    Returns
-    -------
-    set of str
-        The set of device names
-    """ 
-    return {record['tr_name'] for record in dir_structure}
-
-def save_test_data_update_dict(trs, device_paths):
+def save_test_data_update_dict(trs, dfs, device_paths):
     """
     Save test data to local disk and update the directory structure information
     
@@ -100,6 +36,8 @@ def save_test_data_update_dict(trs, device_paths):
     ----------
     trs: list of TestRecord objects
         The list of test records to be saved
+    dfs: list of pandas dataframe
+        The list of dataframes to be saved
     device_paths: dict
         The dictionary of device id and device folder path
 
@@ -112,7 +50,7 @@ def save_test_data_update_dict(trs, device_paths):
     if os.path.exists(JSON_FILE_PATH):
         dir_structure = load_directory_structure()
 
-    for tr in trs:
+    for tr, df in zip(trs, dfs):
         device_folder = device_paths.get(tr.device_id)
         if device_folder is None:
             logger.error(f'Device folder not found for device id {tr.device_id}')
@@ -126,15 +64,6 @@ def save_test_data_update_dict(trs, device_paths):
         # Save the test data to a pickle file
         tr_path = os.path.join(test_folder, 'tr.pickle')
         save_to_pickle(tr, tr_path)
-
-
-        # TODO: This part should be done in fetch/fetch.py and pass df as a parameter. 
-        # Because make_time_series_reader() seems to use API call to get the data from Voltaiq
-        reader = tr.make_time_series_reader()
-        # TODO: Add the keys we want to save
-        reader.add_trace_keys('h_current', 'h_potential')
-        reader.add_info_keys('i_cycle_num')
-        df = reader.read_pandas()
 
         # Save the time series data to a pickle file
         df_path = os.path.join(test_folder, 'df.pickle')

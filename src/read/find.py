@@ -2,7 +2,7 @@ import json
 from datetime import datetime
 
 from constants import DATE_FORMAT, TIME_TOLERANCE, JSON_FILE_PATH
-from utils import load_directory_structure
+from save.file_io import load_directory_structure
 
 
 def find_records(device_id=None, device_name_substring=None, start_time=None):

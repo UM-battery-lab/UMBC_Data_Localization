@@ -4,7 +4,7 @@ from concurrent.futures import ThreadPoolExecutor
 from logger_config import setup_logger
 
 from constants import ROOT_PATH, JSON_FILE_PATH
-from utils import load_dev_name, save_to_json, load_directory_structure
+from save.file_io import load_dev_name, save_to_json, load_directory_structure
 from concurrent.futures import ThreadPoolExecutor
 
 # Setup logger

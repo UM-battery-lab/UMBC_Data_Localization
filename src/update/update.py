@@ -1,4 +1,5 @@
-from utils import create_dev_dic, load_uuid, save_test_data_update_dict, load_directory_structure
+from save.file_io import load_uuid, load_directory_structure
+from save.save_data import create_dev_dic, save_test_data_update_dict
 from logger_config import setup_logger
 
 # Setup logger
