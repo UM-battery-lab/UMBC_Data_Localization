@@ -2,7 +2,7 @@ import os
 import pickle
 import json
 from logger_config import setup_logger
-from constants import ROOT_PATH, JSON_FILE_PATH, DATE_FORMAT
+from constants import JSON_FILE_PATH
 
 # Setup logger
 logger = setup_logger()
@@ -68,4 +68,4 @@ def load_dev_name(dir_structure):
     set of str
         The set of device names
     """ 
-    return {record['tr_name'] for record in dir_structure}
+    return {record['dev_name'] for record in dir_structure}

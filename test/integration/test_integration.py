@@ -18,12 +18,12 @@ def integration_test():
     # Fetch data
     trs = fetch_trs()
     devs = fetch_devs()
-    test_trs = trs[:30]
+    test_trs = trs[:50]
     dfs = get_dfs_from_trs(test_trs)
 
     # Save data
-    device_paths = create_dev_dic(devs)
-    save_test_data_update_dict(test_trs, dfs, device_paths)
+    devices_id_to_name = create_dev_dic(devs)
+    save_test_data_update_dict(test_trs, dfs, devices_id_to_name)
 
     # Find and read data
     tr_paths, df_paths = find_trs_and_dfs(device_id=trs[0].device_id)
@@ -35,7 +35,15 @@ def integration_test():
         df = pd.read_pickle(df_path)
         assert isinstance(df, pd.DataFrame)
     
-
+    # Find and read data
+    tr_paths, df_paths = find_trs_and_dfs(device_name_substring=devices_id_to_name[trs[20].device_id])
+    for tr_path in tr_paths:
+        assert os.path.exists(tr_path)
+        tr = load_record(tr_path)
+    for df_path in df_paths:
+        assert os.path.exists(df_path)
+        df = pd.read_pickle(df_path)
+        assert isinstance(df, pd.DataFrame)
 
 if __name__ == '__main__':
     integration_test()
