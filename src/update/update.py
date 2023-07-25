@@ -1,4 +1,5 @@
-from utils import create_dev_dic, load_uuid, save_test_data_update_dict, load_directory_structure
+from save.file_io import load_uuid, load_directory_structure
+from save.save_data import create_dev_dic, save_test_data_update_dict
 from logger_config import setup_logger
 
 # Setup logger
@@ -33,7 +34,7 @@ def update_test_data(trs, devs):
 
     # TODO: We should check if the device folder exists before creating it
     # Now we just do check processing in create_dev_dic()   
-    device_paths = create_dev_dic(devs)
+    devices_id_to_name = create_dev_dic(devs)
 
     # Save new test data and update directory structure
-    save_test_data_update_dict(new_trs, device_paths)
+    save_test_data_update_dict(new_trs, devices_id_to_name)

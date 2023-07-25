@@ -4,7 +4,7 @@ from concurrent.futures import ThreadPoolExecutor
 from logger_config import setup_logger
 
 from constants import ROOT_PATH, JSON_FILE_PATH
-from utils import load_dev_name, save_to_json, load_directory_structure
+from save.file_io import load_dev_name, save_to_json, load_directory_structure
 from concurrent.futures import ThreadPoolExecutor
 
 # Setup logger
@@ -42,26 +42,10 @@ def delete_test_data(devs):
                             if file.endswith('.pickle'):
                                 file_path = os.path.join(root, file)
                                 executor.submit(delete_file, file_path)
-            
-            dir_structure = [record for record in dir_structure if record['tr_name'] != device.name]
-            save_to_json(dir_structure, JSON_FILE_PATH)
+                # Delete the device folder after deleting all test data
+                shutil.rmtree(device_folder)
+            # Update directory structure
+            dir_structure = [record for record in dir_structure if record['tr_name'] != device.name]            
         else:
             logger.info(f"No test data found for device {device.name}")
-
-def delete_folders(devs):
-    """"
-    Delete the folders of the given devices
-    
-    Parameters
-    ----------
-    devs: list of Device objects
-        The list of devices to be deleted
-
-    Returns
-    -------
-    None
-    """
-    for device in devs:
-        device_folder = os.path.join(ROOT_PATH, device.name)
-        if os.path.exists(device_folder):
-            shutil.rmtree(device_folder)
+    save_to_json(dir_structure, JSON_FILE_PATH)
