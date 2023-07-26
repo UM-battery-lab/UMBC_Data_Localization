@@ -69,3 +69,17 @@ def load_dev_name(dir_structure):
         The set of device names
     """ 
     return {record['dev_name'] for record in dir_structure}
+
+def load_uuid_to_last_dp_timestamp(dir_structure):
+    return {record['uuid']: record['last_dp_timestamp'] for record in dir_structure}
+
+def load_uuid_to_tr_path_and_df_path(dir_structure):
+    return {record['uuid']: (record['tr_path'], record['df_path']) for record in dir_structure}
+
+def load_record(file_path):
+    # Load the test record from the pickle file
+    with open(file_path, "rb") as f:
+        record = pickle.load(f)
+    logger.info(f"Loaded test record from {file_path}")
+    logger.info(f"Record: {record}")
+    return record
