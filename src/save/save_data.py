@@ -1,6 +1,6 @@
 import os
 
-from save.file_io import create_directory, save_to_pickle, save_to_json, load_directory_structure
+from save.file_io import create_directory, save_to_pickle, save_to_json, load_directory_structure, load_record
 from constants import ROOT_PATH, JSON_FILE_PATH, DATE_FORMAT, UNIX_timestamp_to_datetime
 from logger_config import setup_logger
 
@@ -28,6 +28,13 @@ def create_dev_dic(devs):
         devices_id_to_name[dev.id] = dev.name
     return devices_id_to_name
 
+def load_dir_structure():
+    # Load existing directory structure if it exists
+    if os.path.exists(JSON_FILE_PATH):
+        return load_directory_structure()
+    else:
+        return []
+
 def save_test_data_update_dict(trs, dfs, devices_id_to_name):
     """
     Save test data to local disk and update the directory structure information
@@ -45,43 +52,42 @@ def save_test_data_update_dict(trs, dfs, devices_id_to_name):
     -------
     None
     """
-    dir_structure = []
-    # Load existing directory structure if it exists
-    if os.path.exists(JSON_FILE_PATH):
-        dir_structure = load_directory_structure()
-
+    dir_structure = load_dir_structure()
     for tr, df in zip(trs, dfs):
-        dev_name = devices_id_to_name.get(tr.device_id)
-        device_folder = os.path.join(ROOT_PATH, dev_name)
-        if device_folder is None:
-            logger.error(f'Device folder not found for device id {tr.device_id}')
-            continue
-        start_time_str = tr.start_time.strftime(DATE_FORMAT)
-        last_modified_time_str = UNIX_timestamp_to_datetime(tr.last_dp_timestamp).strftime(DATE_FORMAT)
-
-        test_folder = os.path.join(device_folder, start_time_str)
-        if not os.path.exists(test_folder):
-            create_directory(test_folder)
-        
-        # Save the test data to a pickle file
-        tr_path = os.path.join(test_folder, 'tr.pickle')
-        save_to_pickle(tr, tr_path)
-
-        # Save the time series data to a pickle file
-        df_path = os.path.join(test_folder, 'df.pickle')
-        save_to_pickle(df, df_path)
-
-        # Append the directory structure information to the list
-        dir_structure.append({
-            'uuid': tr.uuid,
-            'device_id': tr.device_id,
-            'tr_name': tr.name,  
-            'dev_name': dev_name,
-            'start_time': start_time_str,
-            'last_modified_time': last_modified_time_str,
-            'tr_path': tr_path,
-            'df_path': df_path
-        })
-
+        dev_name = devices_id_to_name[tr.device_id]
+        handle_single_record(tr, df, dev_name, dir_structure)
     # Save the directory structure information to a JSON file
     save_to_json(dir_structure, JSON_FILE_PATH)
+
+def handle_single_record(tr, df, dev_name, dir_structure):
+    device_folder = os.path.join(ROOT_PATH, dev_name)
+    if device_folder is None:
+        logger.error(f'Device folder not found for device id {tr.device_id}')
+        return None
+
+    start_time_str = tr.start_time.strftime(DATE_FORMAT)
+    # last_modified_time_str = UNIX_timestamp_to_datetime(tr.last_dp_timestamp).strftime(DATE_FORMAT)
+
+    test_folder = os.path.join(device_folder, start_time_str)
+    if not os.path.exists(test_folder):
+        create_directory(test_folder)
+
+    # Save the test data to a pickle file
+    tr_path = os.path.join(test_folder, 'tr.pickle')
+    save_to_pickle(tr, tr_path)
+
+    # Save the time series data to a pickle file
+    df_path = os.path.join(test_folder, 'df.pickle')
+    save_to_pickle(df, df_path)
+
+    # Append the directory structure information to the list
+    dir_structure.append({
+        'uuid': tr.uuid,
+        'device_id': tr.device_id,
+        'tr_name': tr.name,  
+        'dev_name': dev_name,
+        'start_time': start_time_str,
+        'last_dp_timestamp': tr.last_dp_timestamp,
+        'tr_path': tr_path,
+        'df_path': df_path
+    })

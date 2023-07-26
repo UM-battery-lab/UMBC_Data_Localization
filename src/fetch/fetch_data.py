@@ -57,20 +57,21 @@ def get_data_from_test_record(tr):
     DataFrame
         The processed data
     """
-    logger.info(f"Getting data for TestRecord with ID: {tr.id}")
+    logger.info(f"Getting DataFrame for TestRecord with ID: {tr.id}")
     try:
         reader = tr.make_time_series_reader()
         trace_keys = tr.trace_keys
         reader.add_trace_keys(*trace_keys)
+
         reader.add_info_keys('i_cycle_num')
         df = pd.DataFrame()
         for batch in reader.read_pandas_batches(): # Generator to read pandas data frames in supported sizes
             df = pd.concat([df,batch])
     except Exception as e:
-        logger.error(f"Failed to get data for TestRecord with ID: {tr.id}. Error: {e}")
+        logger.error(f"Failed to get DataFrame for TestRecord with ID: {tr.id}. Error: {e}")
         return None
 
-    logger.info(f"Successfully got data for TestRecord with ID: {tr.id}")
+    logger.info(f"Successfully got DataFrame for TestRecord with ID: {tr.id}")
     return df
 
 def get_dfs_from_trs(trs):
