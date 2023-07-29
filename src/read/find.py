@@ -38,6 +38,7 @@ def find_records(device_id=None, device_name_substring=None, start_time=None):
         for record in dir_structure
         if (device_id is None or record['device_id'] == device_id) and
            (device_name_substring is None or device_name_substring in record['tr_name']) and
+           #TODO: Change the way of comparing time
            (start_time is None or abs(datetime.strptime(record['start_time'], DATE_FORMAT) - start_time) <= TIME_TOLERANCE)
     ]
     logger.info(f"Found {len(matching_records)} matching records")
