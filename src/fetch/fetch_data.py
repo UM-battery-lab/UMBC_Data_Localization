@@ -43,7 +43,7 @@ def fetch_devs():
         return None
     
 
-def get_data_from_test_record(tr):
+def get_data_from_test_record(tr, trace_keys = []):
     """
     Get data from a TestRecord object
 
@@ -51,6 +51,8 @@ def get_data_from_test_record(tr):
     ----------
     tr: TestRecord object
         The test record to be processed
+    trace_keys: list of str, optional
+        The trace keys to be added to the reader
 
     Returns
     -------
@@ -60,7 +62,8 @@ def get_data_from_test_record(tr):
     logger.info(f"Getting DataFrame for TestRecord with ID: {tr.id}")
     try:
         reader = tr.make_time_series_reader()
-        trace_keys = tr.trace_keys
+        if len(trace_keys) == 0:
+            trace_keys = tr.trace_keys
         reader.add_trace_keys(*trace_keys)
 
         reader.add_info_keys('i_cycle_num')
