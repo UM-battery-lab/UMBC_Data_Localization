@@ -234,3 +234,50 @@ def match_charge_discharge(charge_start_idx_0, discharge_start_idx_0):
             charge_start_idx.append(left)
             discharge_start_idx.append(middle)
     return charge_start_idx, discharge_start_idx
+
+def find_matching_timestamp(desired_timestamps, t, t_match_threshold=60, nan_pad = False):
+    """
+    Find the matching timestamps
+
+    Parameters
+    ----------
+    desired_timestamps: list of floats
+        The list of desired timestamps
+    t: floats
+        The time data
+    t_match_threshold: float, optional
+        The threshold for matching timestamps
+    nan_pad: bool, optional
+        Whether to pad with nan
+    
+    Returns
+    -------
+    list of floats
+        The list of matching timestamps
+    list of ints
+        The list of mapped indices
+    list of ints
+        The list of matched timestamp indices
+    """
+
+    # find indices for "desired_timestamps" in an array of timestamps "t" within "t_match_threshold" seconds  
+    mapped_indices = [] #indexes t
+    matched_timestamp_indices =[] # indexes desired_timestamps
+    matched_timestamps = [] # value of t closest to desired_timestamp. includes nan if can't find matching timestamp.
+    
+    # for each timestamp...
+    for k,desired_timestamp in enumerate(desired_timestamps):
+        # if smallest dt < t_match_threshold
+        if np.min(abs(t-desired_timestamp)).total_seconds()<t_match_threshold:
+            # save index in t of nearest value of t and corresponding t
+            matched_idx = np.argmin(abs(t-desired_timestamp))
+            mapped_indices.append(matched_idx)
+            matched_timestamps.append(t[matched_idx])
+            
+            # save index in desired_timestamps. used to match cycle number
+            matched_timestamp_indices.append(k)
+        
+        elif nan_pad: # else if pad with nan if requested
+            matched_timestamps.append(np.nan)
+
+    return matched_timestamps, mapped_indices, matched_timestamp_indices

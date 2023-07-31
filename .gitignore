@@ -12,4 +12,6 @@ build/
 
 venv/
 
+*.ipynb
+
 __pycache__/

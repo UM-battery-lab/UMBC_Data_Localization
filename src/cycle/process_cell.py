@@ -10,17 +10,17 @@ from cycle.process_cycler_data import process_cycler_data
 from cycle.utils import test2df
 from cycle.update_df import update_dataframe 
 from cycle.filter import get_tests, sort_tests, filter_trs_new_data
-from cycle.summarize_rpt_data import summarize_rpt_data
-from cycle.process_cycler_expansion import process_cycler_expansion
+from cycle.rpt import summarize_rpt_data
+from cycle.expansion import process_cycler_expansion
 
 
-def process_cell(Device, filepath_rpt, filepath_ccm, filepath_cell_data, filepath_cell_data_vdf, cycle_id_lims, load_pickle = True, numFiles = 1000, print_filenames = False):
+def process_cell(device, filepath_rpt, filepath_ccm, filepath_cell_data, filepath_cell_data_vdf, cycle_id_lims, load_pickle = True, numFiles = 1000, print_filenames = False):
     """
     Process cycler data from a list of test records
 
     Parameters
     ----------
-    Device: Device object
+    device: Device object
         The device to be processed
     filepath_rpt: str
         The filepath to the cell report pickle file
@@ -53,11 +53,9 @@ def process_cell(Device, filepath_rpt, filepath_ccm, filepath_cell_data, filepat
     trs = fetch_trs()
 
     #1. get and sort all cycler files for this cell 
-    trs_neware = sort_tests(get_tests(Device, trs, tag='neware_xls_4000'))
-    time.sleep(0.1)
-    trs_arbin = sort_tests(get_tests(Device, trs, tag='arbin'))
-    time.sleep(0.1)
-    trs_biologic = sort_tests(get_tests(Device, trs, tag='biologic'))
+    trs_neware = sort_tests(get_tests(device, trs, tag='neware_xls_4000'))
+    trs_arbin = sort_tests(get_tests(device, trs, tag='arbin'))
+    trs_biologic = sort_tests(get_tests(device, trs, tag='biologic'))
     trs_cycler = sort_tests(trs_neware + trs_arbin + trs_biologic)
 
     
@@ -101,7 +99,7 @@ def process_cell(Device, filepath_rpt, filepath_ccm, filepath_cell_data, filepat
         cell_data, cell_cycle_metrics = process_cycler_data(trs_new_data, cycle_id_lims=cycle_id_lims, numFiles = numFiles, print_filenames = print_filenames)
             
     #3. get and sort all vdf files for this cell 
-    trs_vdf = sort_tests(get_tests(Device,tag='vdf'))
+    trs_vdf = sort_tests(get_tests(device,tag='vdf'))
     
     # 4. check if cell_data_vdf and cell_cycle_metrics pickle files exist. If so, list new test vdf data, else list all test vdf files.
     load_new_data_vdf = [True for i in range(len(trs_vdf))] # Initialization: indicates if the files were processed previously 
@@ -122,7 +120,7 @@ def process_cell(Device, filepath_rpt, filepath_ccm, filepath_cell_data, filepat
             for test in trs_new_data_vdf:
                 print(test.name)
                 # process test file
-                cell_data_vdf_new, cell_cycle_metrics_new = process_neware_expansion([test], cell_cycle_metrics_new,numFiles = numFiles, print_filenames = print_filenames)
+                cell_data_vdf_new, cell_cycle_metrics_new = process_cycle_expansion([test], cell_cycle_metrics_new,numFiles = numFiles, print_filenames = print_filenames)
 
                 # load test data to df and get start and end times
                 df_test = test2df(test, test_trace_keys = ['h_datapoint_time'], df_labels =['Time [s]'])
@@ -154,7 +152,7 @@ def process_cell(Device, filepath_rpt, filepath_ccm, filepath_cell_data, filepat
         with open(filepath_cell_data_vdf, 'wb') as f:
             pickle.dump(cell_data_vdf, f)
             f.close()    
-        cell_rpt_data = summarize_rpt_data(cell, cell_data, cell_data_vdf, cell_cycle_metrics)
+        cell_rpt_data = summarize_rpt_data(cell_data, cell_data_vdf, cell_cycle_metrics)
         with open(filepath_rpt, 'wb') as f:
             pickle.dump(cell_rpt_data, f)
             f.close()
