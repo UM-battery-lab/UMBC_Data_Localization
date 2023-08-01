@@ -32,10 +32,14 @@ class DataIO:
         Load the uuids from the directory structure file
     load_dev_name(dir_structure)
         Load the device names from the directory structure file
+    load_df(df_path, trace_keys=None)
+        Load the dataframe from the pickle file according to the specified trace keys
     load_uuid_to_last_dp_timestamp(dir_structure)
         Load the uuid to last data point timestamp from the directory structure file
     load_uuid_to_tr_path_and_df_path(dir_structure)
         Load the uuid to test record path and dataframe path from the directory structure file
+    load_pickle(file_path)
+        Load the pickle file
     """
     def __init__(self):
         self.rootPath = ROOT_PATH

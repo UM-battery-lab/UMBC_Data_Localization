@@ -21,6 +21,8 @@ class DataManager:
         The object to delete data
     dataFilter: DataFilter object
         The object to filter data
+    dataProcessor: DataProcessor object
+        The object to process data
     logger: logger object
         The object to log information
 
