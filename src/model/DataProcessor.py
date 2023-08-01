@@ -5,17 +5,19 @@ from scipy import integrate
 from scipy.signal import find_peaks, medfilt
 from itertools import compress
 
+from src.model.DirStructure import DirStructure
 from src.model.DataIO import DataIO
 from src.model.DataFilter import DataFilter
 from logger_config import setup_logger
 
 
 class DataProcessor:
-    def __init__(self, dataIO: DataIO, dataFilter: DataFilter):
+    def __init__(self, dataIO: DataIO, dataFilter: DataFilter, dirStructure: DirStructure):
         self.dataIO = dataIO
         self.dataFilter = dataFilter
+        self.dirStructure = dirStructure
         self.logger = setup_logger()
-
+ 
     def process_cycler_data(self, trs_neware, cycle_id_lims, numFiles=1000, print_filenames = False):
         """
         Process cycler data from a list of test records

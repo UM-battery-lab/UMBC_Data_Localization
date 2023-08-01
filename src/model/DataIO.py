@@ -1,49 +1,29 @@
 import os
 import pickle
-import json
-
-
-from src.constants import ROOT_PATH, JSON_FILE_PATH, DATE_FORMAT
+from src.model.DirStructure import DirStructure
+from src.constants import ROOT_PATH, DATE_FORMAT
 from logger_config import setup_logger
 
 class DataIO:
     """
-    The class to save and load data
+    The class to save and load test data
 
     Attributes
     ----------
     rootPath: str
         The root path of the local data
-    jsonPath: str
-        The path of the directory structure file
+    dirStructure: DirStructure object
+        The object to manage the directory structure
     logger: logger object
         The object to log information
     
         
     Methods
     -------
-    create_dev_dic(devs)
-        Create a dictionary of device id and device folder path
-    save_test_data_update_dict(trs, dfs, devices_id_to_name)
-        Save test data to local disk and update the directory structure information
-    load_directory_structure()
-        Load the directory structure file
-    load_uuid(dir_structure)
-        Load the uuids from the directory structure file
-    load_dev_name(dir_structure)
-        Load the device names from the directory structure file
-    load_df(df_path, trace_keys=None)
-        Load the dataframe from the pickle file according to the specified trace keys
-    load_uuid_to_last_dp_timestamp(dir_structure)
-        Load the uuid to last data point timestamp from the directory structure file
-    load_uuid_to_tr_path_and_df_path(dir_structure)
-        Load the uuid to test record path and dataframe path from the directory structure file
-    load_pickle(file_path)
-        Load the pickle file
     """
-    def __init__(self):
+    def __init__(self, dirStructure: DirStructure):
         self.rootPath = ROOT_PATH
-        self.jsonPath = JSON_FILE_PATH
+        self.dirStructure = dirStructure
         self.logger = setup_logger()
 
     def create_dev_dic(self, devs):
@@ -84,14 +64,11 @@ class DataIO:
         -------
         None
         """
-        dir_structure = self.load_directory_structure()
         for tr, df in zip(trs, dfs):
             dev_name = devices_id_to_name[tr.device_id]
-            self.__handle_single_record(tr, df, dev_name, dir_structure)
-        # Save the directory structure information to a JSON file
-        self.__save_to_json(dir_structure, self.jsonPath)
+            self.__handle_single_record(tr, df, dev_name)
     
-    def __handle_single_record(self, tr, df, dev_name, dir_structure):
+    def __handle_single_record(self, tr, df, dev_name):
         device_folder = os.path.join(self.rootPath, dev_name)
         if device_folder is None:
             self.logger.error(f'Device folder not found for device id {tr.device_id}')
@@ -107,22 +84,12 @@ class DataIO:
         # Save the test data to a pickle file
         tr_path = os.path.join(test_folder, 'tr.pickle')
         self.__save_to_pickle(tr, tr_path)
-
         # Save the time series data to a pickle file
         df_path = os.path.join(test_folder, 'df.pickle')
         self.__save_to_pickle(df, df_path)
 
         # Append the directory structure information to the list
-        dir_structure.append({
-            'uuid': tr.uuid,
-            'device_id': tr.device_id,
-            'tr_name': tr.name,  
-            'dev_name': dev_name,
-            'start_time': start_time_str,
-            'last_dp_timestamp': tr.last_dp_timestamp,
-            'tr_path': tr_path,
-            'df_path': df_path
-        })
+        self.dirStructure.append_from_record(tr, dev_name, tr_path, df_path)
     
     def __create_directory(self, directory_path):
         try:
@@ -136,58 +103,6 @@ class DataIO:
                 pickle.dump(data, f)
         except Exception as err:
             self.logger.error(f'Error occurred while writing file {file_path}: {err}')
-
-    def __save_to_json(self, data, file_path):
-        try:
-            with open(file_path, 'w') as f:
-                json.dump(data, f)
-        except Exception as err:
-            self.logger.error(f'Error occurred while writing file {file_path}: {err}')
-
-    def load_directory_structure(self):
-        """
-        Load the directory structure file
-
-        Returns
-        -------
-        list of dict
-            The list of directory structure information
-        """ 
-        dir_structure = []
-        if os.path.exists(self.jsonPath):
-            with open(self.jsonPath, 'r') as f:
-                    dir_structure = json.load(f)
-        return dir_structure
-
-    def load_uuid(self, dir_structure):
-        """
-        Load the uuids from the directory structure file
-
-        Parameters
-        ----------
-        dir_structure: list of dict
-
-        Returns
-        -------
-        set of str
-            The set of uuids
-        """ 
-        return {record['uuid'] for record in dir_structure}
-
-    def load_dev_name(self, dir_structure):
-        """
-        Load the device names from the directory structure file
-
-        Parameters
-        ----------
-        dir_structure: list of dict
-
-        Returns
-        -------
-        set of str
-            The set of device names
-        """ 
-        return {record['dev_name'] for record in dir_structure}
     
     def load_df(self, df_path, trace_keys=None):
         """
@@ -205,18 +120,21 @@ class DataIO:
         pandas dataframe
             The dataframe loaded from the pickle file
         """ 
-        df = self.load_pickle(df_path)
+        df = self.__load_pickle(df_path)
         if trace_keys is not None:
             df = df[trace_keys]
         return df
 
-    def load_uuid_to_last_dp_timestamp(self, dir_structure):
-        return {record['uuid']: record['last_dp_timestamp'] for record in dir_structure}
+    def load_trs(self, tr_paths):
+        return self.__load_pickles(tr_paths)
+    
+    def load_dfs(self, df_paths):
+        return self.__load_pickles(df_paths)
 
-    def load_uuid_to_tr_path_and_df_path(self, dir_structure):
-        return {record['uuid']: (record['tr_path'], record['df_path']) for record in dir_structure}
+    def __load_pickles(self, file_paths):
+        return [self.__load_pickle(file_path) for file_path in file_paths]
 
-    def load_pickle(self, file_path):
+    def __load_pickle(self, file_path):
         with open(file_path, "rb") as f:
             record = pickle.load(f)
         self.logger.info(f"Loaded pickle file from {file_path}")

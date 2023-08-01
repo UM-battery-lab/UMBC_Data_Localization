@@ -1,3 +1,4 @@
+from DirStructure import DirStructure
 from DataFetcher import DataFetcher
 from DataIO import DataIO
 from DataDeleter import DataDeleter
@@ -15,34 +16,15 @@ class DataManager:
     ----------
     dataIO: DataIO object
         The object to save and load data
-    dataFetcher: DataFetcher object
-        The object to fetch data from Voltaiq Studio
-    dataDeleter: DataDeleter object
-        The object to delete data
-    dataFilter: DataFilter object
-        The object to filter data
-    dataProcessor: DataProcessor object
-        The object to process data
-    logger: logger object
-        The object to log information
-
-    Methods
-    -------
-    update_test_data(trs=None, devs=None)
-        Update the test data and directory structure
-    filter_trs(device_id=None, device_name_substring=None, start_time=None)
-        Filter the test records locally with the specified device id or name, and start time
-    filter_dfs(device_id=None, device_name_substring=None, start_time=None)
-        Filter the dataframes locally with the specified device id or name, and start time
-    filter_trs_and_dfs(device_id=None, device_name_substring=None, start_time=None)
-        Filter the test records and dataframes locally with the specified device id or name, and start time 
+ 
     """
     def __init__(self):
-        self.dataIO = DataIO()
+        self.dirStructure = DirStructure()
+        self.dataIO = DataIO(self.dirStructure)
         self.dataFetcher = DataFetcher()
         self.dataDeleter = DataDeleter()
-        self.dataFilter = DataFilter(self.dataIO)
-        self.dataProcessor = DataProcessor(self.dataIO, self.dataFilter)
+        self.dataFilter = DataFilter(self.dataIO, self.dirStructure)
+        self.dataProcessor = DataProcessor(self.dataIO, self.dataFilter, self.dirStructure)
         self.logger = setup_logger()
         # self.__createdb()
     
@@ -88,11 +70,9 @@ class DataManager:
         -------
         None
         """
-        # Load existing directory structure
-        dir_structure = self.dataIO.load_directory_structure()
-        existing_uuids = self.dataIO.load_uuid(dir_structure)
-        uuid_to_last_dp_timestamp = self.dataIO.load_uuid_to_last_dp_timestamp(dir_structure)
-        uuid_to_tr_path_and_df_path = self.dataIO.load_uuid_to_tr_path_and_df_path(dir_structure)
+        existing_uuids = self.dirStructure.load_uuid()
+        uuid_to_last_dp_timestamp = self.dirStructure.load_uuid_to_last_dp_timestamp()
+        uuid_to_tr_path_and_df_path = self.dirStructure.load_uuid_to_tr_path_and_df_path()
 
         # Filter out existing test records
         new_trs = []
@@ -123,8 +103,6 @@ class DataManager:
             self.logger.info('No new test data found after filtering out existing records')
             return
 
-        # TODO: We should check if the device folder exists before creating it
-        # Now we just do check processing in create_dev_dic()   
         devices_id_to_name = self.dataIO.create_dev_dic(devs)
 
         # Get dataframes
@@ -132,7 +110,7 @@ class DataManager:
         # Save new test data and update directory structure
         self.dataIO.save_test_data_update_dict(new_trs, dfs, devices_id_to_name)
 
-    def filter_trs(self, device_id=None, device_name_substring=None, start_time=None):
+    def filter_trs(self, device_id=None, device_name_substring=None, start_time=None, tags=None):
         """
         Filter the test records locally with the specified device id or name, and start time
 
@@ -144,15 +122,19 @@ class DataManager:
             The substring of the device name of the test record to be found
         start_time: str, optional
             The start time of the test record to be found, in the format of 'YYYY-MM-DD_HH-MM-SS'
+        tags: list of str, optional
+            The list of tags of the test record to be found
         
         Returns
         -------
-        list of str
-            The list of paths of the test records that match the specified device id or name, and start time
+        list of test records
+            The list of test records that match the specified device id or name, and start time and tags
+        
         """
-        return self.dataFilter.filter_trs(device_id, device_name_substring, start_time)
+        tr_paths = self.dataFilter.filter_trs(device_id, device_name_substring, start_time, tags)
+        return self.dataIO.load_trs(tr_paths)
     
-    def filter_dfs(self, device_id=None, device_name_substring=None, start_time=None):
+    def filter_dfs(self, device_id=None, device_name_substring=None, start_time=None, tags=None):
         """
         Filter the dataframes locally with the specified device id or name, and start time
 
@@ -167,13 +149,14 @@ class DataManager:
         
         Returns
         -------
-        list of str
-            The list of paths of the dataframes that match the specified device id or name, and start time
+        list of dataframes
+            The list of dataframes that match the specified device id or name, and start time and tags
         """
-        return self.dataFilter.filter_dfs(device_id, device_name_substring, start_time)
+        df_paths = self.dataFilter.filter_dfs(device_id, device_name_substring, start_time, tags)
+        return self.dataIO.load_dfs(df_paths)
     
 
-    def filter_trs_and_dfs(self, device_id=None, device_name_substring=None, start_time=None):
+    def filter_trs_and_dfs(self, device_id=None, device_name_substring=None, start_time=None, tags=None):
         """
         Filter the test records and dataframes locally with the specified device id or name, and start time
 
@@ -188,9 +171,10 @@ class DataManager:
         
         Returns
         -------
-        list of str
-            The list of paths of the test records that match the specified device id or name, and start time
-        list of str
-            The list of paths of the dataframes that match the specified device id or name, and start time
+        list of test records
+            The list of test records that match the specified device id or name, and start time and tags
+        list of dataframes
+            The list of dataframes that match the specified device id or name, and start time and tags
         """
-        return self.dataFilter.filter_trs_and_dfs(device_id, device_name_substring, start_time)
+        tr_paths, df_paths = self.dataFilter.filter_trs_and_dfs(device_id, device_name_substring, start_time, tags)
+        return self.dataIO.load_trs(tr_paths), self.dataIO.load_dfs(df_paths)
