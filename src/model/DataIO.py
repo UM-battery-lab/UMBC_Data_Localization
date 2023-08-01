@@ -184,6 +184,27 @@ class DataIO:
             The set of device names
         """ 
         return {record['dev_name'] for record in dir_structure}
+    
+    def load_df(self, df_path, trace_keys=None):
+        """
+        Load the dataframe from the pickle file
+
+        Parameters
+        ----------
+        df_path: str
+            The path of the pickle file
+        trace_keys: list of str, optional
+            The list of keys of the traces to be loaded
+
+        Returns
+        -------
+        pandas dataframe
+            The dataframe loaded from the pickle file
+        """ 
+        df = self.load_pickle(df_path)
+        if trace_keys is not None:
+            df = df[trace_keys]
+        return df
 
     def load_uuid_to_last_dp_timestamp(self, dir_structure):
         return {record['uuid']: record['last_dp_timestamp'] for record in dir_structure}

@@ -2,6 +2,7 @@ from DataFetcher import DataFetcher
 from DataIO import DataIO
 from DataDeleter import DataDeleter
 from DataFilter import DataFilter
+from DataProcessor import DataProcessor
 from logger_config import setup_logger
 
 
@@ -39,6 +40,7 @@ class DataManager:
         self.dataFetcher = DataFetcher()
         self.dataDeleter = DataDeleter()
         self.dataFilter = DataFilter(self.dataIO)
+        self.dataProcessor = DataProcessor(self.dataIO, self.dataFilter)
         self.logger = setup_logger()
         # self.__createdb()
     

@@ -128,3 +128,31 @@ class DataFilter:
         matching_records = self.__filter_records(device_id=device_id, device_name_substring=device_name_substring, start_time=start_time)
         return [record['tr_path'] for record in matching_records], [record['df_path'] for record in matching_records]
 
+    def filter_df_by_tr(self, tr, trace_keys=None):
+        """
+        Filter the dataframe with the specified test record
+
+        Parameters
+        ----------
+        tr: TestRecord object
+            The test record to be found
+        trace_keys: list of str, optional
+            The list of trace keys to be found
+        
+        Returns
+        -------
+        DataFrame
+            The dataframe that matches the specified test record
+        """
+        self.logger.info(f"Finding dataframe that matches test record {tr.uuid}")
+        dir_structure = self.dataIO.load_directory_structure()
+        matching_df_paths = ""
+        for record in dir_structure:
+            if record['uuid'] == tr.uuid:
+                matching_df_paths = record['df_path']
+                break
+        if matching_df_paths == "":
+            self.logger.info(f"No dataframe found that matches test record {tr.uuid}, need to update the local data")
+            return None
+        self.logger.info(f"Found dataframe that matches test record {tr.uuid}")
+        return self.dataIO.load_df(matching_df_paths, trace_keys=trace_keys)
