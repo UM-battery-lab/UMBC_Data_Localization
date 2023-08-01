@@ -12,12 +12,12 @@ class DataIO:
 
     Attributes
     ----------
-    root_path: str
+    rootPath: str
         The root path of the local data
-    json_path: str
-        The path of the JSON file to store the directory structure information
+    jsonPath: str
+        The path of the directory structure file
     logger: logger object
-        The logger object
+        The object to log information
     
         
     Methods
@@ -38,8 +38,8 @@ class DataIO:
         Load the uuid to test record path and dataframe path from the directory structure file
     """
     def __init__(self):
-        self.root_path = ROOT_PATH
-        self.json_path = JSON_FILE_PATH
+        self.rootPath = ROOT_PATH
+        self.jsonPath = JSON_FILE_PATH
         self.logger = setup_logger()
 
     def create_dev_dic(self, devs):
@@ -58,7 +58,7 @@ class DataIO:
         """
         devices_id_to_name = {}
         for dev in devs:
-            device_folder = os.path.join(self.root_path, dev.name)   
+            device_folder = os.path.join(self.rootPath, dev.name)   
             self.__create_directory(device_folder)
             devices_id_to_name[dev.id] = dev.name
         return devices_id_to_name
@@ -85,10 +85,10 @@ class DataIO:
             dev_name = devices_id_to_name[tr.device_id]
             self.__handle_single_record(tr, df, dev_name, dir_structure)
         # Save the directory structure information to a JSON file
-        self.__save_to_json(dir_structure, self.json_path)
+        self.__save_to_json(dir_structure, self.jsonPath)
     
     def __handle_single_record(self, tr, df, dev_name, dir_structure):
-        device_folder = os.path.join(self.root_path, dev_name)
+        device_folder = os.path.join(self.rootPath, dev_name)
         if device_folder is None:
             self.logger.error(f'Device folder not found for device id {tr.device_id}')
             return None
@@ -150,8 +150,8 @@ class DataIO:
             The list of directory structure information
         """ 
         dir_structure = []
-        if os.path.exists(self.json_path):
-            with open(self.json_path, 'r') as f:
+        if os.path.exists(self.jsonPath):
+            with open(self.jsonPath, 'r') as f:
                     dir_structure = json.load(f)
         return dir_structure
 
