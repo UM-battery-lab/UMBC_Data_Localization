@@ -13,13 +13,24 @@ class DataIO:
     rootPath: str
         The root path of the local data
     dirStructure: DirStructure object
-        The object to manage the directory structure
+        The object to manage the directory structure for the local data
     logger: logger object
         The object to log information
-    
         
     Methods
     -------
+    create_dev_dic(devs)
+        Create the path for each device and return a dictionary of device id and device folder path
+    save_test_data_update_dict(trs, dfs, devices_id_to_name)
+        Save test data to local disk and update the directory structure information
+    save_df(df, df_path)
+        Save the dataframe to a pickle file
+    load_df(df_path, trace_keys=None)
+        Load the dataframe from the pickle file
+    load_trs(tr_paths)
+        Load the test records from the pickle files
+    load_dfs(df_paths)
+        Load the dataframes from the pickle files
     """
     def __init__(self, dirStructure: DirStructure):
         self.rootPath = ROOT_PATH
@@ -67,6 +78,23 @@ class DataIO:
         for tr, df in zip(trs, dfs):
             dev_name = devices_id_to_name[tr.device_id]
             self.__handle_single_record(tr, df, dev_name)
+    
+    def save_df(self, df, df_path):
+        """
+        Save the dataframe to a pickle file
+
+        Parameters
+        ----------
+        df: pandas dataframe
+            The dataframe to be saved
+        df_path: str
+            The path of the pickle file
+
+        Returns
+        -------
+        None
+        """
+        self.__save_to_pickle(df, df_path)
     
     def __handle_single_record(self, tr, df, dev_name):
         device_folder = os.path.join(self.rootPath, dev_name)
@@ -135,9 +163,12 @@ class DataIO:
         return [self.__load_pickle(file_path) for file_path in file_paths]
 
     def __load_pickle(self, file_path):
-        with open(file_path, "rb") as f:
-            record = pickle.load(f)
-        self.logger.info(f"Loaded pickle file from {file_path}")
-        return record
-
+        try:
+            with open(file_path, "rb") as f:
+                record = pickle.load(f)
+            self.logger.info(f"Loaded pickle file from {file_path}")
+            return record
+        except FileNotFoundError:
+            self.logger.error(f"File not found: {file_path}")
+            return None
 

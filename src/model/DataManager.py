@@ -16,7 +16,33 @@ class DataManager:
     ----------
     dataIO: DataIO object
         The object to save and load data
- 
+    dataFetcher: DataFetcher object
+        The object to fetch data from Voltaiq Studio
+    dataDeleter: DataDeleter object
+        The object to delete data
+    dataFilter: DataFilter object
+        The object to filter data from the local disk
+    dataProcessor: DataProcessor object
+        The object to process data
+    dirStructure: DirStructure object
+        The object to manage the directory structure for the local data
+    logger: logger object
+        The object to log information
+    
+    Methods
+    -------
+    __createdb()
+        Create the local database
+    __updatedb()
+        Update the local database
+    update_test_data(trs=None, devs=None)
+        Update the test data and directory structure with the specified test records and devices
+    filter_trs(device_id=None, device_name_substring=None, start_time=None, tags=None)
+        Filter the test records locally with the specified device id or name or start time or tags
+    filter_dfs(device_id=None, device_name_substring=None, start_time=None, tags=None)
+        Filter the dataframes locally with the specified device id or name or start time or tags
+    filter_trs_and_dfs(device_id=None, device_name_substring=None, start_time=None, tags=None)
+        Filter the test records and dataframes locally with the specified device id or name or start time or tags
     """
     def __init__(self):
         self.dirStructure = DirStructure()
@@ -54,6 +80,23 @@ class DataManager:
         dfs = self.dataFetcher.get_dfs_from_trs(trs)
         # Save test data and update directory structure
         self.dataIO.save_test_data_update_dict(trs, dfs, device_id_to_name)
+
+    def __updatedb(self):
+        """
+        Update the local database
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        None
+        """
+        # Fetch test records and devices
+        trs = self.dataFetcher.fetch_trs()
+        devs = self.dataFetcher.fetch_devs()
+        self.update_test_data(trs, devs)
 
     def update_test_data(self, trs=None, devs=None):
         """

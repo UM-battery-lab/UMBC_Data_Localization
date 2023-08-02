@@ -4,6 +4,33 @@ from src.constants import JSON_FILE_PATH, DATE_FORMAT
 from logger_config import setup_logger
 
 class DirStructure:
+    """
+    The class to manage the directory structure for the local data
+
+    Attributes
+    ----------
+    filepath: str
+        The path of the json file to store the directory structure
+    structure: list of dict
+        The list of records in the directory structure
+    logger: logger object
+        The object to log information
+
+    Methods
+    -------
+    append_from_record(tr, dev_name, tr_path, df_path)
+        Append a record to the directory structure
+    load_records()
+        Load the records from the directory structure
+    load_uuid()
+        Load the uuids from the directory structure
+    load_dev_name()
+        Load the device names from the directory structure
+    load_uuid_to_last_dp_timestamp()
+        Load the uuids and last data point timestamps from the directory structure
+    load_uuid_to_tr_path_and_df_path()
+        Load the uuids and test record and dataframe paths from the directory structure
+    """
     def __init__(self):
         self.filepath = JSON_FILE_PATH
         self.logger = setup_logger()
