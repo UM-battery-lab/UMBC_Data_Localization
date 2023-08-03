@@ -1,10 +1,10 @@
-from DirStructure import DirStructure
-from DataFetcher import DataFetcher
-from DataIO import DataIO
-from DataDeleter import DataDeleter
-from DataFilter import DataFilter
-from DataProcessor import DataProcessor
-from logger_config import setup_logger
+from src.model.DirStructure import DirStructure
+from src.model.DataFetcher import DataFetcher
+from src.model.DataIO import DataIO
+from src.model.DataDeleter import DataDeleter
+from src.model.DataFilter import DataFilter
+from src.model.DataProcessor import DataProcessor
+from src.logger_config import setup_logger
 
 
 
@@ -221,3 +221,51 @@ class DataManager:
         """
         tr_paths, df_paths = self.dataFilter.filter_trs_and_dfs(device_id, device_name_substring, start_time, tags)
         return self.dataIO.load_trs(tr_paths), self.dataIO.load_dfs(df_paths)
+    
+    # Below are the methods for testing
+    def test_createdb(self):
+        """
+        Create the local database
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        None
+        """
+        # Fetch test records and devices
+        trs = self.dataFetcher.fetch_trs()
+        devs = self.dataFetcher.fetch_devs()
+
+        test_trs = trs[:50]
+        
+        if trs is None or devs is None:
+            self.logger.error('Failed to fetch data')
+            return
+        
+        # Create device folder dictionary
+        device_id_to_name = self.dataIO.create_dev_dic(devs)
+        # Fetch time series data from test records
+        dfs = self.dataFetcher.get_dfs_from_trs(test_trs)
+        # Save test data and update directory structure
+        self.dataIO.save_test_data_update_dict(test_trs, dfs, device_id_to_name)
+
+    def test_updatedb(self):
+        """
+        Update the local database
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        None
+        """
+        # Fetch test records and devices
+        trs = self.dataFetcher.fetch_trs()
+        test_trs = trs[:80]
+        devs = self.dataFetcher.fetch_devs()
+        self.update_test_data(test_trs, devs)

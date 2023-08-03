@@ -1,5 +1,5 @@
 import os
-from logger_config import setup_logger
+from src.logger_config import setup_logger
 
 
 class DataDeleter:

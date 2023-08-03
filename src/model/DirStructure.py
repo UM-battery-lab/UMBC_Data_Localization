@@ -1,7 +1,7 @@
 import os
 import json
 from src.constants import JSON_FILE_PATH, DATE_FORMAT
-from logger_config import setup_logger
+from src.logger_config import setup_logger
 
 class DirStructure:
     """
@@ -50,6 +50,7 @@ class DirStructure:
 
     def __save(self):
         try:
+            os.makedirs(os.path.dirname(self.filepath), exist_ok=True)
             with open(self.filepath, 'w') as f:
                 json.dump(self.structure, f, indent=4)
         except Exception as e:

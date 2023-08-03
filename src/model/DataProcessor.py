@@ -8,7 +8,7 @@ from itertools import compress
 from src.model.DirStructure import DirStructure
 from src.model.DataIO import DataIO
 from src.model.DataFilter import DataFilter
-from logger_config import setup_logger
+from src.logger_config import setup_logger
 
 
 class DataProcessor:

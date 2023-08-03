@@ -2,7 +2,7 @@ import os
 import pickle
 from src.model.DirStructure import DirStructure
 from src.constants import ROOT_PATH, DATE_FORMAT
-from logger_config import setup_logger
+from src.logger_config import setup_logger
 
 class DataIO:
     """

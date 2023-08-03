@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from logger_config import setup_logger
+from src.logger_config import setup_logger
 from src.model.DataIO import DataIO
 from src.model.DirStructure import DirStructure
 from src.constants import DATE_FORMAT, TIME_TOLERANCE
