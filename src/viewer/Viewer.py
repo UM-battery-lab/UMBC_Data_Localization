@@ -31,8 +31,8 @@ class Viewer:
         # setup plot 
         fig, axes = self.plt.subplots(6,1,figsize=(6,6), sharex=True)
 
-        self.__plot_with_axis(axes.flat[0], t, I, "Current [A]", cycle_idx, capacity_check_idx)
-        self.__plot_with_axis(axes.flat[1], t, V, "Voltage [V]", cycle_idx, capacity_check_idx, special_t=t, special_data=V[charge_idx], marker='o')
+        self.__plot_with_axis(axes.flat[0], t, I, "Current [A]", cycle_idx, charge_idx, capacity_check_idx)
+        self.__plot_with_axis(axes.flat[1], t, V, "Voltage [V]", cycle_idx, charge_idx, capacity_check_idx)
         self.__plot_with_axis(axes.flat[2], t, T, "Temperature [degC]", cycle_idx, capacity_check_idx, special_t2=t_vdf, special_data2=T_vdf, linestyle='--')
         if not all(t_vdf.isnull()):
             self.__plot_with_axis(axes.flat[3], t_vdf, exp_vdf, "Expansion [-]", cycle_idx_vdf)
@@ -47,10 +47,12 @@ class Viewer:
         
 
         
-    def __plot_with_axis(self, ax, t, data, ylabel, cycle_idx=None, capacity_check_idx=None, special_t=None, special_data=None, marker=None, special_t2=None, special_data2=None, linestyle=None, downsample=100):
+    def __plot_with_axis(self, ax, t, data, ylabel, cycle_idx=None, charge_idx=None, capacity_check_idx=None, special_t=None, special_data=None, marker=None, special_t2=None, special_data2=None, linestyle=None, downsample=100):
         ax.plot_date(t[0::downsample], data[0::downsample], '-')
         if cycle_idx is not None:
             ax.plot_date(t[cycle_idx], data[cycle_idx], 'x')
+        if charge_idx is not None:
+            ax.plot_date(t[charge_idx], data[charge_idx], 'o')
         if capacity_check_idx is not None:
             ax.plot_date(t[capacity_check_idx], data[capacity_check_idx], '*', c='r')
         if special_t is not None and special_data is not None:

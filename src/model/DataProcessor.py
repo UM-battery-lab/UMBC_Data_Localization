@@ -303,7 +303,8 @@ class DataProcessor:
         # format df: put protocol in front and reindex
         cell_rpt_data.reset_index(drop=True, inplace=True)
         cols = cell_rpt_data.columns.to_list()
-        cell_rpt_data = cell_rpt_data[[cols[len(cols)-1]] + cols[0:-1]] 
+        if cols != []:
+            cell_rpt_data = cell_rpt_data[[cols[len(cols)-1]] + cols[0:-1]] 
 
         return cell_rpt_data
 
@@ -508,7 +509,7 @@ class DataProcessor:
                 Q_d.append(Q) 
         return np.array(Q_c), np.array(Q_d)
 
-    def __combine_cycler_data(self, trs_cycler, cycle_id_lims, numFiles=1000, last_AhT = 0, debug = False):
+    def __combine_cycler_data(self, trs_cycler, cycle_id_lims, numFiles=1000, last_AhT = 0, debug = True):
         """
         Combine cycler data from multiple files into a single dataframe.
         PROCESS CYCLER DATA.
@@ -549,13 +550,14 @@ class DataProcessor:
                 if ('arbin' in test.tags) or ('biologic' in test.tags): 
                     test_trace_keys_arbin = ['h_datapoint_time','h_test_time','h_current', 'h_potential', 'c_cumulative_capacity', 'h_step_index']
                     df_labels_arbin = ['Time [s]','Test Time [s]', 'Current [A]', 'Voltage [V]', 'Ah throughput [A.h]', 'Step index']
-                    test_data = self.__test_to_df(test,test_trace_keys_arbin,df_labels_arbin, ms = isRPT)
+                    test_data = self.__test_to_df(test,test_trace_keys_arbin, df_labels_arbin, ms = isRPT)
                     test_data['Temperature [degC]'] = [np.nan]*len(test_data) # make arbin tables with same columns as neware files
                 # 1b. for neware files
                 elif 'neware_xls_4000' in test.tags: 
                     test_data = self.__test_to_df(test, ms = isRPT)
                     test_data['Temperature [degC]'] = np.where((test_data['Temperature [degC]'] >= 200) & (test_data['Temperature [degC]'] <250), np.nan, test_data['Temperature [degC]']) 
                 
+                self.logger.info(f"Get {len(test_data)} rows of data from {test.name}")
                 # 2. Reassign to variables
                 t = test_data['Time [s]']
                 I = test_data['Current [A]']
@@ -670,12 +672,10 @@ class DataProcessor:
         # Combine cycling data into a single df and reset the index
         cell_data = pd.concat(frames)
         cell_data.reset_index(drop=True, inplace=True)
-
         # Get cycle indices from combined df originally identified from individual tests (with lims based on test type) 
         discharge_start_idx_0 = np.array(list(compress(range(len(cell_data['discharge_cycle_indicator'])), cell_data['discharge_cycle_indicator'])))
         charge_start_idx_0 = np.array(list(compress(range(len(cell_data['charge_cycle_indicator'])), cell_data['charge_cycle_indicator'])))
-        capacity_check_idx_0 = np.array(list(compress(range(len(cell_data['capacity_check_indicator'])), cell_data['capacity_check_indicator'])))
-        
+        capacity_check_idx_0 = np.array(list(compress(range(len(cell_data['capacity_check_indicator'])), cell_data['capacity_check_indicator'])))       
         # Filter cycle indices again to match every discharge and charge index. Set default cycle index to charge start
         if len((discharge_start_idx_0)>1) and (len(charge_start_idx_0)>1):
             charge_start_idx, discharge_start_idx = self.__match_charge_discharge(charge_start_idx_0, discharge_start_idx_0) 
@@ -729,7 +729,7 @@ class DataProcessor:
             df_raw['aux_vdf_timestamp_datetime_0'] = pd.to_datetime(df_raw['aux_vdf_timestamp_datetime_0'], unit='ms').dt.tz_localize('UTC').dt.tz_convert('US/Eastern')
         # preserve listed trace key order and rename columns for easy calling
         df_raw = df_raw[test_trace_keys]
-        df = df_raw.set_axis(df_labels, axis=1, inplace=False)
+        df = df_raw.set_axis(df_labels, axis=1)
         return df
 
     def __find_cycle_idx(self, t, I, V, AhT, step_idx, V_max_cycle=3, V_min_cycle=4, dt_min = 600, dAh_min=1):

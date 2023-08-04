@@ -23,8 +23,9 @@ class Presenter:
         dict
             The dictionary of measured data
         """
-        #TODO: modify process_cell
-        cell_data, cell_data_vdf, cell_cycle_metrics = self.dataManager.process_cell(cell_name)
+        # setup measured data
+        cell_cycle_metrics, cell_data, cell_data_vdf = self.dataManager.process_cell(cell_name)
+        self.logger.info(f'cell_data: {cell_data}')
         # setup timeseries data
         t = cell_data['Time [s]']
         I = cell_data['Current [A]']
@@ -54,6 +55,7 @@ class Presenter:
             charge_idx = cell_data.charge_cycle_indicator[cell_data.charge_cycle_indicator].index
             step_idx = cell_data['Step index']
 
+        self.logger.info(f'Get {len(t)} data points.')
         return {
             't': t,
             'I': I,
