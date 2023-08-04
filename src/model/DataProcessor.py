@@ -6,9 +6,9 @@ from scipy.signal import find_peaks, medfilt
 from itertools import compress
 
 from src.model.DirStructure import DirStructure
-from src.model.DataIO import DataIO
 from src.model.DataFilter import DataFilter
 from src.logger_config import setup_logger
+from src.constants import CYCLE_ID_LIMS
 
 
 class DataProcessor:
@@ -29,65 +29,54 @@ class DataProcessor:
     
     Methods
     -------
-    process_cell(device, filepath_rpt, filepath_ccm, filepath_cell_data, filepath_cell_data_vdf, cycle_id_lims, numFiles = 1000)
-        Process cycler data from a according to the devices and cells specified
+    process_cell(trs_neware, trs_cycler, trs_vdf, cell_cycle_metrics=None, cell_data=None, cell_data_vdf=None, numFiles=1000, cycle_id_lims=CYCLE_ID_LIMS)
+        Process the cell data from a list of test records
     process_cycler_data(trs, cycle_id_lims, numFiles = 1000)
         Process cycler data from a list of test records
     """
-    def __init__(self, dataIO: DataIO, dataFilter: DataFilter, dirStructure: DirStructure):
-        self.dataIO = dataIO
+    def __init__(self, dataFilter: DataFilter, dirStructure: DirStructure):
         self.dataFilter = dataFilter
         self.dirStructure = dirStructure
         self.logger = setup_logger()
 
-    def process_cell(self, device, filepath_rpt, filepath_ccm, filepath_cell_data, filepath_cell_data_vdf, cycle_id_lims, numFiles = 1000):
+    def process_cell(self, trs_neware, trs_cycler, trs_vdf, cell_cycle_metrics=None, cell_data=None, cell_data_vdf=None, numFiles=1000, cycle_id_lims=CYCLE_ID_LIMS):
         """
-        Process cycler data from a list of test records
+        Process the cell data from a list of test records
 
         Parameters
         ----------
-        device: Device object
-            The device to be processed
-        filepath_rpt: str
-            The filepath to the cell report pickle file
-        filepath_ccm: str
-            The filepath to the cell cycle metrics pickle file
-        filepath_cell_data: str
-            The filepath to the cell data pickle file
-        filepath_cell_data_vdf: str
-            The filepath to the cell data vdf pickle file
-        cycle_id_lims: list of ints
-            The cycle number limits for charge, discharge, and total cycles
+        trs_neware: list of TestRecord objects
+            The list of test records from neware
+        trs_cycler: list of TestRecord objects
+            The list of test records from cycler
+        trs_vdf: list of TestRecord objects 
+            The list of test records from vdf
+        cell_cycle_metrics: DataFrame, optional
+            The dataframe of the cell cycle metrics
+        cell_data: DataFrame, optional
+            The dataframe of the cell data
+        cell_data_vdf: DataFrame, optional
+            The dataframe of the cell data vdf
         numFiles: int, optional
-            The number of files to process
+            The number of files to be processed
+        cycle_id_lims: dict, optional
+            The dictionary of the cycle id limits
         
         Returns
         -------
         DataFrame
-            The processed data
+            The dataframe of the cell cycle metrics
         DataFrame
-            The processed cycle metrics
+            The dataframe of the cell data
         DataFrame
-            The processed vdf data
-        
+            The dataframe of the cell data vdf
+        bool
+            Whether the data needs to be updated
         """
 
-        #1. get and sort all cycler files for this cell
-        trs_neware_path = self.dataFilter.filter_trs_by_devs_and_tags(devs=device, tags=['neware_xls_4000'])
-        trs_arbin_path = self.dataFilter.filter_trs_by_devs_and_tags(devs=device, tags=['arbin'])
-        trs_biologic_path = self.dataFilter.filter_trs_by_devs_and_tags(devs=device, tags=['biologic'])
-
-        trs_neware = self.__sort_tests(self.dataIO.load_trs(trs_neware_path))
-        trs_arbin = self.__sort_tests(self.dataIO.load_trs(trs_arbin_path))
-        trs_biologic = self.__sort_tests(self.dataIO.load_trs(trs_biologic_path))
-        trs_cycler = self.__sort_tests(trs_neware + trs_arbin + trs_biologic)
-
-        
-        # 2. check if cell_data and cell_cycle_metrics pickle files exist. If so, add new test data to cell_data and cell_cycle_metrics
+        # 1. check if cell_data and cell_cycle_metrics pickle files exist. If so, add new test data to cell_data and cell_cycle_metrics
         load_new_data = [True for i in range(len(trs_neware))] # Initialization: indicates if the files were processed previously 
-        cell_cycle_metrics = self.dataIO.load_df(filepath_ccm)
-        cell_data = self.dataIO.load_df(filepath_cell_data)
-        if cell_cycle_metrics is None or cell_data is not None:
+        if cell_cycle_metrics is None and cell_data is not None:
             # Make list of data files with new data to process
             trs_new_data = self.__filter_trs_new_data(cell_cycle_metrics, trs_cycler)
             # For each new file, load the data and add it to the existing dfs
@@ -113,22 +102,16 @@ class DataProcessor:
         else: # if pickle file doesn't exist, process all cycling data
             trs_new_data = trs_cycler.copy()
             cell_data, cell_cycle_metrics = self.process_cycler_data(trs_new_data, cycle_id_lims=cycle_id_lims, numFiles = numFiles)
-                
-        #3. get and sort all vdf files for this cell 
-        trs_vdf_path = self.dataFilter.filter_trs_by_devs_and_tags(devs=device, tags=['vdf'])
-        trs_vdf = self.__sort_tests(self.dataIO.load_trs(trs_vdf_path))
         
-        # 4. check if cell_data_vdf and cell_cycle_metrics pickle files exist. If so, list new test vdf data, else list all test vdf files.
+        # 2. check if cell_data_vdf and cell_cycle_metrics pickle files exist. If so, list new test vdf data, else list all test vdf files.
         load_new_data_vdf = [True for i in range(len(trs_vdf))] # Initialization: indicates if the files were processed previously 
-        
         if len(trs_vdf)==0: # make empty dfs for constrained cells 
             cell_data_vdf = pd.DataFrame(columns=['Time [s]','Expansion [-]', 'Expansion ref [-]', 'Temperature [degC]','cycle_indicator'])
             cell_cycle_metrics['Max cycle expansion [-]'] = np.nan
             cell_cycle_metrics['Min cycle expansion [-]'] = np.nan
             cell_cycle_metrics['Reversible cycle expansion [-]'] = np.nan
             trs_new_data_vdf = []
-        elif self.dataIO.load_df(filepath_cell_data_vdf) is not None:
-            cell_data_vdf = self.dataIO.load_df(filepath_cell_data_vdf)
+        elif cell_data_vdf is not None:
             # Make list of data files with new data to process
             trs_new_data_vdf = self.__filter_trs_new_data(cell_cycle_metrics, trs_vdf)
             if len(trs_new_data_vdf)>0: #ignore for constrained cells
@@ -150,22 +133,17 @@ class DataProcessor:
             trs_new_data_vdf = trs_vdf.copy()
             cell_data_vdf, cell_cycle_metrics = self.__process_cycler_expansion(trs_vdf, cell_cycle_metrics, numFiles = numFiles)    
 
-        
         # rearrange columns of cell_cycle_metrics for easy reading with data on left and others on right
         cols = cell_cycle_metrics.columns.to_list()
         move_idx = [c for c in cols if '[' in c] + [c for c in cols if '[' not in c] # Columns with data include '[' in the key
         cell_cycle_metrics = cell_cycle_metrics[move_idx]
 
-        #5. save new data to pickle if there was new data
-        if len(trs_new_data)>0:
-            cell_rpt_data = self.__summarize_rpt_data(cell_data, cell_data_vdf, cell_cycle_metrics)
-            self.dataIO.save_df(cell_cycle_metrics, filepath_ccm)
-            self.dataIO.save_df(cell_data, filepath_cell_data)
-            self.dataIO.save_df(cell_data_vdf, filepath_cell_data_vdf)  
-            self.dataIO.save_df(cell_rpt_data, filepath_rpt)
-        return cell_cycle_metrics, cell_data, cell_data_vdf
+        # if there is new data, save it to pickle files
+        update = len(trs_new_data)>0
+
+        return cell_cycle_metrics, cell_data, cell_data_vdf, update
     
-    def __sort_tests(self, trs):
+    def sort_tests(self, trs):
         """
         Sort the test records by start time
 
@@ -270,7 +248,7 @@ class DataProcessor:
     
         return df
 
-    def __summarize_rpt_data(self, cell_data, cell_data_vdf, cell_cycle_metrics):
+    def summarize_rpt_data(self, cell_data, cell_data_vdf, cell_cycle_metrics):
         """
         Get the summary data for each RPT file
 
@@ -325,7 +303,8 @@ class DataProcessor:
         # format df: put protocol in front and reindex
         cell_rpt_data.reset_index(drop=True, inplace=True)
         cols = cell_rpt_data.columns.to_list()
-        cell_rpt_data = cell_rpt_data[[cols[len(cols)-1]] + cols[0:-1]] 
+        if cols != []:
+            cell_rpt_data = cell_rpt_data[[cols[len(cols)-1]] + cols[0:-1]] 
 
         return cell_rpt_data
 
@@ -530,7 +509,7 @@ class DataProcessor:
                 Q_d.append(Q) 
         return np.array(Q_c), np.array(Q_d)
 
-    def __combine_cycler_data(self, trs_cycler, cycle_id_lims, numFiles=1000, last_AhT = 0, debug = False):
+    def __combine_cycler_data(self, trs_cycler, cycle_id_lims, numFiles=1000, last_AhT = 0, debug = True):
         """
         Combine cycler data from multiple files into a single dataframe.
         PROCESS CYCLER DATA.
@@ -571,13 +550,14 @@ class DataProcessor:
                 if ('arbin' in test.tags) or ('biologic' in test.tags): 
                     test_trace_keys_arbin = ['h_datapoint_time','h_test_time','h_current', 'h_potential', 'c_cumulative_capacity', 'h_step_index']
                     df_labels_arbin = ['Time [s]','Test Time [s]', 'Current [A]', 'Voltage [V]', 'Ah throughput [A.h]', 'Step index']
-                    test_data = self.__test_to_df(test,test_trace_keys_arbin,df_labels_arbin, ms = isRPT)
+                    test_data = self.__test_to_df(test,test_trace_keys_arbin, df_labels_arbin, ms = isRPT)
                     test_data['Temperature [degC]'] = [np.nan]*len(test_data) # make arbin tables with same columns as neware files
                 # 1b. for neware files
                 elif 'neware_xls_4000' in test.tags: 
                     test_data = self.__test_to_df(test, ms = isRPT)
                     test_data['Temperature [degC]'] = np.where((test_data['Temperature [degC]'] >= 200) & (test_data['Temperature [degC]'] <250), np.nan, test_data['Temperature [degC]']) 
                 
+                self.logger.info(f"Get {len(test_data)} rows of data from {test.name}")
                 # 2. Reassign to variables
                 t = test_data['Time [s]']
                 I = test_data['Current [A]']
@@ -692,12 +672,10 @@ class DataProcessor:
         # Combine cycling data into a single df and reset the index
         cell_data = pd.concat(frames)
         cell_data.reset_index(drop=True, inplace=True)
-
         # Get cycle indices from combined df originally identified from individual tests (with lims based on test type) 
         discharge_start_idx_0 = np.array(list(compress(range(len(cell_data['discharge_cycle_indicator'])), cell_data['discharge_cycle_indicator'])))
         charge_start_idx_0 = np.array(list(compress(range(len(cell_data['charge_cycle_indicator'])), cell_data['charge_cycle_indicator'])))
-        capacity_check_idx_0 = np.array(list(compress(range(len(cell_data['capacity_check_indicator'])), cell_data['capacity_check_indicator'])))
-        
+        capacity_check_idx_0 = np.array(list(compress(range(len(cell_data['capacity_check_indicator'])), cell_data['capacity_check_indicator'])))       
         # Filter cycle indices again to match every discharge and charge index. Set default cycle index to charge start
         if len((discharge_start_idx_0)>1) and (len(charge_start_idx_0)>1):
             charge_start_idx, discharge_start_idx = self.__match_charge_discharge(charge_start_idx_0, discharge_start_idx_0) 
@@ -751,7 +729,7 @@ class DataProcessor:
             df_raw['aux_vdf_timestamp_datetime_0'] = pd.to_datetime(df_raw['aux_vdf_timestamp_datetime_0'], unit='ms').dt.tz_localize('UTC').dt.tz_convert('US/Eastern')
         # preserve listed trace key order and rename columns for easy calling
         df_raw = df_raw[test_trace_keys]
-        df = df_raw.set_axis(df_labels, axis=1, inplace=False)
+        df = df_raw.set_axis(df_labels, axis=1)
         return df
 
     def __find_cycle_idx(self, t, I, V, AhT, step_idx, V_max_cycle=3, V_min_cycle=4, dt_min = 600, dAh_min=1):

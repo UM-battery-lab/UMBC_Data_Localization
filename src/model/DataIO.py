@@ -127,8 +127,10 @@ class DataIO:
 
     def __save_to_pickle(self, data, file_path):
         try:
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
             with open(file_path, 'wb') as f:
                 pickle.dump(data, f)
+            self.logger.info(f'Saved pickle file to {file_path}')
         except Exception as err:
             self.logger.error(f'Error occurred while writing file {file_path}: {err}')
     
