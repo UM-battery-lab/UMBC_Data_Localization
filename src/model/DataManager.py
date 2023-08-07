@@ -248,9 +248,9 @@ class DataManager:
         filepath_cell_data_vdf = os.path.join(cell_path, 'CDvdf.pickle')
         filepath_rpt = os.path.join(cell_path, 'RPT.pickle')
         # Load dataframes for cycle metrics, cell data, cell data vdf
-        cell_cycle_metrics = self.dataIO.load_df(filepath_ccm)
-        cell_data = self.dataIO.load_df(filepath_cell_data)
-        cell_data_vdf = self.dataIO.load_df(filepath_cell_data_vdf)
+        cell_cycle_metrics = self.dataIO.load_df(df_path=filepath_ccm)
+        cell_data = self.dataIO.load_df(df_path=filepath_cell_data)
+        cell_data_vdf = self.dataIO.load_df(df_path=filepath_cell_data_vdf)
         # Load trs for cycler data
         trs_neware = self.dataFilter.filter_trs(device_name_substring=cell_name, tags=['neware_xls_4000'])
         trs_arbin = self.dataFilter.filter_trs(device_name_substring=cell_name, tags=['arbin'])

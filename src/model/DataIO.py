@@ -134,7 +134,7 @@ class DataIO:
         except Exception as err:
             self.logger.error(f'Error occurred while writing file {file_path}: {err}')
     
-    def load_df(self, test_folder, trace_keys=None):
+    def load_df(self, test_folder=None, df_path=None, trace_keys=None):
         """
         Load the dataframe from the pickle file with the specified trace keys
 
@@ -142,6 +142,8 @@ class DataIO:
         ----------
         test_folder: str
             The path of the test folder
+        df_path: str, optional
+            The path of the pickle file
         trace_keys: list of str, optional
             The list of keys of the traces to be loaded
 
@@ -150,7 +152,11 @@ class DataIO:
         Dataframe
             The dataframe loaded from the pickle file
         """ 
-        df_path = self.dirStructure.get_df_path(test_folder)
+        if df_path is None:
+            if test_folder is None:
+                self.logger.error('Either test_folder or df_path must be specified')
+                return None
+            df_path = self.dirStructure.get_df_path(test_folder)
         df = self.__load_pickle(df_path)
         if trace_keys is not None:
             df = df[trace_keys]

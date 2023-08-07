@@ -886,9 +886,6 @@ class DataProcessor:
             The list of matched timestamp indices
         """
 
-        # convert to datetime
-        desired_timestamps = pd.to_datetime(desired_timestamps)
-        t = pd.to_datetime(t)
         # find indices for "desired_timestamps" in an array of timestamps "t" within "t_match_threshold" seconds  
         mapped_indices = [] #indexes t
         matched_timestamp_indices =[] # indexes desired_timestamps
