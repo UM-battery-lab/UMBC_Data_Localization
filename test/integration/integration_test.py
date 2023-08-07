@@ -11,8 +11,9 @@ def present_cell():
     dataManager = DataManager()
     presenter = Presenter(dataManager)
     viewer = Viewer()
-    data_dict = presenter.get_measured_data_time('Dewalt_H4A')
-    viewer.plot_measured_data_time('Dewalt_H4A', data_dict)
+    cell_name = 'UMBL2022FEB_CELL152048'
+    data_dict = presenter.get_measured_data_time(cell_name)
+    viewer.plot_measured_data_time(cell_name, data_dict)
 
 if __name__ == '__main__':
     present_cell()

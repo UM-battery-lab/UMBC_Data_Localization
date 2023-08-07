@@ -361,17 +361,20 @@ class DataProcessor:
         for test_vdf in trs_vdf[0:min(len(trs_vdf), numFiles)]:
             try:
                 # Read in timeseries data from test and formating into dataframe. Remove rows with expansion value outliers.
-                self.logger.info(f"Processing {test_vdf.name}")
+                self.logger.info(f"Now Processing {test_vdf.name}")
                 # df_vdf = test2df(test_vdf, test_trace_keys = ['aux_vdf_timestamp_datetime_0','aux_vdf_ldcsensor_none_0', 'aux_vdf_ldcref_none_0', 'aux_vdf_ambienttemperature_celsius_0', 'aux_vdf_temperature_celsius_0'], df_labels =['Time [s]','Expansion [-]', 'Expansion ref [-]', 'Amb Temp [degC]', 'Temperature [degC]'])
                 df_vdf = self.__test_to_df(test_vdf, test_trace_keys = ['aux_vdf_timestamp_datetime_0','aux_vdf_ldcsensor_none_0', 'aux_vdf_ldcref_none_0', 'aux_vdf_ambienttemperature_celsius_0'], df_labels =['Time [s]','Expansion [-]', 'Expansion ref [-]','Temperature [degC]'])
                 df_vdf = df_vdf[(df_vdf['Expansion [-]'] >1e1) & (df_vdf['Expansion [-]'] <1e7)] #keep good signals 
                 df_vdf['Temperature [degC]'] = np.where((df_vdf['Temperature [degC]'] >= 200) & (df_vdf['Temperature [degC]'] <250), np.nan, df_vdf['Temperature [degC]']) 
                 # df_vdf['Amb Temp [degC]'] = np.where((df_vdf['Amb Temp [degC]'] >= 200) & (df_vdf['Amb Temp [degC]'] <250), np.nan, df_vdf['Amb Temp [degC]']) 
                 frames_vdf.append(df_vdf)
+                self.logger.info(f"Finished processing with {len(frames_vdf)} data points")
             except: #Tables are different Length, cannot merge
                 pass
             time.sleep(0.1) 
         
+        if (len(frames_vdf) == 0):
+            return pd.DataFrame(columns=['Time [s]','Expansion [-]', 'Expansion ref [-]', 'Temperature [degC]','cycle_indicator'])
         # Combine vdf data into a single df and reset the index 
         cell_data_vdf = pd.concat(frames_vdf).sort_values(by=['Time [s]'])
         cell_data_vdf.reset_index(drop=True, inplace=True)
