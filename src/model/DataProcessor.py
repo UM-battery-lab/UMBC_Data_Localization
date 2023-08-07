@@ -351,9 +351,9 @@ class DataProcessor:
 
     def __combine_cycler_expansion(self, trs_vdf, numFiles = 1000):
         """
-        # PROCESS NEWARE VDF DATA
-        # Reads in data from the last "numFiles" files in the "trs_vdf" and concatenates them into a long dataframe. Then looks for corresponding cycle start/end timestamps in vdf time. 
-        # Finally, it'll calculate the min, max, and reversible expansion for each cycle.  
+        PROCESS NEWARE VDF DATA
+        Reads in data from the last "numFiles" files in the "trs_vdf" and concatenates them into a long dataframe. Then looks for corresponding cycle start/end timestamps in vdf time. 
+        Finally, it'll calculate the min, max, and reversible expansion for each cycle.  
         """
         # concatenate vdf data frames for last numFiles files
         frames_vdf =[]
@@ -886,11 +886,13 @@ class DataProcessor:
             The list of matched timestamp indices
         """
 
+        # convert to datetime
+        desired_timestamps = pd.to_datetime(desired_timestamps)
+        t = pd.to_datetime(t)
         # find indices for "desired_timestamps" in an array of timestamps "t" within "t_match_threshold" seconds  
         mapped_indices = [] #indexes t
         matched_timestamp_indices =[] # indexes desired_timestamps
         matched_timestamps = [] # value of t closest to desired_timestamp. includes nan if can't find matching timestamp.
-        
         # for each timestamp...
         for k,desired_timestamp in enumerate(desired_timestamps):
             # if smallest dt < t_match_threshold

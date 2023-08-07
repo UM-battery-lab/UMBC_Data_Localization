@@ -56,7 +56,7 @@ class DirStructure:
         except Exception as e:
             self.logger.error(f'Error while saving directory structure: {e}')
 
-    def append_from_record(self, tr, dev_name, tr_path, df_path):
+    def append_from_record(self, tr, dev_name, test_folder):
         try:
             self.structure.append({
                 'uuid': tr.uuid,
@@ -65,8 +65,7 @@ class DirStructure:
                 'dev_name': dev_name,
                 'start_time': tr.start_time.strftime(DATE_FORMAT),
                 'last_dp_timestamp': tr.last_dp_timestamp,
-                'tr_path': tr_path,
-                'df_path': df_path,
+                'test_folder': test_folder,
                 'tags': tr.tags
             })
             self.__save()
@@ -86,5 +85,27 @@ class DirStructure:
         return {record['uuid']: record['last_dp_timestamp'] for record in self.structure}
 
     def load_uuid_to_tr_path_and_df_path(self):
-        return {record['uuid']: (record['tr_path'], record['df_path']) for record in self.structure}
+        """
+        Load the uuids and test record and dataframe paths from the directory structure
+        
+        Returns
+        -------
+        dict
+            The dictionary of uuids and test record and dataframe paths
+        """
+        return {record['uuid']: (self.get_tr_path(record['test_folder']), self.get_df_path(record['test_folder'])) for record in self.structure}
     
+    def load_dev_folder(self, dev_name):
+        for record in self.structure:
+            if record['dev_name'] == dev_name:
+                return self.__get_device_path(record['test_folder'])
+        return None
+    
+    def get_tr_path(self, test_folder):
+        return os.path.join(test_folder, 'tr.pickle')
+    
+    def get_df_path(self, test_folder):
+        return os.path.join(test_folder, 'df.pickle')
+        
+    def __get_device_path(self, test_folder):
+        return os.path.dirname(test_folder)

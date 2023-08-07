@@ -28,8 +28,6 @@ class DataFilter:
         Filter the test records and dataframes with the specified device id or name or start time or tags
     filter_df_by_tr(tr, trace_keys=None)
         Filter the dataframe with the specified test record
-    filter_trs_by_devs_and_tags(devs, tags)
-        Filter the test records with the specified devices and tags
     """
     def __init__(self, dataIO: DataIO, dirStructure: DirStructure):
         self.dataIO = dataIO
@@ -90,11 +88,12 @@ class DataFilter:
         
         Returns
         -------
-        list of str
-            The list of paths of the test records that match the specified device id or name, and start time
+        list of TestRecord object
+            The list of test records that match the specified device id or name, and start time
         """
         matching_records = self.__filter_records(device_id=device_id, device_name_substring=device_name_substring, start_time=start_time, tags=tags)
-        return [record['tr_path'] for record in matching_records]
+        matching_test_folders = [record['test_folder'] for record in matching_records]
+        return self.dataIO.load_trs(matching_test_folders)
 
     def filter_dfs(self, device_id=None, device_name_substring=None, start_time=None, tags=None):
         """
@@ -113,15 +112,16 @@ class DataFilter:
         
         Returns
         -------
-        list of str
-            The list of paths of the dataframes that match the specified device id or name, and start time
+        list of Dataframe
+            The list of dataframes that match the specified device id or name, and start time
         """
         matching_records = self.__filter_records(device_id=device_id, device_name_substring=device_name_substring, start_time=start_time, tags=tags)
-        return [record['df_path'] for record in matching_records]
+        matching_test_folders = [record['test_folder'] for record in matching_records]
+        return self.dataIO.load_dfs(matching_test_folders)
 
     def filter_trs_and_dfs(self, device_id=None, device_name_substring=None, start_time=None, tags=None):
         """
-        Filter the test records and dataframes with the specified device id or name, and start time
+        Filter the test records and dataframes with the specified device id or name, start time and tags
 
         Parameters
         ----------
@@ -136,13 +136,14 @@ class DataFilter:
         
         Returns
         -------
-        list of str
-            The list of paths of the test records that match the specified device id or name, and start time
-        list of str
-            The list of paths of the dataframes that match the specified device id or name, and start time
+        list of TestRecord object
+            The list of test records that match the specified device id or name, start time and tags
+        list of Dataframe
+            The list of dataframes that match the specified device id or name, start time and tags
         """
         matching_records = self.__filter_records(device_id=device_id, device_name_substring=device_name_substring, start_time=start_time, tags=tags)
-        return [record['tr_path'] for record in matching_records], [record['df_path'] for record in matching_records]
+        matching_test_folders = [record['test_folder'] for record in matching_records]
+        return self.dataIO.load_trs(matching_test_folders), self.dataIO.load_dfs(matching_test_folders)
 
     def filter_df_by_tr(self, tr, trace_keys=None):
         """
@@ -162,40 +163,13 @@ class DataFilter:
         """
         self.logger.info(f"Finding dataframe that matches test record {tr.uuid}")
         dir_structure = self.dirStructure.load_records()
-        matching_df_paths = ""
+        matching_test_folder = ""
         for record in dir_structure:
             if record['uuid'] == tr.uuid:
-                matching_df_paths = record['df_path']
+                matching_test_folder = record['test_folder']
                 break
-        if matching_df_paths == "":
+        if matching_test_folder == "":
             self.logger.info(f"No dataframe found that matches test record {tr.uuid}, need to update the local data")
             return None
         self.logger.info(f"Found dataframe that matches test record {tr.uuid}")
-        return self.dataIO.load_df(matching_df_paths, trace_keys=trace_keys)
-    
-    def filter_trs_by_devs_and_tags(self, devs, tags):
-        """
-        Filter the test records with the specified devices and tags
-
-        Parameters
-        ----------
-        devs: list of Device objects
-            The list of devices to be found
-        tags: list of str, optional
-            The list of tags to be found
-        
-        Returns
-        -------
-        list of str
-            The list of paths of the test records that match the specified devices and tags
-        """
-        self.logger.info(f"Finding test records with devices={devs}, tags={tags}")
-        matching_records = self.__filter_records(tags=tags)
-        matching_trs = []
-        for record in matching_records:
-            for dev in devs:
-                if dev.id == record['device_id']:
-                    matching_trs.append(record['tr_path'])
-                    break
-        self.logger.info(f"Found {len(matching_trs)} test records with devices={devs}, tags={tags}")
-        return matching_trs
+        return self.dataIO.load_df(matching_test_folder, trace_keys=trace_keys)
