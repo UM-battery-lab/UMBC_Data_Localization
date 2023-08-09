@@ -110,14 +110,14 @@ class DataIO:
             self.__create_directory(test_folder)
 
         # Save the test data to a pickle file
-        tr_path = os.path.join(test_folder, 'tr.pickle')
+        tr_path = self.dirStructure.get_tr_path(test_folder)
         self.__save_to_pickle(tr, tr_path)
         # Save the time series data to a pickle file
-        df_path = os.path.join(test_folder, 'df.pickle')
+        df_path = self.dirStructure.get_df_path(test_folder)
         self.__save_to_pickle(df, df_path)
 
         # Append the directory structure information to the list
-        self.dirStructure.append_from_record(tr, dev_name, tr_path, df_path)
+        self.dirStructure.append_from_record(tr, dev_name, test_folder)
     
     def __create_directory(self, directory_path):
         try:
@@ -134,31 +134,66 @@ class DataIO:
         except Exception as err:
             self.logger.error(f'Error occurred while writing file {file_path}: {err}')
     
-    def load_df(self, df_path, trace_keys=None):
+    def load_df(self, test_folder=None, df_path=None, trace_keys=None):
         """
-        Load the dataframe from the pickle file
+        Load the dataframe from the pickle file with the specified trace keys
 
         Parameters
         ----------
-        df_path: str
+        test_folder: str
+            The path of the test folder
+        df_path: str, optional
             The path of the pickle file
         trace_keys: list of str, optional
             The list of keys of the traces to be loaded
 
         Returns
         -------
-        pandas dataframe
+        Dataframe
             The dataframe loaded from the pickle file
         """ 
+        if df_path is None:
+            if test_folder is None:
+                self.logger.error('Either test_folder or df_path must be specified')
+                return None
+            df_path = self.dirStructure.get_df_path(test_folder)
         df = self.__load_pickle(df_path)
         if trace_keys is not None:
             df = df[trace_keys]
         return df
 
-    def load_trs(self, tr_paths):
+    def load_trs(self, test_folders):
+        """
+        Load the test records based on the specified test folders
+
+        Parameters
+        ----------
+        test_folders: list of str
+            The list of paths of the test folders
+        
+        Returns
+        -------
+        list of TestRecord objects
+            The list of test records loaded from the pickle files
+        """
+        tr_paths = [self.dirStructure.get_tr_path(test_folder) for test_folder in test_folders]
         return self.__load_pickles(tr_paths)
     
-    def load_dfs(self, df_paths):
+    def load_dfs(self, test_folders):
+        """
+        Load the dataframes based on the specified test folders
+
+        Parameters
+        ----------
+        test_folders: list of str
+            The list of paths of the test folders
+        
+        Returns
+        ------- 
+        list of Dataframe    
+            The list of dataframes loaded from the pickle files
+        """
+        df_paths = [self.dirStructure.get_df_path(test_folder) for test_folder in test_folders]
         return self.__load_pickles(df_paths)
 
     def __load_pickles(self, file_paths):
@@ -173,4 +208,3 @@ class DataIO:
         except FileNotFoundError:
             self.logger.error(f"File not found: {file_path}")
             return None
-
