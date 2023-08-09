@@ -37,11 +37,11 @@ class DataManager:
         Update the local database
     update_test_data(trs=None, devs=None)
         Update the test data and directory structure with the specified test records and devices
-    filter_trs(device_id=None, device_name_substring=None, start_time=None, tags=None)
+    filter_trs(device_id=None, tr_name_substring=None, start_time=None, tags=None)
         Filter the test records locally with the specified device id or name or start time or tags
-    filter_dfs(device_id=None, device_name_substring=None, start_time=None, tags=None)
+    filter_dfs(device_id=None, tr_name_substring=None, start_time=None, tags=None)
         Filter the dataframes locally with the specified device id or name or start time or tags
-    filter_trs_and_dfs(device_id=None, device_name_substring=None, start_time=None, tags=None)
+    filter_trs_and_dfs(device_id=None, tr_name_substring=None, start_time=None, tags=None)
         Filter the test records and dataframes locally with the specified device id or name or start time or tags
     process_cell(cell_name, numFiles = 1000)
         Process the data for a cell and save the processed data to local disk
@@ -142,6 +142,7 @@ class DataManager:
                 self.logger.info(f'Deleting old test data: {old_tr_file}, {old_df_file}')
                 self.dataDeleter.delete_file(old_tr_file)
                 self.dataDeleter.delete_file(old_df_file)
+                self.dirStructure.delete_record(tr.uuid)
                 new_trs.append(tr)
 
         if not new_trs:
@@ -155,7 +156,7 @@ class DataManager:
         # Save new test data and update directory structure
         self.dataIO.save_test_data_update_dict(new_trs, dfs, devices_id_to_name)
 
-    def filter_trs(self, device_id=None, device_name_substring=None, start_time=None, tags=None):
+    def filter_trs(self, device_id=None, tr_name_substring=None, start_time=None, tags=None):
         """
         Filter the test records locally with the specified device id or name, and start time
 
@@ -163,7 +164,7 @@ class DataManager:
         ----------
         device_id: str, optional
             The device id of the test record to be found
-        device_name_substring: str, optional
+        tr_name_substring: str, optional
             The substring of the device name of the test record to be found
         start_time: str, optional
             The start time of the test record to be found, in the format of 'YYYY-MM-DD_HH-MM-SS'
@@ -176,9 +177,9 @@ class DataManager:
             The list of test records that match the specified device id or name, and start time and tags
         
         """
-        return self.dataFilter.filter_trs(device_id, device_name_substring, start_time, tags)
+        return self.dataFilter.filter_trs(device_id, tr_name_substring, start_time, tags)
     
-    def filter_dfs(self, device_id=None, device_name_substring=None, start_time=None, tags=None):
+    def filter_dfs(self, device_id=None, tr_name_substring=None, start_time=None, tags=None):
         """
         Filter the dataframes locally with the specified device id or name, and start time
 
@@ -186,7 +187,7 @@ class DataManager:
         ----------
         device_id: str, optional
             The device id of the dataframe to be found
-        device_name_substring: str, optional
+        tr_name_substring: str, optional
             The substring of the device name of the dataframe to be found
         start_time: str, optional
             The start time of the dataframe to be found, in the format of 'YYYY-MM-DD_HH-MM-SS'
@@ -196,10 +197,10 @@ class DataManager:
         list of dataframes
             The list of dataframes that match the specified device id or name, and start time and tags
         """
-        return self.dataFilter.filter_dfs(device_id, device_name_substring, start_time, tags)
+        return self.dataFilter.filter_dfs(device_id, tr_name_substring, start_time, tags)
     
 
-    def filter_trs_and_dfs(self, device_id=None, device_name_substring=None, start_time=None, tags=None):
+    def filter_trs_and_dfs(self, device_id=None, tr_name_substring=None, start_time=None, tags=None):
         """
         Filter the test records and dataframes locally with the specified device id or name, and start time
 
@@ -207,8 +208,8 @@ class DataManager:
         ----------
         device_id: str, optional
             The device id of the dataframe to be found
-        device_name_substring: str, optional
-            The substring of the device name of the dataframe to be found
+        tr_name_substring: str, optional
+            The substring of the tr name of the dataframe to be found
         start_time: str, optional
             The start time of the dataframe to be found, in the format of 'YYYY-MM-DD_HH-MM-SS'
         
@@ -219,7 +220,7 @@ class DataManager:
         list of dataframes
             The list of dataframes that match the specified device id or name, and start time and tags
         """
-        return self.dataFilter.filter_trs_and_dfs(device_id, device_name_substring, start_time, tags)
+        return self.dataFilter.filter_trs_and_dfs(device_id, tr_name_substring, start_time, tags)
 
     def process_cell(self, cell_name, numFiles = 1000):
         """
@@ -252,10 +253,10 @@ class DataManager:
         cell_data = self.dataIO.load_df(df_path=filepath_cell_data)
         cell_data_vdf = self.dataIO.load_df(df_path=filepath_cell_data_vdf)
         # Load trs for cycler data
-        trs_neware = self.dataFilter.filter_trs(device_name_substring=cell_name, tags=['neware_xls_4000'])
-        trs_arbin = self.dataFilter.filter_trs(device_name_substring=cell_name, tags=['arbin'])
-        trs_biologic = self.dataFilter.filter_trs(device_name_substring=cell_name, tags=['biologic'])
-        trs_vdf = self.dataFilter.filter_trs(device_name_substring=cell_name, tags=['vdf'])        
+        trs_neware = self.dataFilter.filter_trs(tr_name_substring=cell_name, tags=['neware_xls_4000'])
+        trs_arbin = self.dataFilter.filter_trs(tr_name_substring=cell_name, tags=['arbin'])
+        trs_biologic = self.dataFilter.filter_trs(tr_name_substring=cell_name, tags=['biologic'])
+        trs_vdf = self.dataFilter.filter_trs(tr_name_substring=cell_name, tags=['vdf'])        
         # Sort trs
         trs_neware = self.dataProcessor.sort_tests(trs_neware)
         trs_arbin = self.dataProcessor.sort_tests(trs_arbin)
@@ -263,7 +264,7 @@ class DataManager:
         trs_cycler = self.dataProcessor.sort_tests(trs_neware + trs_arbin + trs_biologic)
         trs_vdf = self.dataProcessor.sort_tests(trs_vdf)
         # Process data
-        cell_cycle_metrics, cell_data, cell_data_vdf, update = self.dataProcessor.process_cell(trs_neware, trs_cycler, trs_vdf, cell_cycle_metrics, cell_data, cell_data_vdf, numFiles)
+        cell_cycle_metrics, cell_data, cell_data_vdf, update = self.dataProcessor.process_cell(trs_cycler, trs_vdf, cell_cycle_metrics, cell_data, cell_data_vdf, numFiles)
         #Save new data to pickle if there was new data
         if update:
             cell_rpt_data = self.dataProcessor.summarize_rpt_data(cell_data, cell_data_vdf, cell_cycle_metrics)
@@ -272,6 +273,9 @@ class DataManager:
             self.dataIO.save_df(cell_data_vdf, filepath_cell_data_vdf)  
             self.dataIO.save_df(cell_rpt_data, filepath_rpt)
         return cell_cycle_metrics, cell_data, cell_data_vdf
+    
+    def get_concatenated_data(self, device_id, trs_names=None):
+        return self.dataProcessor.get_concatenated_data(device_id, trs_names)  
 
     # Below are the methods for testing
     def test_createdb(self):
@@ -317,6 +321,6 @@ class DataManager:
         """
         # Fetch test records and devices
         trs = self.dataFetcher.fetch_trs()
-        test_trs = trs[:250]
+        test_trs = trs[:200]
         devs = self.dataFetcher.fetch_devs()
         self.update_test_data(test_trs, devs)

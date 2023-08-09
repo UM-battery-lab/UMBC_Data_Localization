@@ -109,3 +109,7 @@ class DirStructure:
         
     def __get_device_path(self, test_folder):
         return os.path.dirname(test_folder)
+    
+    def delete_record(self, uuid):
+        self.structure = [record for record in self.structure if record['uuid'] != uuid]
+        self.__save()

@@ -13,3 +13,8 @@ CYCLE_ID_LIMS= {
     'CAL': {'V_max_cycle':3.8, 'V_min_cycle':3.8, 'dt_min': 600, 'dAh_min':0.5},
     '_F': {'V_max_cycle':3.8, 'V_min_cycle':3.8, 'dt_min': 3600, 'dAh_min':0.5} # Formation files handled via peak finding
 }
+DEFAULT_TRACE_KEYS = ['h_datapoint_time', 'h_test_time', 'h_current', 'h_potential', 'c_cumulative_capacity', 
+                    'aux_neware_xls_t1_none_0', 'h_step_index']
+DEFAULT_DF_LABELS = ['Time [s]', 'Test Time [s]', 'Current [A]', 'Voltage [V]', 'Ah throughput [A.h]', 
+                    'Temperature [degC]', 'Step index']
+TIME_COLUMNS = ['h_datapoint_time', 'aux_vdf_timestamp_datetime_0']

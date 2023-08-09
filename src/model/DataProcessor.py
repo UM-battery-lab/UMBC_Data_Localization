@@ -8,7 +8,7 @@ from itertools import compress
 from src.model.DirStructure import DirStructure
 from src.model.DataFilter import DataFilter
 from src.logger_config import setup_logger
-from src.constants import CYCLE_ID_LIMS
+from src.constants import CYCLE_ID_LIMS, DEFAULT_TRACE_KEYS, DEFAULT_DF_LABELS, TIME_COLUMNS
 
 
 class DataProcessor:
@@ -29,109 +29,65 @@ class DataProcessor:
     
     Methods
     -------
-    process_cell(trs_neware, trs_cycler, trs_vdf, cell_cycle_metrics=None, cell_data=None, cell_data_vdf=None, numFiles=1000, cycle_id_lims=CYCLE_ID_LIMS)
-        Process the cell data from a list of test records
-    process_cycler_data(trs, cycle_id_lims, numFiles = 1000)
-        Process cycler data from a list of test records
+
     """
     def __init__(self, dataFilter: DataFilter, dirStructure: DirStructure):
         self.dataFilter = dataFilter
         self.dirStructure = dirStructure
         self.logger = setup_logger()
 
-    def process_cell(self, trs_neware, trs_cycler, trs_vdf, cell_cycle_metrics=None, cell_data=None, cell_data_vdf=None, numFiles=1000, cycle_id_lims=CYCLE_ID_LIMS):
-        """
-        Process the cell data from a list of test records
+    def __build_empty_expansion_data(self, cell_cycle_metrics):
+        cell_data_vdf = pd.DataFrame(columns=['Time [s]','Expansion [-]', 'Expansion ref [-]', 'Temperature [degC]','cycle_indicator'])
+        cell_cycle_metrics['Max cycle expansion [-]'] = np.nan
+        cell_cycle_metrics['Min cycle expansion [-]'] = np.nan
+        cell_cycle_metrics['Reversible cycle expansion [-]'] = np.nan
+        return cell_data_vdf, cell_cycle_metrics
 
-        Parameters
-        ----------
-        trs_neware: list of TestRecord objects
-            The list of test records from neware
-        trs_cycler: list of TestRecord objects
-            The list of test records from cycler
-        trs_vdf: list of TestRecord objects 
-            The list of test records from vdf
-        cell_cycle_metrics: DataFrame, optional
-            The dataframe of the cell cycle metrics
-        cell_data: DataFrame, optional
-            The dataframe of the cell data
-        cell_data_vdf: DataFrame, optional
-            The dataframe of the cell data vdf
-        numFiles: int, optional
-            The number of files to be processed
-        cycle_id_lims: dict, optional
-            The dictionary of the cycle id limits
-        
-        Returns
-        -------
-        DataFrame
-            The dataframe of the cell cycle metrics
-        DataFrame
-            The dataframe of the cell data
-        DataFrame
-            The dataframe of the cell data vdf
-        bool
-            Whether the data needs to be updated
-        """
-
-        # 1. check if cell_data and cell_cycle_metrics pickle files exist. If so, add new test data to cell_data and cell_cycle_metrics
-        load_new_data = [True for i in range(len(trs_neware))] # Initialization: indicates if the files were processed previously 
+    def process_cell(self, trs_cycler, trs_vdf, cell_cycle_metrics=None, cell_data=None, cell_data_vdf=None, numFiles=1000, cycle_id_lims=CYCLE_ID_LIMS):
+        # Process the cycling data
         if cell_cycle_metrics is None and cell_data is not None:
             # Make list of data files with new data to process
             trs_new_data = self.__filter_trs_new_data(cell_cycle_metrics, trs_cycler)
             # For each new file, load the data and add it to the existing dfs
             for test in trs_new_data: 
-                self.logger.info(f"Processing {test.name}")
+                self.logger.info(f"Processing cycler data: {test.name}")
                 # process test file
-                cell_data_new, cell_cycle_metrics_new = self.process_cycler_data([test], cycle_id_lims=cycle_id_lims, numFiles = numFiles)
-
+                cell_data_new, cell_cycle_metrics_new = self.__process_cycler_data([test], cycle_id_lims=cycle_id_lims, numFiles = numFiles)
                 # load test data to df and get start and end times
                 df_test = self.__test_to_df(test, test_trace_keys = ['aux_vdf_timestamp_datetime_0'], df_labels =['Time [s]'])
-                file_start_time = df_test['Time [s]'].iloc[0]
-                file_end_time = df_test['Time [s]'].iloc[-1] 
-
-                # insert new timeseries test data into cell_data and recalculate AhT
-                cell_data = self.__update_dataframe(cell_data,cell_data_new, file_start_time, file_end_time)
-                t = cell_data['Time [s]']
-                I = cell_data['Current [A]']
-
-                # insert new cycle metrics from test to cell_cycle_metrics  
-                cell_cycle_metrics = self.__update_dataframe(cell_cycle_metrics,cell_cycle_metrics_new, file_start_time, file_end_time)
+                file_start_time, file_end_time = df_test['Time [s]'].iloc[0], df_test['Time [s]'].iloc[-1] 
+                # Update cell_data and cell_cycle_metrics and Ah throughput
+                cell_data = self.__update_dataframe(cell_data, cell_data_new, file_start_time, file_end_time)
+                cell_cycle_metrics = self.__update_dataframe(cell_cycle_metrics, cell_cycle_metrics_new, file_start_time, file_end_time)
                 cell_cycle_metrics['Ah throughput [A.h]'] = cell_data['Ah throughput [A.h]'][(cell_data.discharge_cycle_indicator==True) | (cell_data.charge_cycle_indicator==True)]
-        
-        else: # if pickle file doesn't exist, process all cycling data
+        else:
             trs_new_data = trs_cycler.copy()
-            cell_data, cell_cycle_metrics = self.process_cycler_data(trs_new_data, cycle_id_lims=cycle_id_lims, numFiles = numFiles)
+            cell_data, cell_cycle_metrics = self.__process_cycler_data(trs_new_data, cycle_id_lims=cycle_id_lims, numFiles = numFiles)
         
-        # 2. check if cell_data_vdf and cell_cycle_metrics pickle files exist. If so, list new test vdf data, else list all test vdf files.
-        load_new_data_vdf = [True for i in range(len(trs_vdf))] # Initialization: indicates if the files were processed previously 
-        if len(trs_vdf)==0: # make empty dfs for constrained cells 
-            cell_data_vdf = pd.DataFrame(columns=['Time [s]','Expansion [-]', 'Expansion ref [-]', 'Temperature [degC]','cycle_indicator'])
-            cell_cycle_metrics['Max cycle expansion [-]'] = np.nan
-            cell_cycle_metrics['Min cycle expansion [-]'] = np.nan
-            cell_cycle_metrics['Reversible cycle expansion [-]'] = np.nan
-            trs_new_data_vdf = []
+        # Process the expansion data
+        if len(trs_vdf)==0: 
+            self.logger.info("No vdf data for this cell")
+            cell_data_vdf, cell_cycle_metrics = self.__build_empty_expansion_data(cell_cycle_metrics)
         elif cell_data_vdf is not None:
+            self.logger.info(f"Process cell_data_vdf")
             # Make list of data files with new data to process
             trs_new_data_vdf = self.__filter_trs_new_data(cell_cycle_metrics, trs_vdf)
-            if len(trs_new_data_vdf)>0: #ignore for constrained cells
+            if len(trs_new_data_vdf)>0:
                 for test in trs_new_data_vdf:
-                    self.logger.info(f"Processing {test.name}")
+                    self.logger.info(f"Processing new vdf data: {test.name}")
                     # process test file
                     cell_data_vdf_new, cell_cycle_metrics_new = self.__process_cycler_expansion([test], cell_cycle_metrics_new,numFiles = numFiles)
-
                     # load test data to df and get start and end times
                     df_test = self.__test_to_df(test, test_trace_keys = ['h_datapoint_time'], df_labels =['Time [s]'])
-                    file_start_time = df_test['Time [s]'].iloc[0] 
-                    file_end_time = df_test['Time [s]'].iloc[-1] 
-
-                    # insert new timeseries test data into cell_data and cell_cycle_metrics
-                    cell_data_vdf = self.__update_dataframe(cell_data_vdf,cell_data_vdf_new, file_start_time, file_end_time, update_AhT = False)
-                    cell_cycle_metrics = self.__update_dataframe(cell_data,cell_cycle_metrics_new, file_start_time, file_end_time, update_AhT = False)
+                    file_start_time, file_end_time = df_test['Time [s]'].iloc[0], df_test['Time [s]'].iloc[-1] 
+                    # Update cell_data_vdf and cell_cycle_metrics
+                    cell_data_vdf = self.__update_dataframe(cell_data_vdf, cell_data_vdf_new, file_start_time, file_end_time, update_AhT = False)
+                    cell_cycle_metrics = self.__update_dataframe(cell_data, cell_cycle_metrics_new, file_start_time, file_end_time, update_AhT = False)
 
         else: # if pickle file doesn't exist or load_pickle is False, (re)process all expansion data
+            self.logger.info(f"Process all vdf data")
             trs_new_data_vdf = trs_vdf.copy()
-            cell_data_vdf, cell_cycle_metrics = self.__process_cycler_expansion(trs_vdf, cell_cycle_metrics, numFiles = numFiles)    
+            cell_data_vdf, cell_cycle_metrics = self.__process_cycler_expansion(trs_new_data_vdf, cell_cycle_metrics, numFiles = numFiles)    
 
         # rearrange columns of cell_cycle_metrics for easy reading with data on left and others on right
         cols = cell_cycle_metrics.columns.to_list()
@@ -139,8 +95,7 @@ class DataProcessor:
         cell_cycle_metrics = cell_cycle_metrics[move_idx]
 
         # if there is new data, save it to pickle files
-        update = len(trs_new_data)>0
-
+        update = len(trs_new_data)>0 or len(trs_new_data_vdf)>0
         return cell_cycle_metrics, cell_data, cell_data_vdf, update
     
     def sort_tests(self, trs):
@@ -161,7 +116,7 @@ class DataProcessor:
         trs_sorted = [trs[i] for i in idx_sorted]
         return trs_sorted
     
-    def __filter_trs_new_data(self, cell_cycle_metrics, trs, last_cycle_time = []):
+    def __filter_trs_new_data(self, cell_cycle_metrics, trs, last_cycle_time=None):
         """
         Get the list of test records that have not been processed
 
@@ -180,24 +135,19 @@ class DataProcessor:
             The list of test records that have not been processed
         """
         recorded_cycle_times = cell_cycle_metrics['Time [s]']
-        #TODO: check if this is the right way to do this
-        load_new_data = [True for i in range(len(trs))] #init
         trs_new_data = []
         # for each file, check that cell_cycle_metrics has timestamps in this range
         for test in trs:
             cycle_end_times_raw = test.get_cycle_stats().cyc_end_datapoint_time #from cycler's cycle count
             cycle_end_times = pd.to_datetime(cycle_end_times_raw, unit='ms').dt.tz_localize('UTC').dt.tz_convert('US/Eastern')
-            if len(last_cycle_time) ==0: # if a timestamp isn't passed in
-                last_cycle_time_in_file = cycle_end_times.iloc[-1]
-            else:
-                last_cycle_time_in_file  = last_cycle_time
-            if len(cycle_end_times) > 1: #ignore aux data and files with partial cycle. does this still work for vdf?
-                timestamps_in_range = [True for t in recorded_cycle_times if test.start_time <= t and t <=last_cycle_time_in_file]
-                if len(timestamps_in_range)==0:
-                    trs_new_data.append(test) 
+            last_cycle_time_in_file = cycle_end_times.iloc[-1] if not last_cycle_time else last_cycle_time
+            if len(cycle_end_times) > 1:
+                timestamps_in_range_count = sum(1 for t in recorded_cycle_times if test.start_time <= t <= last_cycle_time_in_file)
+                if timestamps_in_range_count == 0:
+                    trs_new_data.append(test)  
         return trs_new_data
     
-    def __update_dataframe(self, df, df_new, file_start_time, file_end_time, update_AhT = True): 
+    def __update_dataframe(self, df, df_new, file_start_time, file_end_time, update_AhT=True):
         """
         Update the dataframe with the new test data, and update the Ah throughput.
 
@@ -205,7 +155,7 @@ class DataProcessor:
         ----------
         df: DataFrame
             The dataframe to be updated
-        df_test: DataFrame
+        df_new: DataFrame
             The dataframe of the new test data
         file_start_time: float
             The start time of the new test data, get from df['Time [s]'].iloc[0]
@@ -220,33 +170,37 @@ class DataProcessor:
             The updated dataframe
         """
 
-        # drop rows that have timestamps between the test start and end times to avoid overlapping time
-        file_drop_idx = df[(df['Time [s]'] >= file_start_time) & (df['Time [s]'] <= file_end_time)].index 
-        df.drop(file_drop_idx, inplace = True)
+        # Find overlapping data
+        file_drop_idx = df[(df['Time [s]'] >= file_start_time) & (df['Time [s]'] <= file_end_time)].index
 
-        # split old dataframe into data into before df_test and after df_test. Then reconcatonate with df_test in between. Update AhT.  
-        if len(file_drop_idx) > 0: # add data from running test: replace partial existing file data
-            df_before_test = df.iloc[0:file_drop_idx[0]-1].copy()
-            df_after_test = df.iloc[file_drop_idx[-1]+1::].copy()
-            
-            # update AhT assuming field exists
-            if update_AhT: 
-                last_AhT_before_test = df['Ah throughput [A.h]'].iloc[file_drop_idx[0]-1]
-                df_new['Ah throughput [A.h]'] = df_new['Ah throughput [A.h]'] + last_AhT_before_test
+        # Remove overlapping data
+        df = df.drop(file_drop_idx)
+
+        # Split old dataframe into before and after sections based on new data
+        if len(file_drop_idx) > 0:
+            df_before_test = df[df['Time [s]'] < file_start_time]
+            df_after_test = df[df['Time [s]'] > file_end_time]
+
+            # If Ah throughput update is needed and the field exists in both dataframes
+            if update_AhT and 'Ah throughput [A.h]' in df.columns and 'Ah throughput [A.h]' in df_new.columns:
+                last_AhT_before_test = df_before_test['Ah throughput [A.h]'].iloc[-1]
+                df_new['Ah throughput [A.h]'] += last_AhT_before_test
                 last_AhT_from_test = df_new['Ah throughput [A.h]'].iloc[-1]
-                df['Ah throughput [A.h]'] = df['Ah throughput [A.h]'] + last_AhT_from_test
-            df = pd.concat([df_before_test,df_new,df_after_test])
-            df.reset_index(drop=True, inplace=True)
-        else: # add data from new test to the end of existing df 
-            if update_AhT: 
+                df_after_test['Ah throughput [A.h]'] += last_AhT_from_test
+
+            df = pd.concat([df_before_test, df_new, df_after_test])
+
+        # If no overlap, simply append the data (This could be modified based on exact use case)
+        else:
+            if update_AhT and 'Ah throughput [A.h]' in df.columns and 'Ah throughput [A.h]' in df_new.columns:
                 last_AhT_before_test = df['Ah throughput [A.h]'].iloc[-1]
-                df_new['Ah throughput [A.h]'] = df_new['Ah throughput [A.h]'] + last_AhT_before_test
+                df_new['Ah throughput [A.h]'] += last_AhT_before_test
             df = pd.concat([df, df_new])
-        
-        # reset df index
-        df.reset_index(drop=True, inplace=True) 
-    
+
+        df.reset_index(drop=True, inplace=True)
+
         return df
+
 
     def summarize_rpt_data(self, cell_data, cell_data_vdf, cell_cycle_metrics):
         """
@@ -355,6 +309,7 @@ class DataProcessor:
         Reads in data from the last "numFiles" files in the "trs_vdf" and concatenates them into a long dataframe. Then looks for corresponding cycle start/end timestamps in vdf time. 
         Finally, it'll calculate the min, max, and reversible expansion for each cycle.  
         """
+        self.logger.info(f"Processing {len(trs_vdf)} vdf files")
         # concatenate vdf data frames for last numFiles files
         frames_vdf =[]
         # For each vdf file...
@@ -370,6 +325,7 @@ class DataProcessor:
                 frames_vdf.append(df_vdf)
                 self.logger.info(f"Finished processing with {len(frames_vdf)} data points")
             except: #Tables are different Length, cannot merge
+                self.logger.error(f"Error processing {test_vdf.name}")
                 pass
             time.sleep(0.1) 
         
@@ -381,7 +337,7 @@ class DataProcessor:
 
         return cell_data_vdf
 
-    def process_cycler_data(self, trs_neware, cycle_id_lims, numFiles=1000):
+    def __process_cycler_data(self, trs_neware, cycle_id_lims, numFiles=1000):
         """
         Process cycler data from a list of test records
 
@@ -543,24 +499,25 @@ class DataProcessor:
         test_types = list(cycle_id_lims.keys())
 
         # For each data file...
-        for test in trs_cycler[0:min(len(trs_cycler), numFiles)]:
+        for tr in trs_cycler[0:min(len(trs_cycler), numFiles)]:
             try: 
                 # 1. Load data from each data file to a dataframe. Update AhT and ignore unplugged thermocouple values. For RPTs, convert t with ms.
-                isRPT =  ('RPT').lower() in test.name.lower() or ('EIS').lower() in test.name.lower() 
-                isFormation = ('_F').lower() in test.name.lower() and not ('_FORMTAP').lower() in test.name.lower() 
+                isRPT =  ('RPT').lower() in tr.name.lower() or ('EIS').lower() in tr.name.lower() 
+                isFormation = ('_F').lower() in tr.name.lower() and not ('_FORMTAP').lower() in tr.name.lower() 
 
                 # 1a. for arbin and biologic files
-                if ('arbin' in test.tags) or ('biologic' in test.tags): 
+                if ('arbin' in tr.tags) or ('biologic' in tr.tags): 
                     test_trace_keys_arbin = ['h_datapoint_time','h_test_time','h_current', 'h_potential', 'c_cumulative_capacity', 'h_step_index']
                     df_labels_arbin = ['Time [s]','Test Time [s]', 'Current [A]', 'Voltage [V]', 'Ah throughput [A.h]', 'Step index']
-                    test_data = self.__test_to_df(test,test_trace_keys_arbin, df_labels_arbin, ms = isRPT)
+                    test_data = self.__test_to_df(tr,test_trace_keys_arbin, df_labels_arbin, ms = isRPT)
                     test_data['Temperature [degC]'] = [np.nan]*len(test_data) # make arbin tables with same columns as neware files
                 # 1b. for neware files
-                elif 'neware_xls_4000' in test.tags: 
-                    test_data = self.__test_to_df(test, ms = isRPT)
+                elif 'neware_xls_4000' in tr.tags: 
+                    test_data = self.__test_to_df(tr, ms = isRPT)
                     test_data['Temperature [degC]'] = np.where((test_data['Temperature [degC]'] >= 200) & (test_data['Temperature [degC]'] <250), np.nan, test_data['Temperature [degC]']) 
-                
-                self.logger.info(f"Get {len(test_data)} rows of data from {test.name}")
+                else:
+                    raise ValueError(f"Unsupported test tag found in {tr.tags}")
+                self.logger.info(f"Get {len(test_data)} rows of data from {tr.name}")
                 # 2. Reassign to variables
                 t = test_data['Time [s]']
                 I = test_data['Current [A]']
@@ -569,13 +526,12 @@ class DataProcessor:
                 step_idx = test_data['Step index']
 
                 # 3. Calculate AhT 
-                if 'neware_xls_4000' in test.tags and isFormation:  
+                if 'neware_xls_4000' in tr.tags and isFormation:  
                     # 3a. From integrating current.... some formation files had wrong units
                     AhT_calculated = integrate.cumtrapz(abs(I), (t-t[0]).dt.total_seconds())/3600 + last_AhT
                     AhT_calculated = np.append(AhT_calculated,AhT_calculated[-1]) # repeat last value to make AhT the same length as t
                     test_data['Ah throughput [A.h]'] = AhT_calculated
                     # test_data['Ah throughput [A.h]'] = test_data['Ah throughput [A.h]']/1e6 + last_AhT # add last AhT value (if using scaled cycler cummulative capacity. Doesn't solve all neware formation AhT issues...)
-                    AhT = test_data['Ah throughput [A.h]']
                 else:
                     # 3b. From cycler cumulative capacity...
                     test_data['Ah throughput [A.h]'] = test_data['Ah throughput [A.h]'] + last_AhT # add last AhT value (if using cycler cummulative capacity)
@@ -589,7 +545,7 @@ class DataProcessor:
                 # Search for test type in test name. If there's no match, use the default settings 
                 lims={}
                 for test_type in test_types: # check for test types with different filters (e.g. RPT, F, EIS)
-                    if (test_type).lower() in test.name.lower(): 
+                    if (test_type).lower() in tr.name.lower(): 
                         lims = cycle_id_lims[test_type]
                         if isRPT:
                             test_protocol = 'RPT' #EIS -> RPT
@@ -604,7 +560,7 @@ class DataProcessor:
                 dt_min = lims['dt_min']
 
                 # 5. Find indices for cycles in file
-                if isFormation and 'arbin' in test.tags: # find peaks in voltage where I==0, ignore min during hppc
+                if isFormation and 'arbin' in tr.tags: # find peaks in voltage where I==0, ignore min during hppc
                     peak_prominence = 0.1
                     trough_prominence = 0.1
                     discharge_start_idx_file, _ = find_peaks(medfilt(V[I==0], kernel_size = 101),prominence = peak_prominence)
@@ -637,7 +593,7 @@ class DataProcessor:
                 test_data['Test type'] = [' ']*len(test_data)
                 test_data['Test name'] = [' ']*len(test_data)
                 test_data.loc[np.concatenate((discharge_start_idx_file,charge_start_idx_file)), 'Test type'] = test_protocol
-                test_data.loc[np.concatenate((discharge_start_idx_file,charge_start_idx_file)), 'Test name'] = test.name
+                test_data.loc[np.concatenate((discharge_start_idx_file,charge_start_idx_file)), 'Test name'] = tr.name
 
                 # 6b. identify subcycle type. For extracting HPPC and C/20 dis/charge data later. 
                 test_data['Protocol'] = [np.nan]*len(test_data)
@@ -664,15 +620,18 @@ class DataProcessor:
 
                 # 7. Add to list of dfs where each element is the resulting df from each file.
                 if debug: # for debugging
-                    self.logger.info(test.name + '   Cycles: ' + str(len(charge_start_idx_file)) + '   AhT: ' + str(round(AhT.iloc[-1],2)))
+                    self.logger.info(tr.name + '   Cycles: ' + str(len(charge_start_idx_file)) + '   AhT: ' + str(round(AhT.iloc[-1],2)))
                 
+                self.logger.info(f"test_data: {test_data}")
                 frames.append(test_data)
         
             except Exception as e: # Error: Tables are Different Length, cannot merge or corrupted files
-                self.logger.error('\033[91m'+test.name + ' (' + str(e) + ' )' + '\033[0m')
+                self.logger.error(f"Error in combining data from {tr.name}")
+                self.logger.error('\033[91m'+tr.name + ' (' + str(e) + ' )' + '\033[0m')
 
             time.sleep(0.1) 
         # Combine cycling data into a single df and reset the index
+        self.logger.info(f"Combining {len(frames)} dataframes")
         cell_data = pd.concat(frames)
         cell_data.reset_index(drop=True, inplace=True)
         # Get cycle indices from combined df originally identified from individual tests (with lims based on test type) 
@@ -699,7 +658,7 @@ class DataProcessor:
         cell_cycle_metrics.reset_index(drop=True, inplace=True)
         return cell_data, cell_cycle_metrics
 
-    def __test_to_df(self, tr, test_trace_keys = ['h_datapoint_time','h_test_time','h_current', 'h_potential', 'c_cumulative_capacity', 'aux_neware_xls_t1_none_0','h_step_index'], df_labels = ['Time [s]','Test Time [s]', 'Current [A]', 'Voltage [V]', 'Ah throughput [A.h]', 'Temperature [degC]', 'Step index'], ms = False):
+    def __test_to_df(self, tr, test_trace_keys = DEFAULT_TRACE_KEYS, df_labels = DEFAULT_DF_LABELS, ms = False):
         """
         Filter and format data from a TestRecord object into a dataframe
 
@@ -722,19 +681,23 @@ class DataProcessor:
         df_raw = self.dataFilter.filter_df_by_tr(tr, trace_keys = test_trace_keys)
         
         # convert timestamps to test time
-        if 'h_datapoint_time' in test_trace_keys: 
-        #TODO: fix this hack to bring back fractional seconds during the pulse tests. This may break if you pause and resume a test?    
-        #     if ms:  
-        #         df_raw['h_datapoint_time'] = pd.to_datetime(df_raw['h_datapoint_time'][0]+df_raw['h_test_time']*1000, unit='ms').dt.tz_localize('UTC').dt.tz_convert('US/Eastern')
-        #     else: 
-            df_raw['h_datapoint_time'] = pd.to_datetime(df_raw['h_datapoint_time'], unit='ms').dt.tz_localize('UTC').dt.tz_convert('US/Eastern')
-        if 'aux_vdf_timestamp_datetime_0' in test_trace_keys:
-            df_raw['aux_vdf_timestamp_datetime_0'] = pd.to_datetime(df_raw['aux_vdf_timestamp_datetime_0'], unit='ms').dt.tz_localize('UTC').dt.tz_convert('US/Eastern')
-        # preserve listed trace key order and rename columns for easy calling
-        df_raw = df_raw[test_trace_keys]
-        df = df_raw.set_axis(df_labels, axis=1)
-        return df
+        for column in TIME_COLUMNS:
+            if column in test_trace_keys:
+                df_raw[column] = self.__convert_to_datetime(df_raw[column], ms)
 
+        # preserve listed trace key order and rename columns for easy calling
+        df = df_raw[test_trace_keys].set_axis(df_labels, axis=1)
+        return df
+    
+    def __convert_to_datetime(self, series, ms):
+        """Utility function to convert series data to datetime."""
+        if ms:
+            # TODO: Handle fractional seconds conversion logic
+            pass
+        else:
+            series = pd.to_datetime(series, unit='ms').dt.tz_localize('UTC').dt.tz_convert('US/Eastern')
+        return series
+    
     def __find_cycle_idx(self, t, I, V, AhT, step_idx, V_max_cycle=3, V_min_cycle=4, dt_min = 600, dAh_min=1):
         """
         Find the cycle charge and discharge indices by calling filter_cycle_idx
@@ -844,6 +807,8 @@ class DataProcessor:
         """
         discharge_start_idx = []
         charge_start_idx = []
+        if len(charge_start_idx_0) == 0 or len(discharge_start_idx_0) == 0:
+            return charge_start_idx, discharge_start_idx
         # Filter out unnecessary cycle indices created when identifying cycles per filer. Length of charge and discharge start indices should be the same afterwards. 
         if discharge_start_idx_0[0]<charge_start_idx_0[0]: # if cycling starts on a discharge
             for i in range(len(charge_start_idx_0)):
@@ -893,7 +858,8 @@ class DataProcessor:
         # for each timestamp...
         for k,desired_timestamp in enumerate(desired_timestamps):
             # if smallest dt < t_match_threshold
-            if np.min(abs(t-desired_timestamp)).total_seconds()<t_match_threshold:
+            desired_timestamp_seconds = desired_timestamp.timestamp()
+            if np.min(abs(t-desired_timestamp_seconds))<t_match_threshold:
                 # save index in t of nearest value of t and corresponding t
                 matched_idx = np.argmin(abs(t-desired_timestamp))
                 mapped_indices.append(matched_idx)
