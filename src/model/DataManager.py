@@ -78,10 +78,8 @@ class DataManager:
         
         # Create device folder dictionary
         device_id_to_name = self.dataIO.create_dev_dic(devs)
-        # Fetch time series data from test records
-        dfs = self.dataFetcher.get_dfs_from_trs(trs)
         # Save test data and update directory structure
-        self.dataIO.save_test_data_update_dict(trs, dfs, device_id_to_name)
+        self.__update_batch_data(trs, device_id_to_name)
 
     def __updatedb(self):
         """
@@ -150,11 +148,15 @@ class DataManager:
             return
 
         devices_id_to_name = self.dataIO.create_dev_dic(devs)
-
-        # Get dataframes
-        dfs = self.dataFetcher.get_dfs_from_trs(new_trs)
-        # Save new test data and update directory structure
-        self.dataIO.save_test_data_update_dict(new_trs, dfs, devices_id_to_name)
+        self.__update_batch_data(new_trs, devices_id_to_name)
+    
+    def __update_batch_data(self, new_trs, devices_id_to_name, batch_size=20):
+        for i in range(0, len(new_trs), batch_size):
+            new_trs_batch = new_trs[i:i+batch_size]
+            # Get dataframes 
+            dfs_batch = self.dataFetcher.get_dfs_from_trs(new_trs_batch)
+            # Save new test data and update directory structure
+            self.dataIO.save_test_data_update_dict(new_trs_batch, dfs_batch, devices_id_to_name)
 
     def filter_trs(self, device_id=None, tr_name_substring=None, start_time=None, tags=None):
         """
@@ -302,10 +304,8 @@ class DataManager:
         
         # Create device folder dictionary
         device_id_to_name = self.dataIO.create_dev_dic(devs)
-        # Fetch time series data from test records
-        dfs = self.dataFetcher.get_dfs_from_trs(test_trs)
         # Save test data and update directory structure
-        self.dataIO.save_test_data_update_dict(test_trs, dfs, device_id_to_name)
+        self.__update_batch_data(test_trs, device_id_to_name)
 
     def test_updatedb(self):
         """
@@ -321,6 +321,6 @@ class DataManager:
         """
         # Fetch test records and devices
         trs = self.dataFetcher.fetch_trs()
-        test_trs = trs[:200]
+        test_trs = trs[:250]
         devs = self.dataFetcher.fetch_devs()
         self.update_test_data(test_trs, devs)

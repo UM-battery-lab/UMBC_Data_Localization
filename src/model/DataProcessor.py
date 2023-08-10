@@ -318,7 +318,7 @@ class DataProcessor:
                 # Read in timeseries data from test and formating into dataframe. Remove rows with expansion value outliers.
                 self.logger.info(f"Now Processing {test_vdf.name}")
                 # df_vdf = test2df(test_vdf, test_trace_keys = ['aux_vdf_timestamp_datetime_0','aux_vdf_ldcsensor_none_0', 'aux_vdf_ldcref_none_0', 'aux_vdf_ambienttemperature_celsius_0', 'aux_vdf_temperature_celsius_0'], df_labels =['Time [s]','Expansion [-]', 'Expansion ref [-]', 'Amb Temp [degC]', 'Temperature [degC]'])
-                df_vdf = self.__test_to_df(test_vdf, test_trace_keys = ['aux_vdf_timestamp_datetime_0','aux_vdf_ldcsensor_none_0', 'aux_vdf_ldcref_none_0', 'aux_vdf_ambienttemperature_celsius_0'], df_labels =['Time [s]','Expansion [-]', 'Expansion ref [-]','Temperature [degC]'])
+                df_vdf = self.__test_to_df(test_vdf, test_trace_keys = ['aux_vdf_timestamp_epoch_0','aux_vdf_ldcsensor_none_0', 'aux_vdf_ldcref_none_0', 'aux_vdf_ambienttemperature_celsius_0'], df_labels =['Time [s]','Expansion [-]', 'Expansion ref [-]','Temperature [degC]'])
                 df_vdf = df_vdf[(df_vdf['Expansion [-]'] >1e1) & (df_vdf['Expansion [-]'] <1e7)] #keep good signals 
                 df_vdf['Temperature [degC]'] = np.where((df_vdf['Temperature [degC]'] >= 200) & (df_vdf['Temperature [degC]'] <250), np.nan, df_vdf['Temperature [degC]']) 
                 # df_vdf['Amb Temp [degC]'] = np.where((df_vdf['Amb Temp [degC]'] >= 200) & (df_vdf['Amb Temp [degC]'] <250), np.nan, df_vdf['Amb Temp [degC]']) 
@@ -330,11 +330,11 @@ class DataProcessor:
             time.sleep(0.1) 
         
         if (len(frames_vdf) == 0):
+            self.logger.info(f"No vdf data found")
             return pd.DataFrame(columns=['Time [s]','Expansion [-]', 'Expansion ref [-]', 'Temperature [degC]','cycle_indicator'])
         # Combine vdf data into a single df and reset the index 
         cell_data_vdf = pd.concat(frames_vdf).sort_values(by=['Time [s]'])
         cell_data_vdf.reset_index(drop=True, inplace=True)
-
         return cell_data_vdf
 
     def __process_cycler_data(self, trs_neware, cycle_id_lims, numFiles=1000):
@@ -500,135 +500,138 @@ class DataProcessor:
 
         # For each data file...
         for tr in trs_cycler[0:min(len(trs_cycler), numFiles)]:
-            try: 
-                # 1. Load data from each data file to a dataframe. Update AhT and ignore unplugged thermocouple values. For RPTs, convert t with ms.
-                isRPT =  ('RPT').lower() in tr.name.lower() or ('EIS').lower() in tr.name.lower() 
-                isFormation = ('_F').lower() in tr.name.lower() and not ('_FORMTAP').lower() in tr.name.lower() 
+            # 1. Load data from each data file to a dataframe. Update AhT and ignore unplugged thermocouple values. For RPTs, convert t with ms.
+            isRPT =  ('RPT').lower() in tr.name.lower() or ('EIS').lower() in tr.name.lower() 
+            isFormation = ('_F').lower() in tr.name.lower() and not ('_FORMTAP').lower() in tr.name.lower() 
 
-                # 1a. for arbin and biologic files
-                if ('arbin' in tr.tags) or ('biologic' in tr.tags): 
-                    test_trace_keys_arbin = ['h_datapoint_time','h_test_time','h_current', 'h_potential', 'c_cumulative_capacity', 'h_step_index']
-                    df_labels_arbin = ['Time [s]','Test Time [s]', 'Current [A]', 'Voltage [V]', 'Ah throughput [A.h]', 'Step index']
-                    test_data = self.__test_to_df(tr,test_trace_keys_arbin, df_labels_arbin, ms = isRPT)
-                    test_data['Temperature [degC]'] = [np.nan]*len(test_data) # make arbin tables with same columns as neware files
-                # 1b. for neware files
-                elif 'neware_xls_4000' in tr.tags: 
-                    test_data = self.__test_to_df(tr, ms = isRPT)
-                    test_data['Temperature [degC]'] = np.where((test_data['Temperature [degC]'] >= 200) & (test_data['Temperature [degC]'] <250), np.nan, test_data['Temperature [degC]']) 
-                else:
-                    raise ValueError(f"Unsupported test tag found in {tr.tags}")
-                self.logger.info(f"Get {len(test_data)} rows of data from {tr.name}")
-                # 2. Reassign to variables
-                t = test_data['Time [s]']
-                I = test_data['Current [A]']
-                V = test_data['Voltage [V]'] 
-                T = test_data['Temperature [degC]'] 
-                step_idx = test_data['Step index']
+            # 1a. for arbin and biologic files
+            test_data = pd.DataFrame()
+            if ('arbin' in tr.tags) or ('biologic' in tr.tags): 
+                test_trace_keys_arbin = ['h_datapoint_time','h_test_time','h_current', 'h_potential', 'c_cumulative_capacity', 'h_step_index']
+                df_labels_arbin = ['Time [s]','Test Time [s]', 'Current [A]', 'Voltage [V]', 'Ah throughput [A.h]', 'Step index']
+                test_data = self.__test_to_df(tr, test_trace_keys_arbin, df_labels_arbin, ms = isRPT)
+                test_data['Temperature [degC]'] = [np.nan]*len(test_data) # make arbin tables with same columns as neware files
+            # 1b. for neware files
+            elif 'neware_xls_4000' in tr.tags: 
+                test_data = self.__test_to_df(tr, ms = isRPT)
+                test_data['Temperature [degC]'] = np.where((test_data['Temperature [degC]'] >= 200) & (test_data['Temperature [degC]'] <250), np.nan, test_data['Temperature [degC]']) 
+            else:
+                raise ValueError(f"Unsupported test tag found in {tr.tags}")
+            test_data.reset_index(drop=True, inplace=True)
+            self.logger.info(f"Get {len(test_data)} rows of data from {tr.name}")
+            # 2. Reassign to variables
+            # assert not test_data.isnull().any().any(), f"Null values found in the data from {tr.name}"
+            t = test_data['Time [s]'].reset_index(drop=True)
+            I = test_data['Current [A]'].reset_index(drop=True)
+            V = test_data['Voltage [V]'].reset_index(drop=True)
+            T = test_data['Temperature [degC]'].reset_index(drop=True)
+            step_idx = test_data['Step index'].reset_index(drop=True)
 
-                # 3. Calculate AhT 
-                if 'neware_xls_4000' in tr.tags and isFormation:  
-                    # 3a. From integrating current.... some formation files had wrong units
-                    AhT_calculated = integrate.cumtrapz(abs(I), (t-t[0]).dt.total_seconds())/3600 + last_AhT
-                    AhT_calculated = np.append(AhT_calculated,AhT_calculated[-1]) # repeat last value to make AhT the same length as t
-                    test_data['Ah throughput [A.h]'] = AhT_calculated
-                    # test_data['Ah throughput [A.h]'] = test_data['Ah throughput [A.h]']/1e6 + last_AhT # add last AhT value (if using scaled cycler cummulative capacity. Doesn't solve all neware formation AhT issues...)
-                else:
-                    # 3b. From cycler cumulative capacity...
-                    test_data['Ah throughput [A.h]'] = test_data['Ah throughput [A.h]'] + last_AhT # add last AhT value (if using cycler cummulative capacity)
-                    AhT = test_data['Ah throughput [A.h]']
-                    
-                # 3c. update AhT from last file
+            # 3. Calculate AhT 
+            if 'neware_xls_4000' in tr.tags and isFormation:  
+                # 3a. From integrating current.... some formation files had wrong units
+                AhT_calculated = integrate.cumtrapz(abs(I), (t-t[0]).dt.total_seconds())/3600 + last_AhT
+                AhT_calculated = np.append(AhT_calculated,AhT_calculated[-1]) # repeat last value to make AhT the same length as t
+                test_data['Ah throughput [A.h]'] = AhT_calculated
+                # test_data['Ah throughput [A.h]'] = test_data['Ah throughput [A.h]']/1e6 + last_AhT # add last AhT value (if using scaled cycler cummulative capacity. Doesn't solve all neware formation AhT issues...)
+            else:
+                # 3b. From cycler cumulative capacity...
+                test_data['Ah throughput [A.h]'] = test_data['Ah throughput [A.h]'] + last_AhT # add last AhT value (if using cycler cummulative capacity)
                 AhT = test_data['Ah throughput [A.h]']
-                last_AhT = AhT.iloc[-1] #update last AhT value for next file
-
-                # 4. Change cycle filtering thresholds by test type and include the idx at the end of the file in case cell is still cycling.
-                # Search for test type in test name. If there's no match, use the default settings 
-                lims={}
-                for test_type in test_types: # check for test types with different filters (e.g. RPT, F, EIS)
-                    if (test_type).lower() in tr.name.lower(): 
-                        lims = cycle_id_lims[test_type]
-                        if isRPT:
-                            test_protocol = 'RPT' #EIS -> RPT
-                        else:
-                            test_protocol = test_type
-                    if len(lims) == 0: #default
-                        lims = cycle_id_lims['CYC']
-                        test_protocol = 'CYC'
-                V_max_cycle = lims['V_max_cycle']
-                V_min_cycle = lims['V_min_cycle']
-                dAh_min = lims['dAh_min']
-                dt_min = lims['dt_min']
-
-                # 5. Find indices for cycles in file
-                if isFormation and 'arbin' in tr.tags: # find peaks in voltage where I==0, ignore min during hppc
-                    peak_prominence = 0.1
-                    trough_prominence = 0.1
-                    discharge_start_idx_file, _ = find_peaks(medfilt(V[I==0], kernel_size = 101),prominence = peak_prominence)
-                    discharge_start_idx_file = test_data[I==0].iloc[discharge_start_idx_file].index.to_list()
-                    charge_start_idx_file,_ = find_peaks(-medfilt(V[I==0], kernel_size = 101),prominence = trough_prominence, height = (None, -2.7)) # height to ignore min during hppc
-                    charge_start_idx_file = test_data[I==0].iloc[charge_start_idx_file].index.to_list()
-                    charge_start_idx_file.insert(0, 0)
-                    charge_start_idx_file.insert(len(charge_start_idx_file), len(V)-1)
-                    charge_start_idx_file, discharge_start_idx_file = self.__match_charge_discharge(np.array(charge_start_idx_file), np.array(discharge_start_idx_file))
-                else: # find I==0 and filter out irrelevant points
-                    charge_start_idx_file, discharge_start_idx_file = self.__find_cycle_idx(t, I, V, AhT, step_idx, V_max_cycle = V_max_cycle, V_min_cycle = V_min_cycle, dt_min = dt_min, dAh_min= dAh_min)
-                    try: # won't work for half cycles (files with only charge or only discharge)
-                        charge_start_idx_file, discharge_start_idx_file = self.__match_charge_discharge(charge_start_idx_file, discharge_start_idx_file)
-                    except:
-                        pass
-
-                # 6. Add aux cycle indicators to df. Column of True if start of a cycle, otherwise False. Set default cycle indicator = charge start 
-                file_with_capacity_check = isRPT or isFormation 
-                test_data['discharge_cycle_indicator'] = [False]*len(test_data)
-                test_data['charge_cycle_indicator'] = [False]*len(test_data)
-                test_data['capacity_check_indicator'] = [False]*len(test_data)
-
-                test_data.loc[discharge_start_idx_file, 'discharge_cycle_indicator'] = True
-                test_data.loc[charge_start_idx_file, 'charge_cycle_indicator'] = True
-                test_data['cycle_indicator'] = test_data['charge_cycle_indicator'] # default cycle = charge start 
-                if file_with_capacity_check:
-                    test_data.loc[charge_start_idx_file, 'capacity_check_indicator'] = True
-
-                # 6a. Add test type and test name to test_data
-                test_data['Test type'] = [' ']*len(test_data)
-                test_data['Test name'] = [' ']*len(test_data)
-                test_data.loc[np.concatenate((discharge_start_idx_file,charge_start_idx_file)), 'Test type'] = test_protocol
-                test_data.loc[np.concatenate((discharge_start_idx_file,charge_start_idx_file)), 'Test name'] = tr.name
-
-                # 6b. identify subcycle type. For extracting HPPC and C/20 dis/charge data later. 
-                test_data['Protocol'] = [np.nan]*len(test_data)
-                file_cell_cycle_metrics = test_data[(test_data.charge_cycle_indicator==True) | (test_data.discharge_cycle_indicator==True)]
-
-                for i in range(0,len(file_cell_cycle_metrics)):
-                    t_start = file_cell_cycle_metrics['Time [s]'].iloc[i]
-                    if i == len(file_cell_cycle_metrics)-1: # if last subcycle, end of subcycle = end of file 
-                        t_end = test_data['Time [s]'].iloc[-1]
-                    else: # end of subcycle = start of next subcycle
-                        t_end = file_cell_cycle_metrics['Time [s]'].iloc[i+1]
-                    t_subcycle = test_data['Time [s]'][(t>t_start) & (t<t_end)]
-                    I_subcycle = test_data['Current [A]'][(t>t_start) & (t<t_end)]
-                    data_idx = file_cell_cycle_metrics.index.tolist()[i]
-                    if file_with_capacity_check:
-                        if len(np.where(np.diff(np.sign(I_subcycle)))[0])>10: # hppc: ID by # of types of current sign changes (threshold is arbitrary)
-                            test_data.loc[data_idx,'Protocol'] = 'HPPC'
-                        elif (t_end-t_start).total_seconds()/3600 >8 and  np.mean(I_subcycle) > 0: # C/20 charge: longer than 8 hrs and mean(I)>0. Will ID C/10 during formation as C/20...
-                            test_data.loc[data_idx,'Protocol'] = 'C/20 charge'
-                        elif (t_end-t_start).total_seconds()/3600 > 8 and  np.mean(I_subcycle) < 0: # C/20 discharge: longer than 8 hrs and mean(I)<0.Will ID C/10 during formation as C/20...
-                            test_data.loc[data_idx,'Protocol'] = 'C/20 discharge'
-                        # print('Avg I: ' + str(np.mean(I_subcycle)) + '   Duration: ' +str(round((t_end-t_start).total_seconds()/3600,2))  + '    '+ str(test_data.loc[data_idx]['Protocol']))
-
-
-                # 7. Add to list of dfs where each element is the resulting df from each file.
-                if debug: # for debugging
-                    self.logger.info(tr.name + '   Cycles: ' + str(len(charge_start_idx_file)) + '   AhT: ' + str(round(AhT.iloc[-1],2)))
                 
-                self.logger.info(f"test_data: {test_data}")
-                frames.append(test_data)
-        
-            except Exception as e: # Error: Tables are Different Length, cannot merge or corrupted files
-                self.logger.error(f"Error in combining data from {tr.name}")
-                self.logger.error('\033[91m'+tr.name + ' (' + str(e) + ' )' + '\033[0m')
+            # 3c. update AhT from last file
+            AhT = test_data['Ah throughput [A.h]'].reset_index(drop=True)
+            last_AhT = AhT.iloc[-1] #update last AhT value for next file
 
+            # check that indices are consistent
+            indices_to_check = [t, I, V, AhT, step_idx]
+            for i in range(len(indices_to_check)-1):
+                assert indices_to_check[i].index.equals(indices_to_check[i+1].index), f"Indices are not consistent between columns in the data from {tr.name}"
+            lengths_to_check = [len(t), len(I), len(V), len(AhT), len(step_idx)]
+            assert len(set(lengths_to_check)) == 1, f"Inconsistent data lengths in the data from {tr.name}"
+
+            # 4. Change cycle filtering thresholds by test type and include the idx at the end of the file in case cell is still cycling.
+            # Search for test type in test name. If there's no match, use the default settings 
+            lims={}
+            for test_type in test_types: # check for test types with different filters (e.g. RPT, F, EIS)
+                if (test_type).lower() in tr.name.lower(): 
+                    lims = cycle_id_lims[test_type]
+                    if isRPT:
+                        test_protocol = 'RPT' #EIS -> RPT
+                    else:
+                        test_protocol = test_type
+                if len(lims) == 0: #default
+                    lims = cycle_id_lims['CYC']
+                    test_protocol = 'CYC'
+            V_max_cycle = lims['V_max_cycle']
+            V_min_cycle = lims['V_min_cycle']
+            dAh_min = lims['dAh_min']
+            dt_min = lims['dt_min']
+
+            # 5. Find indices for cycles in file
+            if isFormation and 'arbin' in tr.tags: # find peaks in voltage where I==0, ignore min during hppc
+                peak_prominence = 0.1
+                trough_prominence = 0.1
+                discharge_start_idx_file, _ = find_peaks(medfilt(V[I==0], kernel_size = 101),prominence = peak_prominence)
+                discharge_start_idx_file = test_data[I==0].iloc[discharge_start_idx_file].index.to_list()
+                charge_start_idx_file,_ = find_peaks(-medfilt(V[I==0], kernel_size = 101),prominence = trough_prominence, height = (None, -2.7)) # height to ignore min during hppc
+                charge_start_idx_file = test_data[I==0].iloc[charge_start_idx_file].index.to_list()
+                charge_start_idx_file.insert(0, 0)
+                charge_start_idx_file.insert(len(charge_start_idx_file), len(V)-1)
+                charge_start_idx_file, discharge_start_idx_file = self.__match_charge_discharge(np.array(charge_start_idx_file), np.array(discharge_start_idx_file))
+            else: # find I==0 and filter out irrelevant points
+                charge_start_idx_file, discharge_start_idx_file = self.__find_cycle_idx(t, I, V, AhT, step_idx, V_max_cycle = V_max_cycle, V_min_cycle = V_min_cycle, dt_min = dt_min, dAh_min= dAh_min)
+                try: # won't work for half cycles (files with only charge or only discharge)
+                    charge_start_idx_file, discharge_start_idx_file = self.__match_charge_discharge(charge_start_idx_file, discharge_start_idx_file)
+                except:
+                    pass
+
+            # 6. Add aux cycle indicators to df. Column of True if start of a cycle, otherwise False. Set default cycle indicator = charge start 
+            file_with_capacity_check = isRPT or isFormation 
+            test_data['discharge_cycle_indicator'] = [False]*len(test_data)
+            test_data['charge_cycle_indicator'] = [False]*len(test_data)
+            test_data['capacity_check_indicator'] = [False]*len(test_data)
+
+            test_data.loc[discharge_start_idx_file, 'discharge_cycle_indicator'] = True
+            test_data.loc[charge_start_idx_file, 'charge_cycle_indicator'] = True
+            test_data['cycle_indicator'] = test_data['charge_cycle_indicator'] # default cycle = charge start 
+            if file_with_capacity_check:
+                test_data.loc[charge_start_idx_file, 'capacity_check_indicator'] = True
+
+            # 6a. Add test type and test name to test_data
+            test_data['Test type'] = [' ']*len(test_data)
+            test_data['Test name'] = [' ']*len(test_data)
+            test_data.loc[np.concatenate((discharge_start_idx_file,charge_start_idx_file)), 'Test type'] = test_protocol
+            test_data.loc[np.concatenate((discharge_start_idx_file,charge_start_idx_file)), 'Test name'] = tr.name
+
+            # 6b. identify subcycle type. For extracting HPPC and C/20 dis/charge data later. 
+            test_data['Protocol'] = [np.nan]*len(test_data)
+            file_cell_cycle_metrics = test_data[(test_data.charge_cycle_indicator==True) | (test_data.discharge_cycle_indicator==True)]
+
+            for i in range(0,len(file_cell_cycle_metrics)):
+                t_start = file_cell_cycle_metrics['Time [s]'].iloc[i]
+                if i == len(file_cell_cycle_metrics)-1: # if last subcycle, end of subcycle = end of file 
+                    t_end = test_data['Time [s]'].iloc[-1]
+                else: # end of subcycle = start of next subcycle
+                    t_end = file_cell_cycle_metrics['Time [s]'].iloc[i+1]
+                t_subcycle = test_data['Time [s]'][(t>t_start) & (t<t_end)]
+                I_subcycle = test_data['Current [A]'][(t>t_start) & (t<t_end)]
+                data_idx = file_cell_cycle_metrics.index.tolist()[i]
+                if file_with_capacity_check:
+                    if len(np.where(np.diff(np.sign(I_subcycle)))[0])>10: # hppc: ID by # of types of current sign changes (threshold is arbitrary)
+                        test_data.loc[data_idx,'Protocol'] = 'HPPC'
+                    elif (t_end-t_start)/3600 >8 and  np.mean(I_subcycle) > 0: # C/20 charge: longer than 8 hrs and mean(I)>0. Will ID C/10 during formation as C/20...
+                        test_data.loc[data_idx,'Protocol'] = 'C/20 charge'
+                    elif (t_end-t_start)/3600 > 8 and  np.mean(I_subcycle) < 0: # C/20 discharge: longer than 8 hrs and mean(I)<0.Will ID C/10 during formation as C/20...
+                        test_data.loc[data_idx,'Protocol'] = 'C/20 discharge'
+            
+            # 7. Add to list of dfs where each element is the resulting df from each file.
+            if debug: # for debugging
+                self.logger.info(tr.name + '   Cycles: ' + str(len(charge_start_idx_file)) + '   AhT: ' + str(round(AhT.iloc[-1],2)))
+            
+            self.logger.info(f"test_data: {test_data}")
+            frames.append(test_data)
+    
             time.sleep(0.1) 
         # Combine cycling data into a single df and reset the index
         self.logger.info(f"Combining {len(frames)} dataframes")
@@ -733,7 +736,6 @@ class DataProcessor:
         # Find indices of sign changes and there's a change in step index and filter based on dt, dAh, and V
         current_sign_change_idx = np.where(np.diff(np.sign(I)).astype(bool) & (np.diff(step_idx) !=0))[0]
         current_sign_change_idx = np.sort(np.append(current_sign_change_idx,[AhT.first_valid_index(),len(t)-1])) # add the start and end for the diff checks
-        
         # Filter to identify cycles based on threshold inputs
         charge_start_idx, discharge_start_idx = self.__filter_cycle_idx(current_sign_change_idx, t, I, V, AhT, V_max_cycle=V_max_cycle, V_min_cycle=V_min_cycle, dt_min = dt_min, dAh_min = dAh_min)
         return charge_start_idx, discharge_start_idx
@@ -770,7 +772,7 @@ class DataProcessor:
         list of ints
             The list of discharge indices
         """
-        dt_check_1 = [i for i,dt in enumerate(np.diff(t[cycle_idx0])) if dt.total_seconds() > dt_min]
+        dt_check_1 = [i for i,dt in enumerate(np.diff(t[cycle_idx0])) if dt > dt_min]
         dt_check_1.append(len(cycle_idx0)-1) #add end of file
         dt_check = np.array(list(map(lambda x: x in dt_check_1, range(len(cycle_idx0)))))
 
@@ -858,7 +860,7 @@ class DataProcessor:
         # for each timestamp...
         for k,desired_timestamp in enumerate(desired_timestamps):
             # if smallest dt < t_match_threshold
-            desired_timestamp_seconds = desired_timestamp.timestamp()
+            desired_timestamp_seconds = desired_timestamp
             if np.min(abs(t-desired_timestamp_seconds))<t_match_threshold:
                 # save index in t of nearest value of t and corresponding t
                 matched_idx = np.argmin(abs(t-desired_timestamp))

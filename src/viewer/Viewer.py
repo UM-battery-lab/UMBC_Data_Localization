@@ -6,7 +6,7 @@ class Viewer:
         self.plt = plt 
         self.logger = setup_logger()
 
-    def plot_measured_data_time(self, cell, data_dict, downsample = 100):
+    def plot_process_cell(self, cell, data_dict, downsample = 100):
         # setup timeseries data
         t = data_dict['t']
         I = data_dict['I']
@@ -34,13 +34,13 @@ class Viewer:
         self.__plot_with_axis(axes.flat[0], t, I, "Current [A]", cycle_idx, charge_idx, capacity_check_idx)
         self.__plot_with_axis(axes.flat[1], t, V, "Voltage [V]", cycle_idx, charge_idx, capacity_check_idx)
         self.__plot_with_axis(axes.flat[2], t, T, "Temperature [degC]", cycle_idx, capacity_check_idx, special_t2=t_vdf, special_data2=T_vdf, linestyle='--')
-        if not all(t_vdf.isnull()):
+        if not all (t_vdf.isnull()):
             self.__plot_with_axis(axes.flat[3], t_vdf, exp_vdf, "Expansion [-]", cycle_idx_vdf)
         self.__plot_with_axis(axes.flat[4], t, AhT, "AhT [A.h]", cycle_idx)
         self.__plot_with_axis(axes.flat[5], t_cycle, Q_c, "Apparent \n capacity [A.h]", capacity_check_idx=capacity_check_in_cycle_idx)
         self.__plot_with_axis(axes.flat[5], t_cycle, Q_d, "Apparent \n capacity [A.h]", capacity_check_idx=capacity_check_in_cycle_idx)
 
-        fig.autofmt_xdate()
+        # fig.autofmt_xdate()
         fig.suptitle("Cell: " + cell)
         fig.tight_layout()
         plt.show()
