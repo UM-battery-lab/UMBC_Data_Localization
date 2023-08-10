@@ -1,5 +1,6 @@
 import os
 import pickle
+import pandas as pd
 from src.model.DirStructure import DirStructure
 from src.constants import ROOT_PATH, DATE_FORMAT
 from src.logger_config import setup_logger
@@ -158,8 +159,18 @@ class DataIO:
                 return None
             df_path = self.dirStructure.get_df_path(test_folder)
         df = self.__load_pickle(df_path)
+        if df is None:
+            self.logger.error(f"DataFrame is None when attempting to load from {df_path}")
+            return None
         if trace_keys is not None:
-            df = df[trace_keys]
+            try:
+                df = df[trace_keys]
+            except KeyError as err:
+                self.logger.error(f'Error occurred while loading dataframe: {err} with trace keys {trace_keys}')
+                return None
+            except TypeError:
+                self.logger.error(f"DataFrame is None when attempting to filter by trace keys: {trace_keys}")
+                return None
         return df
 
     def load_trs(self, test_folders):
