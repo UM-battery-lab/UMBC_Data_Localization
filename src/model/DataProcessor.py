@@ -8,7 +8,7 @@ from itertools import compress
 from src.model.DirStructure import DirStructure
 from src.model.DataFilter import DataFilter
 from src.logger_config import setup_logger
-from src.constants import CYCLE_ID_LIMS, DEFAULT_TRACE_KEYS, DEFAULT_DF_LABELS, TIME_COLUMNS
+from src.constants import CYCLE_ID_LIMS, DEFAULT_TRACE_KEYS, DEFAULT_DF_LABELS
 
 
 class DataProcessor:
@@ -45,7 +45,7 @@ class DataProcessor:
 
     def process_cell(self, trs_cycler, trs_vdf, cell_cycle_metrics=None, cell_data=None, cell_data_vdf=None, numFiles=1000, cycle_id_lims=CYCLE_ID_LIMS):
         # Process the cycling data
-        if cell_cycle_metrics is None and cell_data is not None:
+        if cell_cycle_metrics is not None and cell_data is not None:
             # Make list of data files with new data to process
             trs_new_data = self.__filter_trs_new_data(cell_cycle_metrics, trs_cycler)
             # For each new file, load the data and add it to the existing dfs
@@ -138,11 +138,10 @@ class DataProcessor:
         trs_new_data = []
         # for each file, check that cell_cycle_metrics has timestamps in this range
         for test in trs:
-            cycle_end_times_raw = test.get_cycle_stats().cyc_end_datapoint_time #from cycler's cycle count
-            cycle_end_times = pd.to_datetime(cycle_end_times_raw, unit='ms').dt.tz_localize('UTC').dt.tz_convert('US/Eastern')
+            cycle_end_times = test.get_cycle_stats().cyc_end_datapoint_time #from cycler's cycle count
             last_cycle_time_in_file = cycle_end_times.iloc[-1] if not last_cycle_time else last_cycle_time
             if len(cycle_end_times) > 1:
-                timestamps_in_range_count = sum(1 for t in recorded_cycle_times if test.start_time <= t <= last_cycle_time_in_file)
+                timestamps_in_range_count = sum(1 for t in recorded_cycle_times if test.start_time.timestamp() <= t <= last_cycle_time_in_file)
                 if timestamps_in_range_count == 0:
                     trs_new_data.append(test)  
         return trs_new_data
@@ -199,8 +198,7 @@ class DataProcessor:
 
         df.reset_index(drop=True, inplace=True)
 
-        return df
-
+        return df    
 
     def summarize_rpt_data(self, cell_data, cell_data_vdf, cell_cycle_metrics):
         """
@@ -243,7 +241,6 @@ class DataProcessor:
                 rpt_subcycle['RPT #'] = j
                 rpt_subcycle = cell_cycle_metrics[cycle_summary_cols].loc[i].to_dict()
 
-                # add cycler data to dictionary
                 t = cell_data['Time [s]']
                 rpt_subcycle['Data'] = [cell_data[['Time [s]', 'Current [A]', 'Voltage [V]', 'Ah throughput [A.h]', 'Temperature [degC]', 'Step index']][(t>t_start) & (t<t_end)]]
                 
@@ -530,7 +527,7 @@ class DataProcessor:
             # 3. Calculate AhT 
             if 'neware_xls_4000' in tr.tags and isFormation:  
                 # 3a. From integrating current.... some formation files had wrong units
-                AhT_calculated = integrate.cumtrapz(abs(I), (t-t[0]).dt.total_seconds())/3600 + last_AhT
+                AhT_calculated = integrate.cumtrapz(abs(I), (t-t[0])/1000)/3600 + last_AhT
                 AhT_calculated = np.append(AhT_calculated,AhT_calculated[-1]) # repeat last value to make AhT the same length as t
                 test_data['Ah throughput [A.h]'] = AhT_calculated
                 # test_data['Ah throughput [A.h]'] = test_data['Ah throughput [A.h]']/1e6 + last_AhT # add last AhT value (if using scaled cycler cummulative capacity. Doesn't solve all neware formation AhT issues...)
@@ -683,23 +680,9 @@ class DataProcessor:
         # Read in timeseries data from test and formating into dataframe
         df_raw = self.dataFilter.filter_df_by_tr(tr, trace_keys = test_trace_keys)
         
-        # convert timestamps to test time
-        for column in TIME_COLUMNS:
-            if column in test_trace_keys:
-                df_raw[column] = self.__convert_to_datetime(df_raw[column], ms)
-
         # preserve listed trace key order and rename columns for easy calling
         df = df_raw[test_trace_keys].set_axis(df_labels, axis=1)
         return df
-    
-    def __convert_to_datetime(self, series, ms):
-        """Utility function to convert series data to datetime."""
-        if ms:
-            # TODO: Handle fractional seconds conversion logic
-            pass
-        else:
-            series = pd.to_datetime(series, unit='ms').dt.tz_localize('UTC').dt.tz_convert('US/Eastern')
-        return series
     
     def __find_cycle_idx(self, t, I, V, AhT, step_idx, V_max_cycle=3, V_min_cycle=4, dt_min = 600, dAh_min=1):
         """
@@ -857,19 +840,17 @@ class DataProcessor:
         mapped_indices = [] #indexes t
         matched_timestamp_indices =[] # indexes desired_timestamps
         matched_timestamps = [] # value of t closest to desired_timestamp. includes nan if can't find matching timestamp.
-        # for each timestamp...
-        for k,desired_timestamp in enumerate(desired_timestamps):
+        # for each timestamp... 
+        for k, desired_timestamp in enumerate(desired_timestamps):
             # if smallest dt < t_match_threshold
-            desired_timestamp_seconds = desired_timestamp
-            if np.min(abs(t-desired_timestamp_seconds))<t_match_threshold:
-                # save index in t of nearest value of t and corresponding t
-                matched_idx = np.argmin(abs(t-desired_timestamp))
+            time_diff_seconds = (t - desired_timestamp)
+            min_time_diff = np.min(abs(time_diff_seconds))
+
+            if min_time_diff < t_match_threshold:
+                matched_idx = np.argmin(abs(time_diff_seconds))
                 mapped_indices.append(matched_idx)
-                matched_timestamps.append(t[matched_idx])
-                
-                # save index in desired_timestamps. used to match cycle number
+                matched_timestamps.append(t.iloc[matched_idx])
                 matched_timestamp_indices.append(k)
-            
             elif nan_pad: # else if pad with nan if requested
                 matched_timestamps.append(np.nan)
 

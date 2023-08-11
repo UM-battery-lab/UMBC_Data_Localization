@@ -101,6 +101,12 @@ class DirStructure:
                 return self.__get_device_path(record['test_folder'])
         return None
     
+    def load_dev_id_by_dev_name(self, dev_name):
+        for record in self.structure:
+            if record['dev_name'] == dev_name:
+                return record['device_id']
+        return None
+    
     def get_tr_path(self, test_folder):
         return os.path.join(test_folder, 'tr.pickle')
     

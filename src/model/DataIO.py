@@ -112,9 +112,12 @@ class DataIO:
 
         # Save the test data to a pickle file
         tr_path = self.dirStructure.get_tr_path(test_folder)
-        self.__save_to_pickle(tr, tr_path)
         # Save the time series data to a pickle file
         df_path = self.dirStructure.get_df_path(test_folder)
+        if tr is None or df is None:
+            self.logger.error(f'Test record or dataframe is None')
+            return None
+        self.__save_to_pickle(tr, tr_path)
         self.__save_to_pickle(df, df_path)
 
         # Append the directory structure information to the list
