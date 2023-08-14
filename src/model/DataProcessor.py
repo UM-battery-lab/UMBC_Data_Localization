@@ -186,10 +186,10 @@ class DataProcessor:
 
             # If Ah throughput update is needed and the field exists in both dataframes
             if update_AhT and 'Ah throughput [A.h]' in df.columns and 'Ah throughput [A.h]' in df_new.columns:
-                last_AhT_before_test = df_before_test['Ah throughput [A.h]'].iloc[-1]
-                df_new['Ah throughput [A.h]'] += last_AhT_before_test
-                last_AhT_from_test = df_new['Ah throughput [A.h]'].iloc[-1]
-                df_after_test['Ah throughput [A.h]'] += last_AhT_from_test
+                last_AhT_before_test = df_before_test['Ah throughput [A.h]'].iloc[-1] if not df_before_test.empty else 0
+                df_new.loc[:, 'Ah throughput [A.h]'] += last_AhT_before_test
+                last_AhT_from_test = df_new['Ah throughput [A.h]'].iloc[-1] if not df_new.empty else 0
+                df_after_test.loc[:, 'Ah throughput [A.h]'] += last_AhT_from_test
 
             df = pd.concat([df_before_test, df_new, df_after_test])
 
@@ -685,7 +685,7 @@ class DataProcessor:
             self.logger.warning(f"Cannot find data for {tr.name} with trace keys {test_trace_keys}")
             return None
         # preserve listed trace key order and rename columns for easy calling
-        df = df_raw[test_trace_keys].set_axis(df_labels, axis=1)
+        df = df_raw.set_axis(df_labels, axis=1)
         return df
     
     def __find_cycle_idx(self, t, I, V, AhT, step_idx, V_max_cycle=3, V_min_cycle=4, dt_min = 600, dAh_min=1):
