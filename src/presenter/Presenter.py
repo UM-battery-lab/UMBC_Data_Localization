@@ -1,8 +1,10 @@
 import datetime
 from src.model.DataManager import DataManager
+from src.constants import DATE_FORMAT, TZ_INFO
 
 from src.logger_config import setup_logger
 
+#TODO: Add methods to process single tr or a subset of trs for a cell
 class Presenter:
     def __init__(self, dataManager: DataManager):
         self.dataManager = dataManager
@@ -10,10 +12,29 @@ class Presenter:
 
     def timestamp_to_datetime(self, t):
         t = t/1000
-        tzinfo=datetime.timezone(datetime.timedelta(days=-1, seconds=72000))
-        return datetime.datetime.fromtimestamp(t, tz=tzinfo)
+        return datetime.datetime.fromtimestamp(t, tz=TZ_INFO)
+    
+    def str_to_timestamp(self, date_str):
+        dt = datetime.datetime.strptime(date_str, DATE_FORMAT)
+        dt = dt.replace(tzinfo=TZ_INFO)
+        timestamp = dt.timestamp() * 1000
+        return timestamp
+    
+    def _mask_data(self, data, start_time=None, end_time=None):
+        if start_time:
+            start_timestamp = self.str_to_timestamp(start_time)
+            if not data.empty:
+                mask = (data['Time [s]'] >= start_timestamp)
+                data = data[mask]
+        if end_time:
+            end_timestamp = self.str_to_timestamp(end_time)
+            if not data.empty:
+                mask = (data['Time [s]'] <= end_timestamp)
+                data = data[mask]
+        return data
 
-    def get_measured_data_time(self, cell_name, plot_cycles = True): 
+
+    def get_measured_data_time(self, cell_name, start_time=None, end_time=None, plot_cycles = True): 
         """
         Get measured data from the local disk
 
@@ -31,7 +52,13 @@ class Presenter:
         """
         # setup measured data
         cell_cycle_metrics, cell_data, cell_data_vdf = self.dataManager.process_cell(cell_name)
-        self.logger.info(f'cell_data: {cell_data}')
+        self.logger.debug(f'cell_data: {cell_data}')
+
+        # Filter data based on start and end time
+        cell_data = self._mask_data(cell_data, start_time, end_time)
+        cell_data_vdf = self._mask_data(cell_data_vdf, start_time, end_time)
+        cell_cycle_metrics = self._mask_data(cell_cycle_metrics, start_time, end_time)
+
         # setup timeseries data
         t = cell_data['Time [s]'].apply(self.timestamp_to_datetime)
         I = cell_data['Current [A]']

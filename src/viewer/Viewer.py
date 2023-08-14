@@ -31,14 +31,14 @@ class Viewer:
         # setup plot 
         fig, axes = self.plt.subplots(6,1,figsize=(6,6), sharex=True)
 
-        self.__plot_with_axis(axes.flat[0], t, I, "Current [A]", cycle_idx, charge_idx, capacity_check_idx)
-        self.__plot_with_axis(axes.flat[1], t, V, "Voltage [V]", cycle_idx, charge_idx, capacity_check_idx)
-        self.__plot_with_axis(axes.flat[2], t, T, "Temperature [degC]", cycle_idx, capacity_check_idx, special_t2=t_vdf, special_data2=T_vdf, linestyle='--')
+        self.__plot_with_axis(axes.flat[0], t, I, "Current [A]", cycle_idx, charge_idx, capacity_check_idx, downsample=downsample)
+        self.__plot_with_axis(axes.flat[1], t, V, "Voltage [V]", cycle_idx, charge_idx, capacity_check_idx, downsample=downsample)
+        self.__plot_with_axis(axes.flat[2], t, T, "Temperature [degC]", cycle_idx, capacity_check_idx, special_t2=t_vdf, special_data2=T_vdf, linestyle='--', downsample=downsample)
         if not all (t_vdf.isnull()):
-            self.__plot_with_axis(axes.flat[3], t_vdf, exp_vdf, "Expansion [-]", cycle_idx_vdf)
+            self.__plot_with_axis(axes.flat[3], t_vdf, exp_vdf, "Expansion [-]", cycle_idx_vdf, downsample=downsample)
         self.__plot_with_axis(axes.flat[4], t, AhT, "AhT [A.h]", cycle_idx)
-        self.__plot_with_axis(axes.flat[5], t_cycle, Q_c, "Apparent \n capacity [A.h]", capacity_check_idx=capacity_check_in_cycle_idx)
-        self.__plot_with_axis(axes.flat[5], t_cycle, Q_d, "Apparent \n capacity [A.h]", capacity_check_idx=capacity_check_in_cycle_idx)
+        self.__plot_with_axis(axes.flat[5], t_cycle, Q_c, "Apparent \n capacity [A.h]", capacity_check_idx=capacity_check_in_cycle_idx, downsample=downsample)
+        self.__plot_with_axis(axes.flat[5], t_cycle, Q_d, "Apparent \n capacity [A.h]", capacity_check_idx=capacity_check_in_cycle_idx, downsample=downsample)
 
         # fig.autofmt_xdate()
         fig.suptitle("Cell: " + cell)
