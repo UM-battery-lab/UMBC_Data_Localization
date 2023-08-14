@@ -48,13 +48,16 @@ class DataProcessor:
         if cell_cycle_metrics is not None and cell_data is not None:
             # Make list of data files with new data to process
             trs_new_data = self.__filter_trs_new_data(cell_cycle_metrics, trs_cycler)
+            self.logger.info(f"Found {len(trs_new_data)} new data files to process")
             # For each new file, load the data and add it to the existing dfs
             for test in trs_new_data: 
-                self.logger.info(f"Processing cycler data: {test.name}")
+                self.logger.debug(f"Processing cycler data: {test.name}")
                 # process test file
                 cell_data_new, cell_cycle_metrics_new = self.__process_cycler_data([test], cycle_id_lims=cycle_id_lims, numFiles = numFiles)
                 # load test data to df and get start and end times
-                df_test = self.__test_to_df(test, test_trace_keys = ['aux_vdf_timestamp_datetime_0'], df_labels =['Time [s]'])
+                df_test = self.__test_to_df(test, test_trace_keys = ['aux_vdf_timestamp_epoch_0'], df_labels =['Time [s]'])
+                if df_test is None:
+                    continue
                 file_start_time, file_end_time = df_test['Time [s]'].iloc[0], df_test['Time [s]'].iloc[-1] 
                 # Update cell_data and cell_cycle_metrics and Ah throughput
                 cell_data = self.__update_dataframe(cell_data, cell_data_new, file_start_time, file_end_time)
@@ -112,6 +115,7 @@ class DataProcessor:
         list of TestRecord objects
             The list of test records sorted by start time 
         """
+        #TODO: The start time is from low to high, Maybe we should sort it from high to low, Or when we get the limit of data, we should get from back to front
         idx_sorted = np.argsort([test.start_time for test in trs])
         trs_sorted = [trs[i] for i in idx_sorted]
         return trs_sorted
@@ -306,28 +310,28 @@ class DataProcessor:
         Reads in data from the last "numFiles" files in the "trs_vdf" and concatenates them into a long dataframe. Then looks for corresponding cycle start/end timestamps in vdf time. 
         Finally, it'll calculate the min, max, and reversible expansion for each cycle.  
         """
-        self.logger.info(f"Processing {len(trs_vdf)} vdf files")
+        self.logger.debug(f"Processing {len(trs_vdf)} vdf files")
         # concatenate vdf data frames for last numFiles files
         frames_vdf =[]
         # For each vdf file...
         for test_vdf in trs_vdf[0:min(len(trs_vdf), numFiles)]:
             try:
                 # Read in timeseries data from test and formating into dataframe. Remove rows with expansion value outliers.
-                self.logger.info(f"Now Processing {test_vdf.name}")
+                self.logger.debug(f"Now Processing {test_vdf.name}")
                 # df_vdf = test2df(test_vdf, test_trace_keys = ['aux_vdf_timestamp_datetime_0','aux_vdf_ldcsensor_none_0', 'aux_vdf_ldcref_none_0', 'aux_vdf_ambienttemperature_celsius_0', 'aux_vdf_temperature_celsius_0'], df_labels =['Time [s]','Expansion [-]', 'Expansion ref [-]', 'Amb Temp [degC]', 'Temperature [degC]'])
                 df_vdf = self.__test_to_df(test_vdf, test_trace_keys = ['aux_vdf_timestamp_epoch_0','aux_vdf_ldcsensor_none_0', 'aux_vdf_ldcref_none_0', 'aux_vdf_ambienttemperature_celsius_0'], df_labels =['Time [s]','Expansion [-]', 'Expansion ref [-]','Temperature [degC]'])
                 df_vdf = df_vdf[(df_vdf['Expansion [-]'] >1e1) & (df_vdf['Expansion [-]'] <1e7)] #keep good signals 
                 df_vdf['Temperature [degC]'] = np.where((df_vdf['Temperature [degC]'] >= 200) & (df_vdf['Temperature [degC]'] <250), np.nan, df_vdf['Temperature [degC]']) 
                 # df_vdf['Amb Temp [degC]'] = np.where((df_vdf['Amb Temp [degC]'] >= 200) & (df_vdf['Amb Temp [degC]'] <250), np.nan, df_vdf['Amb Temp [degC]']) 
                 frames_vdf.append(df_vdf)
-                self.logger.info(f"Finished processing with {len(frames_vdf)} data points")
+                self.logger.debug(f"Finished processing with {len(frames_vdf)} data points")
             except: #Tables are different Length, cannot merge
                 self.logger.error(f"Error processing {test_vdf.name}")
                 pass
             time.sleep(0.1) 
         
         if (len(frames_vdf) == 0):
-            self.logger.info(f"No vdf data found")
+            self.logger.debug(f"No vdf data found")
             return pd.DataFrame(columns=['Time [s]','Expansion [-]', 'Expansion ref [-]', 'Temperature [degC]','cycle_indicator'])
         # Combine vdf data into a single df and reset the index 
         cell_data_vdf = pd.concat(frames_vdf).sort_values(by=['Time [s]'])
@@ -465,7 +469,7 @@ class DataProcessor:
                 Q_d.append(Q) 
         return np.array(Q_c), np.array(Q_d)
 
-    def __combine_cycler_data(self, trs_cycler, cycle_id_lims, numFiles=1000, last_AhT = 0, debug = True):
+    def __combine_cycler_data(self, trs_cycler, cycle_id_lims, numFiles=1000, last_AhT = 0):
         """
         Combine cycler data from multiple files into a single dataframe.
         PROCESS CYCLER DATA.
@@ -623,10 +627,8 @@ class DataProcessor:
                         test_data.loc[data_idx,'Protocol'] = 'C/20 discharge'
             
             # 7. Add to list of dfs where each element is the resulting df from each file.
-            if debug: # for debugging
-                self.logger.info(tr.name + '   Cycles: ' + str(len(charge_start_idx_file)) + '   AhT: ' + str(round(AhT.iloc[-1],2)))
-            
-            self.logger.info(f"test_data: {test_data}")
+            self.logger.debug(tr.name + '   Cycles: ' + str(len(charge_start_idx_file)) + '   AhT: ' + str(round(AhT.iloc[-1],2)))
+            self.logger.debug(f"test_data: {test_data}")
             frames.append(test_data)
     
             time.sleep(0.1) 
@@ -679,7 +681,9 @@ class DataProcessor:
         
         # Read in timeseries data from test and formating into dataframe
         df_raw = self.dataFilter.filter_df_by_tr(tr, trace_keys = test_trace_keys)
-        
+        if df_raw is None:
+            self.logger.warning(f"Cannot find data for {tr.name} with trace keys {test_trace_keys}")
+            return None
         # preserve listed trace key order and rename columns for easy calling
         df = df_raw[test_trace_keys].set_axis(df_labels, axis=1)
         return df

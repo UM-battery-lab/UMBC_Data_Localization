@@ -104,7 +104,7 @@ class DataManager(metaclass=SingletonMeta):
         devs = self.dataFetcher.fetch_devs()
         self.update_test_data(trs, devs, len(trs))
     
-    def update_device_data(self, device_id):
+    def update_device_data(self, device_id, batch_size=60):
         """
         Update the local database with the specified device id
 
@@ -122,7 +122,7 @@ class DataManager(metaclass=SingletonMeta):
         trs = self.dataFetcher.fetch_trs()
         trs_to_update = [tr for tr in trs if tr.device_id == device_id]
         devs = self.dataFetcher.fetch_devs()
-        self.update_test_data(trs_to_update, devs)
+        self.update_test_data(trs_to_update, devs, batch_size)
 
     def update_test_data(self, trs=None, devs=None, batch_size=60):
         """
@@ -272,12 +272,12 @@ class DataManager(metaclass=SingletonMeta):
         cell_data_vdf: dataframe
             The dataframe of cell data vdf for the cell
         """
-        # try:
-        #     self.logger.info(f'Trying to update data for device {cell_name}')
-        #     device_id = self.dirStructure.load_dev_id_by_dev_name(cell_name)
-        #     self.update_device_data(device_id)
-        # except:
-        #     self.logger.error(f'Failed to update data for device {cell_name}')
+        try:
+            self.logger.info(f'Trying to update data for device {cell_name}')
+            device_id = self.dirStructure.load_dev_id_by_dev_name(cell_name)
+            self.update_device_data(device_id)
+        except:
+            self.logger.error(f'Failed to update data for device {cell_name}')
         cell_path = self.dirStructure.load_dev_folder(cell_name)
         # Filepaths for cycle metrics, cell data, cell data vdf and rpt
         filepath_ccm = os.path.join(cell_path, 'CCM.pickle')
@@ -309,7 +309,7 @@ class DataManager(metaclass=SingletonMeta):
             self.dataIO.save_df(cell_data_vdf, filepath_cell_data_vdf)  
             self.dataIO.save_df(cell_rpt_data, filepath_rpt)
         return cell_cycle_metrics, cell_data, cell_data_vdf
-    
+   
 
     # Below are the methods for testing
     def test_createdb(self):
