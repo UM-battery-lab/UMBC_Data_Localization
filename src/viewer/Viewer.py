@@ -1,33 +1,40 @@
 from matplotlib import pyplot as plt   
 from src.logger_config import setup_logger
+from src.dto.DataTransferObject import TimeSeriesDTO, ExpansionDTO, CycleMetricsDTO, IndexMetricsDTO, CellDataDTO
 
+#TODO: clean the structure of the code
 class Viewer:
     def __init__(self):
         self.plt = plt 
         self.logger = setup_logger()
 
-    def plot_process_cell(self, cell, data_dict, downsample = 100):
-        # setup timeseries data
-        t = data_dict['t']
-        I = data_dict['I']
-        V = data_dict['V']
-        T = data_dict['T']
-        AhT = data_dict['AhT']
-        t_vdf = data_dict['t_vdf']
-        exp_vdf = data_dict['exp_vdf']
-        T_vdf = data_dict['T_vdf']
-        # T_amb = cell_data_vdf['Amb Temp [degC]']
-        # setup cycle metrics
-        t_cycle = data_dict['t_cycle']
-        Q_c = data_dict['Q_c']
-        Q_d = data_dict['Q_d']
+    def plot_process_cell(self, cell, cell_data: CellDataDTO, downsample = 100):
+        timeseries = cell_data.timeseries
+        expansion = cell_data.expansion
+        cycle_metrics = cell_data.cycle_metrics
+        index_metrics = cell_data.index_metrics
 
-        cycle_idx = data_dict['cycle_idx']
-        capacity_check_idx = data_dict['capacity_check_idx']
-        cycle_idx_vdf = data_dict['cycle_idx_vdf']
-        capacity_check_in_cycle_idx = data_dict['capacity_check_in_cycle_idx']
-        charge_idx = data_dict['charge_idx']
+        t = timeseries.t
+        I = timeseries.I
+        V = timeseries.V
+        T = timeseries.T
+        AhT = timeseries.AhT
+
+        t_vdf = expansion.t_vdf
+        exp_vdf = expansion.exp_vdf
+        T_vdf = expansion.T_vdf
+
+        t_cycle = cycle_metrics.t_cycle
+        Q_c = cycle_metrics.Q_c
+        Q_d = cycle_metrics.Q_d
+
+        cycle_idx = index_metrics.cycle_idx
+        capacity_check_idx = index_metrics.capacity_check_idx
+        cycle_idx_vdf = index_metrics.cycle_idx_vdf
+        capacity_check_in_cycle_idx = index_metrics.capacity_check_in_cycle_idx
+        charge_idx = index_metrics.charge_idx
         
+        self.logger.info("Plotting cell: " + cell)
         # setup plot 
         fig, axes = self.plt.subplots(6,1,figsize=(6,6), sharex=True)
 
@@ -46,19 +53,26 @@ class Viewer:
         plt.show()
         
 
-        
     def __plot_with_axis(self, ax, t, data, ylabel, cycle_idx=None, charge_idx=None, capacity_check_idx=None, special_t=None, special_data=None, marker=None, special_t2=None, special_data2=None, linestyle=None, downsample=100):
         ax.plot_date(t[0::downsample], data[0::downsample], '-')
+        
+        def safe_plot_date(indices, *args, **kwargs):
+            valid_indices = [idx for idx in indices if idx in t.index]
+            if valid_indices:
+                ax.plot_date(t[valid_indices], data[valid_indices], *args, **kwargs)
+            else:
+                self.logger.warning(f'No valid indices for {args[0]}')
+        
         if cycle_idx is not None:
-            ax.plot_date(t[cycle_idx], data[cycle_idx], 'x')
+            safe_plot_date(cycle_idx, 'x')
         if charge_idx is not None:
-            ax.plot_date(t[charge_idx], data[charge_idx], 'o')
+            safe_plot_date(charge_idx, 'o')
         if capacity_check_idx is not None:
-            ax.plot_date(t[capacity_check_idx], data[capacity_check_idx], '*', c='r')
+            safe_plot_date(capacity_check_idx, '*', c='r')
         if special_t is not None and special_data is not None:
             ax.plot_date(special_t, special_data, marker)
         if special_t2 is not None and special_data2 is not None:
             ax.plot_date(special_t2[0::downsample], special_data2[0::downsample], linestyle, c='grey')
+        
         ax.set_ylabel(ylabel)
         ax.grid()
-
