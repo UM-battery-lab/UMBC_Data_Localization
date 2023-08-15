@@ -169,7 +169,7 @@ class DataFilter:
                 matching_test_folder = record['test_folder']
                 break
         if matching_test_folder == "":
-            self.logger.info(f"No dataframe found that matches test record {tr.uuid}, need to update the local data")
+            self.logger.warning(f"No dataframe found that matches test record {tr.uuid}, need to update the local data")
             return None
         self.logger.info(f"Found dataframe that matches test record {tr.uuid}")
         return self.dataIO.load_df(matching_test_folder, trace_keys=trace_keys)

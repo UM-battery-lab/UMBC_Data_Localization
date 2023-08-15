@@ -5,10 +5,12 @@ from src.model.DataDeleter import DataDeleter
 from src.model.DataFilter import DataFilter
 from src.model.DataProcessor import DataProcessor
 from src.logger_config import setup_logger
+from src.utils.SinglentonMeta import SingletonMeta
 import os
 
-
-class DataManager:
+#TODO: Interface for TIME_COLUMNS to get the time columns as 'Time [s]' easly.
+#TODO: Check the overlap between t and t_vdf
+class DataManager(metaclass=SingletonMeta):
     """
     The class to manage all the local data
 
@@ -46,7 +48,10 @@ class DataManager:
     process_cell(cell_name, numFiles = 1000)
         Process the data for a cell and save the processed data to local disk
     """
+    _is_initialized = False
     def __init__(self):
+        if DataManager._is_initialized:
+            return
         self.dirStructure = DirStructure()
         self.dataIO = DataIO(self.dirStructure)
         self.dataFetcher = DataFetcher()
@@ -55,6 +60,7 @@ class DataManager:
         self.dataProcessor = DataProcessor(self.dataFilter, self.dirStructure)
         self.logger = setup_logger()
         # self.__createdb()
+        DataManager._is_initialized = True
     
     def __createdb(self):
         """
@@ -96,9 +102,29 @@ class DataManager:
         # Fetch test records and devices
         trs = self.dataFetcher.fetch_trs()
         devs = self.dataFetcher.fetch_devs()
-        self.update_test_data(trs, devs)
+        self.update_test_data(trs, devs, len(trs))
+    
+    def update_device_data(self, device_id, batch_size=60):
+        """
+        Update the local database with the specified device id
 
-    def update_test_data(self, trs=None, devs=None):
+        Parameters
+        ----------
+        device_id: int
+            The device id to be updated
+
+        Returns
+        -------
+        None
+        """
+        # Fetch test records and devices
+        self.logger.info(f'Updating device data for device {device_id}')
+        trs = self.dataFetcher.fetch_trs()
+        trs_to_update = [tr for tr in trs if tr.device_id == device_id]
+        devs = self.dataFetcher.fetch_devs()
+        self.update_test_data(trs_to_update, devs, batch_size)
+
+    def update_test_data(self, trs=None, devs=None, batch_size=60):
         """
         Update the test data and directory structure
 
@@ -142,6 +168,8 @@ class DataManager:
                 self.dataDeleter.delete_file(old_df_file)
                 self.dirStructure.delete_record(tr.uuid)
                 new_trs.append(tr)
+                if len(new_trs) >= batch_size:
+                    break
 
         if not new_trs:
             self.logger.info('No new test data found after filtering out existing records')
@@ -244,6 +272,12 @@ class DataManager:
         cell_data_vdf: dataframe
             The dataframe of cell data vdf for the cell
         """
+        try:
+            self.logger.info(f'Trying to update data for device {cell_name}')
+            device_id = self.dirStructure.load_dev_id_by_dev_name(cell_name)
+            self.update_device_data(device_id)
+        except:
+            self.logger.error(f'Failed to update data for device {cell_name}')
         cell_path = self.dirStructure.load_dev_folder(cell_name)
         # Filepaths for cycle metrics, cell data, cell data vdf and rpt
         filepath_ccm = os.path.join(cell_path, 'CCM.pickle')
@@ -275,9 +309,7 @@ class DataManager:
             self.dataIO.save_df(cell_data_vdf, filepath_cell_data_vdf)  
             self.dataIO.save_df(cell_rpt_data, filepath_rpt)
         return cell_cycle_metrics, cell_data, cell_data_vdf
-    
-    def get_concatenated_data(self, device_id, trs_names=None):
-        return self.dataProcessor.get_concatenated_data(device_id, trs_names)  
+   
 
     # Below are the methods for testing
     def test_createdb(self):

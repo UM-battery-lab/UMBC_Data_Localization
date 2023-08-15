@@ -8,7 +8,7 @@ from itertools import compress
 from src.model.DirStructure import DirStructure
 from src.model.DataFilter import DataFilter
 from src.logger_config import setup_logger
-from src.constants import CYCLE_ID_LIMS, DEFAULT_TRACE_KEYS, DEFAULT_DF_LABELS, TIME_COLUMNS
+from src.constants import CYCLE_ID_LIMS, DEFAULT_TRACE_KEYS, DEFAULT_DF_LABELS
 
 
 class DataProcessor:
@@ -45,16 +45,19 @@ class DataProcessor:
 
     def process_cell(self, trs_cycler, trs_vdf, cell_cycle_metrics=None, cell_data=None, cell_data_vdf=None, numFiles=1000, cycle_id_lims=CYCLE_ID_LIMS):
         # Process the cycling data
-        if cell_cycle_metrics is None and cell_data is not None:
+        if cell_cycle_metrics is not None and cell_data is not None:
             # Make list of data files with new data to process
             trs_new_data = self.__filter_trs_new_data(cell_cycle_metrics, trs_cycler)
+            self.logger.info(f"Found {len(trs_new_data)} new data files to process")
             # For each new file, load the data and add it to the existing dfs
             for test in trs_new_data: 
-                self.logger.info(f"Processing cycler data: {test.name}")
+                self.logger.debug(f"Processing cycler data: {test.name}")
                 # process test file
                 cell_data_new, cell_cycle_metrics_new = self.__process_cycler_data([test], cycle_id_lims=cycle_id_lims, numFiles = numFiles)
                 # load test data to df and get start and end times
-                df_test = self.__test_to_df(test, test_trace_keys = ['aux_vdf_timestamp_datetime_0'], df_labels =['Time [s]'])
+                df_test = self.__test_to_df(test, test_trace_keys = ['aux_vdf_timestamp_epoch_0'], df_labels =['Time [s]'])
+                if df_test is None:
+                    continue
                 file_start_time, file_end_time = df_test['Time [s]'].iloc[0], df_test['Time [s]'].iloc[-1] 
                 # Update cell_data and cell_cycle_metrics and Ah throughput
                 cell_data = self.__update_dataframe(cell_data, cell_data_new, file_start_time, file_end_time)
@@ -112,6 +115,7 @@ class DataProcessor:
         list of TestRecord objects
             The list of test records sorted by start time 
         """
+        #TODO: The start time is from low to high, Maybe we should sort it from high to low, Or when we get the limit of data, we should get from back to front
         idx_sorted = np.argsort([test.start_time for test in trs])
         trs_sorted = [trs[i] for i in idx_sorted]
         return trs_sorted
@@ -138,11 +142,10 @@ class DataProcessor:
         trs_new_data = []
         # for each file, check that cell_cycle_metrics has timestamps in this range
         for test in trs:
-            cycle_end_times_raw = test.get_cycle_stats().cyc_end_datapoint_time #from cycler's cycle count
-            cycle_end_times = pd.to_datetime(cycle_end_times_raw, unit='ms').dt.tz_localize('UTC').dt.tz_convert('US/Eastern')
+            cycle_end_times = test.get_cycle_stats().cyc_end_datapoint_time #from cycler's cycle count
             last_cycle_time_in_file = cycle_end_times.iloc[-1] if not last_cycle_time else last_cycle_time
             if len(cycle_end_times) > 1:
-                timestamps_in_range_count = sum(1 for t in recorded_cycle_times if test.start_time <= t <= last_cycle_time_in_file)
+                timestamps_in_range_count = sum(1 for t in recorded_cycle_times if test.start_time.timestamp() <= t <= last_cycle_time_in_file)
                 if timestamps_in_range_count == 0:
                     trs_new_data.append(test)  
         return trs_new_data
@@ -183,10 +186,10 @@ class DataProcessor:
 
             # If Ah throughput update is needed and the field exists in both dataframes
             if update_AhT and 'Ah throughput [A.h]' in df.columns and 'Ah throughput [A.h]' in df_new.columns:
-                last_AhT_before_test = df_before_test['Ah throughput [A.h]'].iloc[-1]
-                df_new['Ah throughput [A.h]'] += last_AhT_before_test
-                last_AhT_from_test = df_new['Ah throughput [A.h]'].iloc[-1]
-                df_after_test['Ah throughput [A.h]'] += last_AhT_from_test
+                last_AhT_before_test = df_before_test['Ah throughput [A.h]'].iloc[-1] if not df_before_test.empty else 0
+                df_new.loc[:, 'Ah throughput [A.h]'] += last_AhT_before_test
+                last_AhT_from_test = df_new['Ah throughput [A.h]'].iloc[-1] if not df_new.empty else 0
+                df_after_test.loc[:, 'Ah throughput [A.h]'] += last_AhT_from_test
 
             df = pd.concat([df_before_test, df_new, df_after_test])
 
@@ -199,8 +202,7 @@ class DataProcessor:
 
         df.reset_index(drop=True, inplace=True)
 
-        return df
-
+        return df    
 
     def summarize_rpt_data(self, cell_data, cell_data_vdf, cell_cycle_metrics):
         """
@@ -243,7 +245,6 @@ class DataProcessor:
                 rpt_subcycle['RPT #'] = j
                 rpt_subcycle = cell_cycle_metrics[cycle_summary_cols].loc[i].to_dict()
 
-                # add cycler data to dictionary
                 t = cell_data['Time [s]']
                 rpt_subcycle['Data'] = [cell_data[['Time [s]', 'Current [A]', 'Voltage [V]', 'Ah throughput [A.h]', 'Temperature [degC]', 'Step index']][(t>t_start) & (t<t_end)]]
                 
@@ -309,28 +310,28 @@ class DataProcessor:
         Reads in data from the last "numFiles" files in the "trs_vdf" and concatenates them into a long dataframe. Then looks for corresponding cycle start/end timestamps in vdf time. 
         Finally, it'll calculate the min, max, and reversible expansion for each cycle.  
         """
-        self.logger.info(f"Processing {len(trs_vdf)} vdf files")
+        self.logger.debug(f"Processing {len(trs_vdf)} vdf files")
         # concatenate vdf data frames for last numFiles files
         frames_vdf =[]
         # For each vdf file...
         for test_vdf in trs_vdf[0:min(len(trs_vdf), numFiles)]:
             try:
                 # Read in timeseries data from test and formating into dataframe. Remove rows with expansion value outliers.
-                self.logger.info(f"Now Processing {test_vdf.name}")
+                self.logger.debug(f"Now Processing {test_vdf.name}")
                 # df_vdf = test2df(test_vdf, test_trace_keys = ['aux_vdf_timestamp_datetime_0','aux_vdf_ldcsensor_none_0', 'aux_vdf_ldcref_none_0', 'aux_vdf_ambienttemperature_celsius_0', 'aux_vdf_temperature_celsius_0'], df_labels =['Time [s]','Expansion [-]', 'Expansion ref [-]', 'Amb Temp [degC]', 'Temperature [degC]'])
                 df_vdf = self.__test_to_df(test_vdf, test_trace_keys = ['aux_vdf_timestamp_epoch_0','aux_vdf_ldcsensor_none_0', 'aux_vdf_ldcref_none_0', 'aux_vdf_ambienttemperature_celsius_0'], df_labels =['Time [s]','Expansion [-]', 'Expansion ref [-]','Temperature [degC]'])
                 df_vdf = df_vdf[(df_vdf['Expansion [-]'] >1e1) & (df_vdf['Expansion [-]'] <1e7)] #keep good signals 
                 df_vdf['Temperature [degC]'] = np.where((df_vdf['Temperature [degC]'] >= 200) & (df_vdf['Temperature [degC]'] <250), np.nan, df_vdf['Temperature [degC]']) 
                 # df_vdf['Amb Temp [degC]'] = np.where((df_vdf['Amb Temp [degC]'] >= 200) & (df_vdf['Amb Temp [degC]'] <250), np.nan, df_vdf['Amb Temp [degC]']) 
                 frames_vdf.append(df_vdf)
-                self.logger.info(f"Finished processing with {len(frames_vdf)} data points")
+                self.logger.debug(f"Finished processing with {len(frames_vdf)} data points")
             except: #Tables are different Length, cannot merge
                 self.logger.error(f"Error processing {test_vdf.name}")
                 pass
             time.sleep(0.1) 
         
         if (len(frames_vdf) == 0):
-            self.logger.info(f"No vdf data found")
+            self.logger.debug(f"No vdf data found")
             return pd.DataFrame(columns=['Time [s]','Expansion [-]', 'Expansion ref [-]', 'Temperature [degC]','cycle_indicator'])
         # Combine vdf data into a single df and reset the index 
         cell_data_vdf = pd.concat(frames_vdf).sort_values(by=['Time [s]'])
@@ -468,7 +469,7 @@ class DataProcessor:
                 Q_d.append(Q) 
         return np.array(Q_c), np.array(Q_d)
 
-    def __combine_cycler_data(self, trs_cycler, cycle_id_lims, numFiles=1000, last_AhT = 0, debug = True):
+    def __combine_cycler_data(self, trs_cycler, cycle_id_lims, numFiles=1000, last_AhT = 0):
         """
         Combine cycler data from multiple files into a single dataframe.
         PROCESS CYCLER DATA.
@@ -530,7 +531,7 @@ class DataProcessor:
             # 3. Calculate AhT 
             if 'neware_xls_4000' in tr.tags and isFormation:  
                 # 3a. From integrating current.... some formation files had wrong units
-                AhT_calculated = integrate.cumtrapz(abs(I), (t-t[0]).dt.total_seconds())/3600 + last_AhT
+                AhT_calculated = integrate.cumtrapz(abs(I), (t-t[0])/1000)/3600 + last_AhT
                 AhT_calculated = np.append(AhT_calculated,AhT_calculated[-1]) # repeat last value to make AhT the same length as t
                 test_data['Ah throughput [A.h]'] = AhT_calculated
                 # test_data['Ah throughput [A.h]'] = test_data['Ah throughput [A.h]']/1e6 + last_AhT # add last AhT value (if using scaled cycler cummulative capacity. Doesn't solve all neware formation AhT issues...)
@@ -626,10 +627,8 @@ class DataProcessor:
                         test_data.loc[data_idx,'Protocol'] = 'C/20 discharge'
             
             # 7. Add to list of dfs where each element is the resulting df from each file.
-            if debug: # for debugging
-                self.logger.info(tr.name + '   Cycles: ' + str(len(charge_start_idx_file)) + '   AhT: ' + str(round(AhT.iloc[-1],2)))
-            
-            self.logger.info(f"test_data: {test_data}")
+            self.logger.debug(tr.name + '   Cycles: ' + str(len(charge_start_idx_file)) + '   AhT: ' + str(round(AhT.iloc[-1],2)))
+            self.logger.debug(f"test_data: {test_data}")
             frames.append(test_data)
     
             time.sleep(0.1) 
@@ -682,24 +681,12 @@ class DataProcessor:
         
         # Read in timeseries data from test and formating into dataframe
         df_raw = self.dataFilter.filter_df_by_tr(tr, trace_keys = test_trace_keys)
-        
-        # convert timestamps to test time
-        for column in TIME_COLUMNS:
-            if column in test_trace_keys:
-                df_raw[column] = self.__convert_to_datetime(df_raw[column], ms)
-
+        if df_raw is None:
+            self.logger.warning(f"Cannot find data for {tr.name} with trace keys {test_trace_keys}")
+            return None
         # preserve listed trace key order and rename columns for easy calling
-        df = df_raw[test_trace_keys].set_axis(df_labels, axis=1)
+        df = df_raw.set_axis(df_labels, axis=1)
         return df
-    
-    def __convert_to_datetime(self, series, ms):
-        """Utility function to convert series data to datetime."""
-        if ms:
-            # TODO: Handle fractional seconds conversion logic
-            pass
-        else:
-            series = pd.to_datetime(series, unit='ms').dt.tz_localize('UTC').dt.tz_convert('US/Eastern')
-        return series
     
     def __find_cycle_idx(self, t, I, V, AhT, step_idx, V_max_cycle=3, V_min_cycle=4, dt_min = 600, dAh_min=1):
         """
@@ -857,19 +844,17 @@ class DataProcessor:
         mapped_indices = [] #indexes t
         matched_timestamp_indices =[] # indexes desired_timestamps
         matched_timestamps = [] # value of t closest to desired_timestamp. includes nan if can't find matching timestamp.
-        # for each timestamp...
-        for k,desired_timestamp in enumerate(desired_timestamps):
+        # for each timestamp... 
+        for k, desired_timestamp in enumerate(desired_timestamps):
             # if smallest dt < t_match_threshold
-            desired_timestamp_seconds = desired_timestamp
-            if np.min(abs(t-desired_timestamp_seconds))<t_match_threshold:
-                # save index in t of nearest value of t and corresponding t
-                matched_idx = np.argmin(abs(t-desired_timestamp))
+            time_diff_seconds = (t - desired_timestamp)
+            min_time_diff = np.min(abs(time_diff_seconds))
+
+            if min_time_diff < t_match_threshold:
+                matched_idx = np.argmin(abs(time_diff_seconds))
                 mapped_indices.append(matched_idx)
-                matched_timestamps.append(t[matched_idx])
-                
-                # save index in desired_timestamps. used to match cycle number
+                matched_timestamps.append(t.iloc[matched_idx])
                 matched_timestamp_indices.append(k)
-            
             elif nan_pad: # else if pad with nan if requested
                 matched_timestamps.append(np.nan)
 

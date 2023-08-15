@@ -2,7 +2,7 @@ import os
 import pickle
 import pandas as pd
 from src.model.DirStructure import DirStructure
-from src.constants import ROOT_PATH, DATE_FORMAT
+from src.constants import ROOT_PATH, DATE_FORMAT, TIME_COLUMNS
 from src.logger_config import setup_logger
 
 class DataIO:
@@ -112,9 +112,12 @@ class DataIO:
 
         # Save the test data to a pickle file
         tr_path = self.dirStructure.get_tr_path(test_folder)
-        self.__save_to_pickle(tr, tr_path)
         # Save the time series data to a pickle file
         df_path = self.dirStructure.get_df_path(test_folder)
+        if tr is None or df is None:
+            self.logger.error(f'Test record or dataframe is None')
+            return None
+        self.__save_to_pickle(tr, tr_path)
         self.__save_to_pickle(df, df_path)
 
         # Append the directory structure information to the list
@@ -134,6 +137,22 @@ class DataIO:
             self.logger.info(f'Saved pickle file to {file_path}')
         except Exception as err:
             self.logger.error(f'Error occurred while writing file {file_path}: {err}')
+
+    def __check_time_column_in_trace_keys(self, df, trace_keys):
+        # Find invalid time columns in trace_keys
+        error_time_keys = set(trace_keys) & (set(TIME_COLUMNS) - set(df.columns))   
+        if error_time_keys:
+            self.logger.warning(f'Trace keys contain invalid time columns: {list(error_time_keys)}')    
+            # Find an available time column from df.columns to replace the error time column
+            replace_time_keys = set(TIME_COLUMNS) & set(df.columns)
+            if replace_time_keys:
+                replace_time_key = list(replace_time_keys)[0]
+                self.logger.warning(f'Replacing with time column: {replace_time_key}')
+                trace_keys = [replace_time_key if key in error_time_keys else key for key in trace_keys]
+            else:
+                self.logger.error("No valid time column found in dataframe.")          
+        return trace_keys
+
     
     def load_df(self, test_folder=None, df_path=None, trace_keys=None):
         """
@@ -164,6 +183,7 @@ class DataIO:
             return None
         if trace_keys is not None:
             try:
+                trace_keys = self.__check_time_column_in_trace_keys(df, trace_keys)
                 df = df[trace_keys]
             except KeyError as err:
                 self.logger.error(f'Error occurred while loading dataframe: {err} with trace keys {trace_keys}')
