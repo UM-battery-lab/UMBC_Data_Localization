@@ -70,8 +70,8 @@ class Presenter:
             Q_d=data['Discharge capacity [A.h]']
         )
     
-    def _extract_index_metrics(self, cell_data, cell_data_vdf, cell_cycle_metrics, is_vdf=False) -> IndexMetricsDTO:
-        if is_vdf:
+    def _extract_index_metrics(self, cell_data, cell_data_vdf, cell_cycle_metrics, is_ah=False) -> IndexMetricsDTO:
+        if is_ah:
             return IndexMetricsDTO(
                 cycle_idx = cell_data.cycle_indicator[cell_data.cycle_indicator].index,     # indices in cell_data to check cycle alignment
                 capacity_check_idx = cell_data.capacity_check_indicator[cell_data.capacity_check_indicator].index,
@@ -122,6 +122,34 @@ class Presenter:
         cell_data_dto = CellDataDTO(
             timeseries=timeseries,
             expansion=expansion,
+            cycle_metrics=cycle_metrics,
+            index_metrics=index_metrics 
+        )
+        return cell_data_dto
+
+    def get_cycle_metrics_times(self, cell_name, start_time=None, end_time=None):
+        cell_data, cell_data_vdf, cell_cycle_metrics = self._get_data(cell_name, start_time, end_time)
+        # setup dto
+        timeseries = self._extract_timeseries(cell_data)
+        expansion = self._extract_expansion(cell_data_vdf)
+        cycle_metrics = self._extract_cycle_metrics(cell_cycle_metrics, is_ccm=True)
+        index_metrics = self._extract_index_metrics(cell_data, cell_data_vdf, cell_cycle_metrics)
+        cell_data_dto = CellDataDTO(
+            timeseries=timeseries,
+            expansion=expansion,
+            cycle_metrics=cycle_metrics,
+            index_metrics=index_metrics 
+        )
+        return cell_data_dto
+    
+    def get_cycle_metrics_AhT(self, cell_name, start_time=None, end_time=None):
+        cell_data, cell_data_vdf, cell_cycle_metrics = self._get_data(cell_name, start_time, end_time)
+        # setup dto
+        timeseries = self._extract_timeseries(cell_data)
+        cycle_metrics = self._extract_cycle_metrics(cell_cycle_metrics, is_ccm=True)
+        index_metrics = self._extract_index_metrics(cell_data, cell_data_vdf, cell_cycle_metrics, is_ah=True)
+        cell_data_dto = CellDataDTO(
+            timeseries=timeseries,
             cycle_metrics=cycle_metrics,
             index_metrics=index_metrics 
         )
