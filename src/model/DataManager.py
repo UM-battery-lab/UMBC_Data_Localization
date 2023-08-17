@@ -4,12 +4,10 @@ from src.model.DataIO import DataIO
 from src.model.DataDeleter import DataDeleter
 from src.model.DataFilter import DataFilter
 from src.model.DataProcessor import DataProcessor
-from src.logger_config import setup_logger
+from src.utils.logger_config import setup_logger
 from src.utils.SinglentonMeta import SingletonMeta
 import os
 
-#TODO: Interface for TIME_COLUMNS to get the time columns as 'Time [s]' easly.
-#TODO: Check the overlap between t and t_vdf
 class DataManager(metaclass=SingletonMeta):
     """
     The class to manage all the local data
@@ -33,11 +31,13 @@ class DataManager(metaclass=SingletonMeta):
     
     Methods
     -------
-    __createdb()
-        Create the local database
-    __updatedb()
-        Update the local database
-    update_test_data(trs=None, devs=None)
+    _createdb()
+        Create the local database with all the test records and devices
+    _updatedb()
+        Update the local database with all the test records
+    update_device_data(device_id, batch_size=60)
+        Update the local database with the specified device id
+    update_test_data(trs=None, devs=None, batch_size=60)
         Update the test data and directory structure with the specified test records and devices
     filter_trs(device_id=None, tr_name_substring=None, start_time=None, tags=None)
         Filter the test records locally with the specified device id or name or start time or tags
@@ -46,7 +46,7 @@ class DataManager(metaclass=SingletonMeta):
     filter_trs_and_dfs(device_id=None, tr_name_substring=None, start_time=None, tags=None)
         Filter the test records and dataframes locally with the specified device id or name or start time or tags
     process_cell(cell_name, numFiles = 1000)
-        Process the data for a cell and save the processed data to local disk
+        Process the data for a cell and save the processed cell cycle metrics, cell data and cell data vdf to local disk
     """
     _is_initialized = False
     def __init__(self):
@@ -62,9 +62,9 @@ class DataManager(metaclass=SingletonMeta):
         # self.__createdb()
         DataManager._is_initialized = True
     
-    def __createdb(self):
+    def _createdb(self):
         """
-        Create the local database
+        Create the local database with all the test records and devices
 
         Parameters
         ----------
@@ -85,11 +85,11 @@ class DataManager(metaclass=SingletonMeta):
         # Create device folder dictionary
         device_id_to_name = self.dataIO.create_dev_dic(devs)
         # Save test data and update directory structure
-        self.__update_batch_data(trs, device_id_to_name)
+        self._update_batch_data(trs, device_id_to_name, len(trs))
 
-    def __updatedb(self):
+    def _updatedb(self):
         """
-        Update the local database
+        Update the local database with all the test records
 
         Parameters
         ----------
@@ -104,7 +104,7 @@ class DataManager(metaclass=SingletonMeta):
         devs = self.dataFetcher.fetch_devs()
         self.update_test_data(trs, devs, len(trs))
     
-    def update_device_data(self, device_id, batch_size=60):
+    def update_device_data(self, device_id, batch_size=20):
         """
         Update the local database with the specified device id
 
@@ -112,6 +112,8 @@ class DataManager(metaclass=SingletonMeta):
         ----------
         device_id: int
             The device id to be updated
+        batch_size: int
+            The number of test records to be updated
 
         Returns
         -------
@@ -126,7 +128,7 @@ class DataManager(metaclass=SingletonMeta):
 
     def update_test_data(self, trs=None, devs=None, batch_size=60):
         """
-        Update the test data and directory structure
+        Update the test data and directory structure with the specified test records and devices
 
         Parameters
         ----------
@@ -134,6 +136,8 @@ class DataManager(metaclass=SingletonMeta):
             The list of test records to be saved
         devs: list of Device objects (optional)
             The list of devices to be saved
+        batch_size: int
+            The number of test records to be updated
         
         Returns
         -------
@@ -176,9 +180,9 @@ class DataManager(metaclass=SingletonMeta):
             return
 
         devices_id_to_name = self.dataIO.create_dev_dic(devs)
-        self.__update_batch_data(new_trs, devices_id_to_name)
+        self._update_batch_data(new_trs, devices_id_to_name)
     
-    def __update_batch_data(self, new_trs, devices_id_to_name, batch_size=20):
+    def _update_batch_data(self, new_trs, devices_id_to_name, batch_size=20):
         for i in range(0, len(new_trs), batch_size):
             new_trs_batch = new_trs[i:i+batch_size]
             # Get dataframes 
@@ -303,18 +307,18 @@ class DataManager(metaclass=SingletonMeta):
         cell_cycle_metrics, cell_data, cell_data_vdf, update = self.dataProcessor.process_cell(trs_cycler, trs_vdf, cell_cycle_metrics, cell_data, cell_data_vdf, numFiles)
         #Save new data to pickle if there was new data
         if update:
-            cell_rpt_data = self.dataProcessor.summarize_rpt_data(cell_data, cell_data_vdf, cell_cycle_metrics)
+            cell_data_rpt = self.dataProcessor.summarize_rpt_data(cell_data, cell_data_vdf, cell_cycle_metrics)
             self.dataIO.save_df(cell_cycle_metrics, filepath_ccm)
             self.dataIO.save_df(cell_data, filepath_cell_data)
             self.dataIO.save_df(cell_data_vdf, filepath_cell_data_vdf)  
-            self.dataIO.save_df(cell_rpt_data, filepath_rpt)
-        return cell_cycle_metrics, cell_data, cell_data_vdf
+            self.dataIO.save_df(cell_data_rpt, filepath_rpt)
+        return cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt
    
 
     # Below are the methods for testing
     def test_createdb(self):
         """
-        Create the local database
+        Create the local database for testing
 
         Parameters
         ----------
@@ -337,11 +341,11 @@ class DataManager(metaclass=SingletonMeta):
         # Create device folder dictionary
         device_id_to_name = self.dataIO.create_dev_dic(devs)
         # Save test data and update directory structure
-        self.__update_batch_data(test_trs, device_id_to_name)
+        self._update_batch_data(test_trs, device_id_to_name)
 
     def test_updatedb(self):
         """
-        Update the local database
+        Update the local database for testing
 
         Parameters
         ----------

@@ -1,8 +1,15 @@
 import logging
 
 class SingletonLogger:
-    _logger = None
+    """
+    The singleton logger class
 
+    Methods
+    -------
+    get_instance()
+        Get the singleton logger instance
+    """
+    _logger = None
     @classmethod
     def get_instance(cls):
         if not cls._logger:

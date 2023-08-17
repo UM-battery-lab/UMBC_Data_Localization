@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 load_dotenv('voltaiq_mac.env')
 import voltaiq_studio as vs
 
-from src.logger_config import setup_logger
+from src.utils.logger_config import setup_logger
 
 
 class DataFetcher:
@@ -21,9 +21,9 @@ class DataFetcher:
     Methods
     -------
     fetch_trs()
-        Fetch TestRecords data from Voltaiq Studio
+        Fetch all the TestRecords data from Voltaiq Studio
     fetch_devs()
-        Fetch data Devices from Voltaiq Studio
+        Fetch all the Devices data from Voltaiq Studio
     get_df_from_tr(tr, trace_keys=None)
         Get Dataframe from Voltaiq Studio based on a TestRecord object
     get_dfs_from_trs(trs, trace_key=None)
@@ -76,6 +76,8 @@ class DataFetcher:
         ----------
         tr: TestRecord object
             The test record to be processed
+        trace_keys: list of str, optional
+            The trace keys for the data to be get
 
         Returns
         -------
@@ -107,6 +109,8 @@ class DataFetcher:
         ----------
         trs: list of TestRecord objects
             The list of test records to be processed
+        trace_key: str, optional
+            The trace key for the data to be get
         
         Returns
         -------

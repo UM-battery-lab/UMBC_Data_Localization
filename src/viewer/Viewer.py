@@ -1,8 +1,27 @@
 from matplotlib import pyplot as plt   
-from src.logger_config import setup_logger
+from src.utils.logger_config import setup_logger
 from src.dto.DataTransferObject import CellDataDTO
 
 class Viewer:
+    """
+    The class to view data from the local disk
+
+    Attributes
+    ----------
+    plt: matplotlib.pyplot object
+        The object to plot data
+    logger: logger object
+        The object to log information
+    
+    Methods
+    -------
+    plot_process_cell(cell, cell_data: CellDataDTO, downsample = 100)
+        Plot the processed data of a cell
+    plot_cycle_metrics_time(cell, cell_data: CellDataDTO, downsample = 100)
+        Plot the cycle metrics of a cell
+    plot_cycle_metrics_AhT(cell, cell_data: CellDataDTO, downsample = 100)
+        Plot the cycle metrics of a cell and the AhT
+    """
     def __init__(self):
         self.plt = plt 
         self.logger = setup_logger()

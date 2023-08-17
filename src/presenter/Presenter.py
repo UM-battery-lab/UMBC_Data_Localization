@@ -1,20 +1,38 @@
 import datetime
 from src.model.DataManager import DataManager
-from src.constants import DATE_FORMAT, TZ_INFO
+from src.utils.constants import DATE_FORMAT, TZ_INFO
 from src.dto.DataTransferObject import TimeSeriesDTO, ExpansionDTO, CycleMetricsDTO, IndexMetricsDTO, CellDataDTO
-from src.logger_config import setup_logger
+from src.utils.logger_config import setup_logger
 
-#TODO: clean the structure of the code
 class Presenter:
+    """
+    Presenter class to present data to the frontend
+
+    Attributes
+    ----------
+    dataManager: DataManager object
+        The object to manage the data
+    logger: logger object
+        The object to log information
+
+    Methods
+    -------
+    get_measured_data_time(cell_name, start_time=None, end_time=None, plot_cycles = True)
+        Get measured data for a cell
+    get_cycle_metrics_times(cell_name, start_time=None, end_time=None)
+        Get cycle metrics for a cell
+    get_cycle_metrics_AhT(cell_name, start_time=None, end_time=None)
+        Get cycle metrics for a cell
+    """
     def __init__(self, dataManager: DataManager):
         self.dataManager = dataManager
         self.logger = setup_logger()
 
-    def timestamp_to_datetime(self, t):
+    def _timestamp_to_datetime(self, t):
         t = t/1000
         return datetime.datetime.fromtimestamp(t, tz=TZ_INFO)
     
-    def str_to_timestamp(self, date_str):
+    def _str_to_timestamp(self, date_str):
         dt = datetime.datetime.strptime(date_str, DATE_FORMAT)
         dt = dt.replace(tzinfo=TZ_INFO)
         timestamp = dt.timestamp() * 1000
@@ -22,12 +40,12 @@ class Presenter:
     
     def _mask_data(self, data, start_time=None, end_time=None):
         if start_time:
-            start_timestamp = self.str_to_timestamp(start_time)
+            start_timestamp = self._str_to_timestamp(start_time)
             if not data.empty:
                 mask = (data['Time [s]'] >= start_timestamp)
                 data = data[mask]
         if end_time:
-            end_timestamp = self.str_to_timestamp(end_time)
+            end_timestamp = self._str_to_timestamp(end_time)
             if not data.empty:
                 mask = (data['Time [s]'] <= end_timestamp)
                 data = data[mask]
@@ -35,7 +53,7 @@ class Presenter:
     
     def _extract_timeseries(self, data) -> TimeSeriesDTO:
         return TimeSeriesDTO(
-            t=data['Time [s]'].apply(self.timestamp_to_datetime),
+            t=data['Time [s]'].apply(self._timestamp_to_datetime),
             I=data['Current [A]'],
             V=data['Voltage [V]'],
             T=data['Temperature [degC]'],
@@ -44,7 +62,7 @@ class Presenter:
     
     def _extract_expansion(self, data) -> ExpansionDTO:
         return ExpansionDTO(
-            t_vdf=data['Time [s]'].apply(self.timestamp_to_datetime),
+            t_vdf=data['Time [s]'].apply(self._timestamp_to_datetime),
             exp_vdf=data['Expansion [-]'],
             T_vdf=data['Temperature [degC]']
         )
@@ -52,7 +70,7 @@ class Presenter:
     def _extract_cycle_metrics(self, data, is_ccm=False) -> CycleMetricsDTO:
         if is_ccm:
             return CycleMetricsDTO(
-                t_cycle=data['Time [s]'].apply(self.timestamp_to_datetime),
+                t_cycle=data['Time [s]'].apply(self._timestamp_to_datetime),
                 Q_c=data['Charge capacity [A.h]'],
                 Q_d=data['Discharge capacity [A.h]'],
                 AhT_cycle=data['Ah throughput [A.h]'],
@@ -65,7 +83,7 @@ class Presenter:
                 exp_rev = data['Reversible cycle expansion [-]'],
             )     
         return CycleMetricsDTO(
-            t_cycle=data['Time [s]'].apply(self.timestamp_to_datetime),
+            t_cycle=data['Time [s]'].apply(self._timestamp_to_datetime),
             Q_c=data['Charge capacity [A.h]'],
             Q_d=data['Discharge capacity [A.h]']
         )
@@ -99,19 +117,23 @@ class Presenter:
 
     def get_measured_data_time(self, cell_name, start_time=None, end_time=None, plot_cycles = True): 
         """
-        Get measured data from the local disk
+        Get measured data for a cell
 
         Parameters
         ----------
         cell_name: str
             The cell name of the data to be found
+        start_time: str, optional
+            The start time of the data to be found, in the format of 'YYYY-MM-DD_HH-MM-SS'
+        end_time: str, optional
+            The end time of the data to be found, in the format of 'YYYY-MM-DD_HH-MM-SS'
         plot_cycles: bool, optional
             Whether to plot the cycles
         
         Returns
         -------
-        dict
-            The dictionary of measured data
+        CellDataDTO
+            The data transfer object of the cell data
         """
         cell_data, cell_data_vdf, cell_cycle_metrics = self._get_data(cell_name, start_time, end_time)
         # setup dto
@@ -128,6 +150,23 @@ class Presenter:
         return cell_data_dto
 
     def get_cycle_metrics_times(self, cell_name, start_time=None, end_time=None):
+        """
+        Get cycle metrics for a cell
+
+        Parameters
+        ----------
+        cell_name: str
+            The cell name of the data to be found
+        start_time: str, optional
+            The start time of the data to be found, in the format of 'YYYY-MM-DD_HH-MM-SS'
+        end_time: str, optional
+            The end time of the data to be found, in the format of 'YYYY-MM-DD_HH-MM-SS'
+        
+        Returns
+        -------
+        CellDataDTO
+            The data transfer object of the cell data
+        """
         cell_data, cell_data_vdf, cell_cycle_metrics = self._get_data(cell_name, start_time, end_time)
         # setup dto
         timeseries = self._extract_timeseries(cell_data)
@@ -143,6 +182,23 @@ class Presenter:
         return cell_data_dto
     
     def get_cycle_metrics_AhT(self, cell_name, start_time=None, end_time=None):
+        """
+        Get cycle metrics for a cell
+
+        Parameters
+        ----------
+        cell_name: str
+            The cell name of the data to be found
+        start_time: str, optional
+            The start time of the data to be found, in the format of 'YYYY-MM-DD_HH-MM-SS'
+        end_time: str, optional
+            The end time of the data to be found, in the format of 'YYYY-MM-DD_HH-MM-SS'
+        
+        Returns
+        -------
+        CellDataDTO
+            The data transfer object of the cell data  
+        """
         cell_data, cell_data_vdf, cell_cycle_metrics = self._get_data(cell_name, start_time, end_time)
         # setup dto
         timeseries = self._extract_timeseries(cell_data)
