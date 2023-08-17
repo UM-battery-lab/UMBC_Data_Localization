@@ -1,9 +1,9 @@
 from datetime import datetime
 
-from src.logger_config import setup_logger
+from src.utils.logger_config import setup_logger
 from src.model.DataIO import DataIO
 from src.model.DirStructure import DirStructure
-from src.constants import DATE_FORMAT, TIME_TOLERANCE
+from src.utils.constants import DATE_FORMAT, TIME_TOLERANCE
 
 class DataFilter:
     """
@@ -34,7 +34,7 @@ class DataFilter:
         self.dirStructure = dirStructure
         self.logger = setup_logger()
     
-    def __filter_records(self, device_id=None, tr_name_substring=None, start_time=None, tags=None):
+    def _filter_records(self, device_id=None, tr_name_substring=None, start_time=None, tags=None):
         """
         Fileter the records with the specified device id or name, and start time
 
@@ -91,7 +91,7 @@ class DataFilter:
         list of TestRecord object
             The list of test records that match the specified device id or name, and start time
         """
-        matching_records = self.__filter_records(device_id=device_id, tr_name_substring=tr_name_substring, start_time=start_time, tags=tags)
+        matching_records = self._filter_records(device_id=device_id, tr_name_substring=tr_name_substring, start_time=start_time, tags=tags)
         matching_test_folders = [record['test_folder'] for record in matching_records]
         return self.dataIO.load_trs(matching_test_folders)
 
@@ -115,7 +115,7 @@ class DataFilter:
         list of Dataframe
             The list of dataframes that match the specified device id or name, and start time
         """
-        matching_records = self.__filter_records(device_id=device_id, tr_name_substring=tr_name_substring, start_time=start_time, tags=tags)
+        matching_records = self._filter_records(device_id=device_id, tr_name_substring=tr_name_substring, start_time=start_time, tags=tags)
         matching_test_folders = [record['test_folder'] for record in matching_records]
         return self.dataIO.load_dfs(matching_test_folders)
 
@@ -141,7 +141,7 @@ class DataFilter:
         list of Dataframe
             The list of dataframes that match the specified device id or name, start time and tags
         """
-        matching_records = self.__filter_records(device_id=device_id, tr_name_substring=tr_name_substring, start_time=start_time, tags=tags)
+        matching_records = self._filter_records(device_id=device_id, tr_name_substring=tr_name_substring, start_time=start_time, tags=tags)
         matching_test_folders = [record['test_folder'] for record in matching_records]
         return self.dataIO.load_trs(matching_test_folders), self.dataIO.load_dfs(matching_test_folders)
 

@@ -35,8 +35,8 @@ class IndexMetricsDTO(NamedTuple):
 
 
 class CellDataDTO(NamedTuple):
-    timeseries: TimeSeriesDTO
-    expansion: ExpansionDTO
-    cycle_metrics: CycleMetricsDTO
-    index_metrics: IndexMetricsDTO
+    timeseries: Optional[TimeSeriesDTO]=None
+    expansion: Optional[ExpansionDTO]=None
+    cycle_metrics: Optional[CycleMetricsDTO]=None
+    index_metrics: Optional[IndexMetricsDTO]=None
 
