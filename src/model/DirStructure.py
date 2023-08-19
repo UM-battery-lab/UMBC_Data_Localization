@@ -67,20 +67,27 @@ class DirStructure:
             self.logger.error(f'Error while saving directory structure: {e}')
 
     def append_record(self, tr, dev_name, test_folder):
+        record = {
+            'uuid': tr.uuid,
+            'device_id': tr.device_id,
+            'tr_name': tr.name,  
+            'dev_name': dev_name,
+            'start_time': tr.start_time.strftime(DATE_FORMAT),
+            'last_dp_timestamp': tr.last_dp_timestamp,
+            'test_folder': test_folder,
+            'tags': tr.tags
+        }
+        self.structure.append(record)   # First, append the new record to the structure
         try:
-            self.structure.append({
-                'uuid': tr.uuid,
-                'device_id': tr.device_id,
-                'tr_name': tr.name,  
-                'dev_name': dev_name,
-                'start_time': tr.start_time.strftime(DATE_FORMAT),
-                'last_dp_timestamp': tr.last_dp_timestamp,
-                'test_folder': test_folder,
-                'tags': tr.tags
-            })
-            self._save()
+            self._save()  # Then, try to save the structure
         except Exception as e:
-            self.logger.error(f'Error while appending directory structure: {e}')
+            self.logger.error(f'Error while saving directory structure: {e}')
+            self._rollback()  # Rollback the changes if save fails
+
+    def _rollback(self):
+        """Remove the last added record."""
+        if self.structure:
+            self.structure.pop()
 
     def load_records(self):
         return self.structure

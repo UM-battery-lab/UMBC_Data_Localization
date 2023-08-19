@@ -2,7 +2,7 @@ import os
 from datetime import timedelta, timezone
 
 DATE_FORMAT = '%Y-%m-%d_%H-%M-%S'
-ROOT_PATH = os.path.join(os.path.dirname(os.getcwd()), 'voltaiq_data')
+ROOT_PATH = "/Volumes/me-battery-controls-lab/voltaiq_data"
 JSON_FILE_PATH = os.path.join(ROOT_PATH, 'directory_structure.json')
 TZ_INFO = timezone(timedelta(days=-1, seconds=72000))
 TIME_TOLERANCE = timedelta(hours=2)

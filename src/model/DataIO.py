@@ -2,7 +2,9 @@ import os
 import pickle
 import pandas as pd
 import gzip
+import shutil
 from src.model.DirStructure import DirStructure
+from src.model.DataDeleter import DataDeleter
 from src.utils.constants import ROOT_PATH, DATE_FORMAT, TIME_COLUMNS
 from src.utils.logger_config import setup_logger
 
@@ -16,6 +18,8 @@ class DataIO:
         The root path of the local data
     dirStructure: DirStructure object
         The object to manage the directory structure for the local data
+    dataDeleter: DataDeleter object
+        The object to delete data from the local disk
     logger: logger object
         The object to log information
         
@@ -34,9 +38,10 @@ class DataIO:
     load_dfs(test_folders)
         Load the dataframes based on the specified test folders
     """
-    def __init__(self, dirStructure: DirStructure):
+    def __init__(self, dirStructure: DirStructure, dataDeleter: DataDeleter):
         self.rootPath = ROOT_PATH
         self.dirStructure = dirStructure
+        self.dataDeleter = dataDeleter
         self.logger = setup_logger()
 
     def create_dev_dic(self, devs):
@@ -118,11 +123,19 @@ class DataIO:
         if tr is None or df is None:
             self.logger.error(f'Test record or dataframe is None')
             return None
-        self._save_to_pickle(tr, tr_path)
-        self._save_to_pickle(df, df_path)
-
-        # Append the directory structure information to the list
-        self.dirStructure.append_record(tr, dev_name, test_folder)
+        try:
+            # Guarantee the transactional integrity
+            self._save_to_pickle(tr, tr_path)
+            self._save_to_pickle(df, df_path)
+            # Append the directory structure information to the list
+            self.dirStructure.append_record(tr, dev_name, test_folder)
+        except Exception as e:
+            self.logger.error(f"Transaction failed: {e}")
+            # Remove any possibly corrupted files
+            for path in [tr_path, df_path]:
+                if os.path.exists(path):
+                    self.dataDeleter.delete_file(path)
+            return None
     
     def _create_directory(self, directory_path):
         try:
@@ -131,12 +144,16 @@ class DataIO:
             self.logger.error(f'Error occurred while creating directory {directory_path}: {err}')
 
     def _save_to_pickle(self, data, file_path):
+        temp_path = file_path + ".tmp"
         try:
             os.makedirs(os.path.dirname(file_path), exist_ok=True)
-            with gzip.open(file_path, 'wb') as f:
+            with gzip.open(temp_path, 'wb') as f:
                 pickle.dump(data, f)
+            shutil.move(temp_path, file_path)
             self.logger.info(f'Saved pickle file to {file_path}')
         except Exception as err:
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
             self.logger.error(f'Error occurred while writing file {file_path}: {err}')
 
     def _check_time_column_in_trace_keys(self, df, trace_keys):

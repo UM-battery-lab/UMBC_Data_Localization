@@ -54,9 +54,9 @@ class DataManager(metaclass=SingletonMeta):
         if DataManager._is_initialized:
             return
         self.dirStructure = DirStructure()
-        self.dataIO = DataIO(self.dirStructure)
         self.dataFetcher = DataFetcher()
         self.dataDeleter = DataDeleter()
+        self.dataIO = DataIO(self.dirStructure, self.dataDeleter)
         self.dataFilter = DataFilter(self.dataIO, self.dirStructure)
         self.dataProcessor = DataProcessor(self.dataFilter, self.dirStructure)
         self.logger = setup_logger()
@@ -278,12 +278,12 @@ class DataManager(metaclass=SingletonMeta):
         cell_data_vdf: dataframe
             The dataframe of cell data vdf for the cell
         """
-        # try:
-        #     self.logger.info(f'Trying to update data for device {cell_name}')
-        #     device_id = self.dirStructure.load_dev_id_by_dev_name(cell_name)
-        #     self.update_device_data(device_id)
-        # except:
-        #     self.logger.error(f'Failed to update data for device {cell_name}')
+        try:
+            self.logger.info(f'Trying to update data for device {cell_name}')
+            device_id = self.dirStructure.load_dev_id_by_dev_name(cell_name)
+            self.update_device_data(device_id)
+        except:
+            self.logger.error(f'Failed to update data for device {cell_name}')
         cell_path = self.dirStructure.load_dev_folder(cell_name)
         # Filepaths for cycle metrics, cell data, cell data vdf and rpt
         filepath_ccm = os.path.join(cell_path, 'CCM.pickle')
@@ -308,6 +308,7 @@ class DataManager(metaclass=SingletonMeta):
         # Process data
         cell_cycle_metrics, cell_data, cell_data_vdf, update = self.dataProcessor.process_cell(trs_cycler, trs_vdf, cell_cycle_metrics, cell_data, cell_data_vdf, numFiles)
         #Save new data to pickle if there was new data
+        cell_data_rpt = None
         if update:
             cell_data_rpt = self.dataProcessor.summarize_rpt_data(cell_data, cell_data_vdf, cell_cycle_metrics)
             self.dataIO.save_df(cell_cycle_metrics, filepath_ccm)
