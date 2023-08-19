@@ -7,6 +7,7 @@ from src.model.DataProcessor import DataProcessor
 from src.utils.logger_config import setup_logger
 from src.utils.SinglentonMeta import SingletonMeta
 import os
+import gc
 
 class DataManager(metaclass=SingletonMeta):
     """
@@ -104,7 +105,7 @@ class DataManager(metaclass=SingletonMeta):
         devs = self.dataFetcher.fetch_devs()
         self.update_test_data(trs, devs, len(trs))
     
-    def update_device_data(self, device_id, batch_size=20):
+    def update_device_data(self, device_id, num_new_trs=20):
         """
         Update the local database with the specified device id
 
@@ -112,7 +113,7 @@ class DataManager(metaclass=SingletonMeta):
         ----------
         device_id: int
             The device id to be updated
-        batch_size: int
+        num_new_trs: int
             The number of test records to be updated
 
         Returns
@@ -124,9 +125,9 @@ class DataManager(metaclass=SingletonMeta):
         trs = self.dataFetcher.fetch_trs()
         trs_to_update = [tr for tr in trs if tr.device_id == device_id]
         devs = self.dataFetcher.fetch_devs()
-        self.update_test_data(trs_to_update, devs, batch_size)
+        self.update_test_data(trs_to_update, devs, num_new_trs)
 
-    def update_test_data(self, trs=None, devs=None, batch_size=60):
+    def update_test_data(self, trs=None, devs=None, num_new_trs=60):
         """
         Update the test data and directory structure with the specified test records and devices
 
@@ -136,7 +137,7 @@ class DataManager(metaclass=SingletonMeta):
             The list of test records to be saved
         devs: list of Device objects (optional)
             The list of devices to be saved
-        batch_size: int
+        num_new_trs: int
             The number of test records to be updated
         
         Returns
@@ -172,7 +173,7 @@ class DataManager(metaclass=SingletonMeta):
                 self.dataDeleter.delete_file(old_df_file)
                 self.dirStructure.delete_record(tr.uuid)
                 new_trs.append(tr)
-                if len(new_trs) >= batch_size:
+                if len(new_trs) >= num_new_trs:
                     break
 
         if not new_trs:
@@ -189,6 +190,7 @@ class DataManager(metaclass=SingletonMeta):
             dfs_batch = self.dataFetcher.get_dfs_from_trs(new_trs_batch)
             # Save new test data and update directory structure
             self.dataIO.save_test_data_update_dict(new_trs_batch, dfs_batch, devices_id_to_name)
+            gc.collect()
 
     def filter_trs(self, device_id=None, tr_name_substring=None, start_time=None, tags=None):
         """
@@ -276,12 +278,12 @@ class DataManager(metaclass=SingletonMeta):
         cell_data_vdf: dataframe
             The dataframe of cell data vdf for the cell
         """
-        try:
-            self.logger.info(f'Trying to update data for device {cell_name}')
-            device_id = self.dirStructure.load_dev_id_by_dev_name(cell_name)
-            self.update_device_data(device_id)
-        except:
-            self.logger.error(f'Failed to update data for device {cell_name}')
+        # try:
+        #     self.logger.info(f'Trying to update data for device {cell_name}')
+        #     device_id = self.dirStructure.load_dev_id_by_dev_name(cell_name)
+        #     self.update_device_data(device_id)
+        # except:
+        #     self.logger.error(f'Failed to update data for device {cell_name}')
         cell_path = self.dirStructure.load_dev_folder(cell_name)
         # Filepaths for cycle metrics, cell data, cell data vdf and rpt
         filepath_ccm = os.path.join(cell_path, 'CCM.pickle')
@@ -357,6 +359,6 @@ class DataManager(metaclass=SingletonMeta):
         """
         # Fetch test records and devices
         trs = self.dataFetcher.fetch_trs()
-        test_trs = trs[:250]
+        test_trs = trs[:100]
         devs = self.dataFetcher.fetch_devs()
         self.update_test_data(test_trs, devs)

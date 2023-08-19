@@ -1,6 +1,7 @@
 import os
 import pickle
 import pandas as pd
+import gzip
 from src.model.DirStructure import DirStructure
 from src.utils.constants import ROOT_PATH, DATE_FORMAT, TIME_COLUMNS
 from src.utils.logger_config import setup_logger
@@ -132,7 +133,7 @@ class DataIO:
     def _save_to_pickle(self, data, file_path):
         try:
             os.makedirs(os.path.dirname(file_path), exist_ok=True)
-            with open(file_path, 'wb') as f:
+            with gzip.open(file_path, 'wb') as f:
                 pickle.dump(data, f)
             self.logger.info(f'Saved pickle file to {file_path}')
         except Exception as err:
@@ -232,7 +233,7 @@ class DataIO:
 
     def _load_pickle(self, file_path):
         try:
-            with open(file_path, "rb") as f:
+            with gzip.open(file_path, "rb") as f:
                 record = pickle.load(f)
             self.logger.info(f"Loaded pickle file from {file_path}")
             return record
