@@ -69,6 +69,57 @@ Add your voltaiq studio token in the first line of .env file
 
 ## Usage
 
+### Directory Structure
+#### Folder Structure
+The folder structure of voltaiq data looks like this, tr file is the metadata and df file is the real data:
+```
+voltaiq_data/
+|-- directory_structure.json
+|-- cell_1/
+|   |-- test_start_time_1/
+|       |-- tr.pickle
+|       |-- df.pickle
+|   |-- test_start_time_2/
+|       |-- tr.pickle
+|       |-- df.pickle
+|   |   |-- ...
+|-- cell_2/
+|   |-- test_start_time_1/
+|       |-- tr.pickle
+|       |-- df.pickle
+|   |-- test_start_time_2/
+|       |-- tr.pickle
+|       |-- df.pickle
+|   |   |-- ...
+|   |-- ...
+|   |-- cell_N/
+|       |-- test_start_time_1/
+|       |   |-- tr.pickle
+|       |   |-- df.pickle
+|       |-- ...
+```
+#### directory_structure.json 
+This file contains the useful metadata for us to locate the real data, the structure of this file looks like this: 
+```
+{
+        "uuid": "f91ca7b0-dde6-4743-b68a-c6cbd22984ec",
+        "device_id": 17154,
+        "tr_name": "GMFEB23S_CELL009_RPT_6_P25C_15P0PSI_20230815_R0-01-008",
+        "dev_name": "GMFEB23S_CELL009",
+        "start_time": "2023-08-15_08-57-21",
+        "last_dp_timestamp": 1692369188000,
+        "test_folder": "/Users/yiliu/Documents/GitHub/UMBC_Data_Localization/voltaiq_data/GMFEB23S_CELL009/2023-08-15_08-57-21",
+        "tags": [
+            "Test Type: Reference Performance Test",
+            "Procedure Version: 6",
+            "arbin",
+            "Temperature: 25C",
+            "Run Number: R0-01-008",
+            "Test Date: 20230815",
+            "Pressure: 15.0 PSI"
+        ]
+    }, ...
+```
 ### DataManager Usage
 DataManager is a robust utility class designed to manage local data, ensuring seamless interaction with the Voltaiq Studio. It encompasses functions to fetch, delete, update, filter, and process data pertaining to test records and devices. 
 
@@ -89,7 +140,7 @@ To update specific device data:
 
 ```python
 device_id = 12345  # replace with your device_id
-manager.update_device_data(device_id)
+manager._updatedb(device_id=device_id)
 ```
 
 ##### Filtering
@@ -118,7 +169,7 @@ To process data for a specific cell:
 
 ```python
 cell_name = "your_cell_name"
-processed_data = manager.process_cell(cell_name)
+cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt = manager.process_cell(cell_name)
 ```
 
 ### Presenter
@@ -130,22 +181,22 @@ The Presenter class is designed to manage the presentation of data to a frontend
 To create an instance of the Presenter, you must provide a `DataManager` object:
 
 ```python
-presenter = Presenter(dataManagerInstance)
+presenter = Presenter()
 ```
 
 #### get_measured_data_time
 ```python
-data = presenter.get_measured_data_time("cell_name_here", start_time="YYYY-MM-DD_HH-MM-SS", end_time="YYYY-MM-DD_HH-MM-SS", plot_cycles=True)
+data = presenter.get_measured_data_time(cell_cycle_metrics, cell_data, cell_data_vdf, start_time="YYYY-MM-DD_HH-MM-SS", end_time="YYYY-MM-DD_HH-MM-SS", plot_cycles=True)
 ```
 
 #### get_cycle_metrics_times
 ```python
-metrics = presenter.get_cycle_metrics_times("cell_name_here", start_time="YYYY-MM-DD_HH-MM-SS", end_time="YYYY-MM-DD_HH-MM-SS")
+metrics = presenter.get_cycle_metrics_times(cell_cycle_metrics, cell_data, cell_data_vdf, start_time="YYYY-MM-DD_HH-MM-SS", end_time="YYYY-MM-DD_HH-MM-SS")
 ```
 
 #### get_cycle_metrics_AhT
 ```python
-metrics = presenter.get_cycle_metrics_AhT("cell_name_here", start_time="YYYY-MM-DD_HH-MM-SS", end_time="YYYY-MM-DD_HH-MM-SS")
+metrics = presenter.get_cycle_metrics_AhT(cell_cycle_metrics, cell_data, cell_data_vdf, start_time="YYYY-MM-DD_HH-MM-SS", end_time="YYYY-MM-DD_HH-MM-SS")
 ```
 
 ### Viewer
