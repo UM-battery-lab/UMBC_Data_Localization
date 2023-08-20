@@ -108,7 +108,7 @@ This file contains the useful metadata for us to locate the real data, the struc
         "dev_name": "GMFEB23S_CELL009",
         "start_time": "2023-08-15_08-57-21",
         "last_dp_timestamp": 1692369188000,
-        "test_folder": "/Users/yiliu/Documents/GitHub/UMBC_Data_Localization/voltaiq_data/GMFEB23S_CELL009/2023-08-15_08-57-21",
+        "test_folder": ".../voltaiq_data/GMFEB23S_CELL009/2023-08-15_08-57-21",
         "tags": [
             "Test Type: Reference Performance Test",
             "Procedure Version: 6",
