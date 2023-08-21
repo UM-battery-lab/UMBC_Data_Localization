@@ -6,6 +6,7 @@ from src.model.DataFilter import DataFilter
 from src.model.DataProcessor import DataProcessor
 from src.utils.logger_config import setup_logger
 from src.utils.SinglentonMeta import SingletonMeta
+from src.utils.DateConverter import DateConverter
 import os
 import gc
 
@@ -36,8 +37,6 @@ class DataManager(metaclass=SingletonMeta):
         Create the local database with all the test records and devices
     _updatedb()
         Update the local database with all the test records
-    update_device_data(device_id, batch_size=60)
-        Update the local database with the specified device id
     update_test_data(trs=None, devs=None, batch_size=60)
         Update the test data and directory structure with the specified test records and devices
     filter_trs(device_id=None, tr_name_substring=None, start_time=None, tags=None)
@@ -46,7 +45,7 @@ class DataManager(metaclass=SingletonMeta):
         Filter the dataframes locally with the specified device id or name or start time or tags
     filter_trs_and_dfs(device_id=None, tr_name_substring=None, start_time=None, tags=None)
         Filter the test records and dataframes locally with the specified device id or name or start time or tags
-    process_cell(cell_name, numFiles = 1000)
+    process_cell(cell_name, numFiles = 1000, update_local_db=False)
         Process the data for a cell and save the processed cell cycle metrics, cell data and cell data vdf to local disk
     """
     _is_initialized = False
@@ -59,8 +58,9 @@ class DataManager(metaclass=SingletonMeta):
         self.dataIO = DataIO(self.dirStructure, self.dataDeleter)
         self.dataFilter = DataFilter(self.dataIO, self.dirStructure)
         self.dataProcessor = DataProcessor(self.dataFilter, self.dirStructure)
+        self.dataConverter = DateConverter()
         self.logger = setup_logger()
-        # self.__createdb()
+        # self._createdb()
         DataManager._is_initialized = True
     
     def _createdb(self):
@@ -88,13 +88,18 @@ class DataManager(metaclass=SingletonMeta):
         # Save test data and update directory structure
         self._update_batch_data(trs, device_id_to_name, len(trs))
 
-    def _updatedb(self):
+    def _updatedb(self, device_id=None, start_before=None, start_after=None):
         """
         Update the local database with all the test records
 
         Parameters
         ----------
-        None
+        device_id: int, optional
+            The device id to be updated
+        start_before: str, optional
+            The start time of test records to be updated should be earlier than this time, in the format of 'YYYY-MM-DD_HH-MM-SS'
+        start_after: str, optional
+            The start time of test records to be updated should be later than this time, in the format of 'YYYY-MM-DD_HH-MM-SS'        
 
         Returns
         -------
@@ -102,31 +107,18 @@ class DataManager(metaclass=SingletonMeta):
         """
         # Fetch test records and devices
         trs = self.dataFetcher.fetch_trs()
+        if device_id:
+            trs = [tr for tr in trs if tr.device_id == device_id]
+        if start_before:
+            start_before = self.dataConverter._str_to_timestamp(start_before)
+            trs = [tr for tr in trs if self.dataConverter._datetime_to_timestamp(tr.start_time) < start_before]
+        if start_after:
+            start_after = self.dataConverter._str_to_timestamp(start_after)
+            trs = [tr for tr in trs if self.dataConverter._datetime_to_timestamp(tr.start_time) > start_after]
+        self.logger.info(f'Find {len(trs)} test records meeting the criteria')
         devs = self.dataFetcher.fetch_devs()
         self.update_test_data(trs, devs, len(trs))
     
-    def update_device_data(self, device_id, num_new_trs=20):
-        """
-        Update the local database with the specified device id
-
-        Parameters
-        ----------
-        device_id: int
-            The device id to be updated
-        num_new_trs: int
-            The number of test records to be updated
-
-        Returns
-        -------
-        None
-        """
-        # Fetch test records and devices
-        self.logger.info(f'Updating device data for device {device_id}')
-        trs = self.dataFetcher.fetch_trs()
-        trs_to_update = [tr for tr in trs if tr.device_id == device_id]
-        devs = self.dataFetcher.fetch_devs()
-        self.update_test_data(trs_to_update, devs, num_new_trs)
-
     def update_test_data(self, trs=None, devs=None, num_new_trs=60):
         """
         Update the test data and directory structure with the specified test records and devices
@@ -258,7 +250,7 @@ class DataManager(metaclass=SingletonMeta):
         """
         return self.dataFilter.filter_trs_and_dfs(device_id, tr_name_substring, start_time, tags)
 
-    def process_cell(self, cell_name, numFiles = 1000):
+    def process_cell(self, cell_name, numFiles = 1000, update_local_db=False):
         """
         Process the data for a cell and save the processed data to local disk
 
@@ -268,6 +260,8 @@ class DataManager(metaclass=SingletonMeta):
             The name of the cell to be processed
         numFiles: int
             The number of files to be processed
+        update_local_db: bool
+            Whether to update the local database before processing the cell
         
         Returns
         -------
@@ -278,12 +272,13 @@ class DataManager(metaclass=SingletonMeta):
         cell_data_vdf: dataframe
             The dataframe of cell data vdf for the cell
         """
-        try:
-            self.logger.info(f'Trying to update data for device {cell_name}')
-            device_id = self.dirStructure.load_dev_id_by_dev_name(cell_name)
-            self.update_device_data(device_id)
-        except:
-            self.logger.error(f'Failed to update data for device {cell_name}')
+        if update_local_db:
+            try:
+                self.logger.info(f'Trying to update data for device {cell_name}')
+                device_id = self.dirStructure.load_dev_id_by_dev_name(cell_name)
+                self._updatedb(device_id=device_id)
+            except:
+                self.logger.error(f'Failed to update data for device {cell_name}')
         cell_path = self.dirStructure.load_dev_folder(cell_name)
         # Filepaths for cycle metrics, cell data, cell data vdf and rpt
         filepath_ccm = os.path.join(cell_path, 'CCM.pickle')
@@ -360,6 +355,6 @@ class DataManager(metaclass=SingletonMeta):
         """
         # Fetch test records and devices
         trs = self.dataFetcher.fetch_trs()
-        test_trs = trs[:100]
+        test_trs = trs[:1000]
         devs = self.dataFetcher.fetch_devs()
-        self.update_test_data(test_trs, devs)
+        self.update_test_data(test_trs, devs, len(test_trs))
