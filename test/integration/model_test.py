@@ -18,12 +18,17 @@ def updatedb_test():
 def filter_test():
     dataManager = DataManager()
     # test filter
-    trs, dfs = dataManager.filter_trs_and_dfs(device_id=3522)
+    trs, dfs = dataManager.filter_trs_and_dfs(device_id=3521)
     print(trs)
-    print(dfs)
-    dfs = dataManager.filter_dfs(tr_name_substring='GMJuly2022_CELL018')
-    for df in dfs:
-        print(df.columns)
+    # print(dfs)
+    # dfs = dataManager.filter_dfs(tr_name_substring='GMJuly2022_CELL018')
+    # for df in dfs:
+    #     print(df.columns)
+
+def consistency_test():
+    dataManager = DataManager()
+    # test consistency
+    dataManager.check_and_repair_consistency()
 
 def process_cell_test():
     dataManager = DataManager()
@@ -35,8 +40,9 @@ def process_cell_test():
 
 
 if __name__ == '__main__':
-    createdb_test()
-    updatedb_test()
-    filter_test()
-    process_cell_test()
+    # createdb_test()
+    # updatedb_test()
+    # filter_test()
+    # process_cell_test()
+    consistency_test()
     

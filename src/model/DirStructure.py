@@ -24,6 +24,8 @@ class DirStructure:
         Load all the records information from the directory structure
     load_uuid()
         Load all the uuids from the directory structure
+    load_test_folders()
+        Load all the test folder paths from the directory structure
     load_dev_name()
         Load all the device names from the directory structure
     load_uuid_to_last_dp_timestamp()
@@ -38,8 +40,8 @@ class DirStructure:
         Get the test record path from the directory structure by the test folder path
     get_df_path(test_folder)
         Get the dataframe path from the directory structure by the test folder path
-    delete_record(uuid)
-        Delete the record from the directory structure and json file by the uuid
+    delete_record(uuid=None, test_folder=None)
+        Delete the record from the directory structure by the uuid or test folder path
     """
     def __init__(self):
         self.filepath = JSON_FILE_PATH
@@ -94,6 +96,9 @@ class DirStructure:
 
     def load_uuid(self):
         return {record['uuid'] for record in self.structure}
+    
+    def load_test_folders(self):
+        return {record['test_folder'] for record in self.structure}
 
     def load_dev_name(self):
         return {record['dev_name'] for record in self.structure}
@@ -125,6 +130,10 @@ class DirStructure:
     def _get_device_path(self, test_folder):
         return os.path.dirname(test_folder)
     
-    def delete_record(self, uuid):
-        self.structure = [record for record in self.structure if record['uuid'] != uuid]
+    def delete_record(self, uuid=None, test_folder=None):
+        # Filter out records based on provided uuid or test_folder
+        if uuid:
+            self.structure = [record for record in self.structure if record['uuid'] != uuid]
+        elif test_folder:
+            self.structure = [record for record in self.structure if record['test_folder'] != test_folder]
         self._save()

@@ -257,3 +257,30 @@ class DataIO:
         except FileNotFoundError:
             self.logger.error(f"File not found: {file_path}")
             return None
+            
+    def _check_folders(self):
+        self.logger.info("Checking folder structure")
+        # Use path depth to decide which folders to consider.
+        # For example, 'voltaiq_data/Cell_Expansion_11_OCV_wExpansion/' has a depth of 2.
+        min_depth = len(self.rootPath.rstrip(os.sep).split(os.sep)) + 1
+        empty_folders = []
+        valid_folders = []
+
+        for root, _, files in os.walk(self.rootPath):
+            # Ignore the root directory itself
+            if root == self.rootPath:
+                continue
+            # If this folder is not deep enough, we skip it
+            depth = len(root.rstrip(os.sep).split(os.sep))
+            if depth <= min_depth:
+                continue
+            # Check for the required files
+            file_set = set(files)
+            if "directory_structure.json" in file_set:
+                continue
+            elif "tr.pickle" in file_set and "df.pickle" in file_set:
+                valid_folders.append(root)
+            else:
+                self.logger.warning(f"Folder {root} is not complete. It contains the following files: {files}")
+                empty_folders.append(root)
+        return empty_folders, valid_folders

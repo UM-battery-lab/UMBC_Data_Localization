@@ -45,6 +45,8 @@ class DataManager(metaclass=SingletonMeta):
         Filter the dataframes locally with the specified device id or name or start time or tags
     filter_trs_and_dfs(device_id=None, tr_name_substring=None, start_time=None, tags=None)
         Filter the test records and dataframes locally with the specified device id or name or start time or tags
+    check_and_repair_consistency()
+        Check the consistency between the directory structure and local database, and repair the inconsistency
     process_cell(cell_name, numFiles = 1000, update_local_db=False)
         Process the data for a cell and save the processed cell cycle metrics, cell data and cell data vdf to local disk
     """
@@ -249,6 +251,57 @@ class DataManager(metaclass=SingletonMeta):
             The list of dataframes that match the specified device id or name, and start time and tags
         """
         return self.dataFilter.filter_trs_and_dfs(device_id, tr_name_substring, start_time, tags)
+    
+    def check_and_repair_consistency(self):
+        """
+        Check the consistency between the directory structure and local database, and repair the inconsistency
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        None
+        """
+        self.logger.info('Starting consistency check between directory structure and local database...')
+
+        # Step 1: Check for empty or incomplete folders and delete them.
+        empty_folders, valid_folders = self.dataIO._check_folders()
+        if empty_folders:
+            self.logger.info(f'Empty or incomplete folders found: {empty_folders}')
+            self.dataDeleter.delete_folders(empty_folders)
+
+        # Convert to sets for easier operations
+        valid_folders_set = set(valid_folders)
+        recorded_folders_set = set(self.dirStructure.load_test_folders())
+
+        # Step 2: Check for folders present on disk but not recorded in the directory structure.
+        unrecorded_folders = valid_folders_set - recorded_folders_set
+        if unrecorded_folders:
+            self.logger.info(f'{len(unrecorded_folders)} folders not recorded in directory structure')
+            devs = self.dataFetcher.fetch_devs()
+            device_id_to_name = self.dataIO.create_dev_dic(devs)
+            trs = self.dataIO.load_trs(list(unrecorded_folders))
+            for tr, test_folder in zip(trs, unrecorded_folders):
+                if tr is None:
+                    self.logger.info(f'No test record found for folder {test_folder}')
+                    continue
+                dev_name = device_id_to_name.get(tr.device_id)
+                if dev_name:
+                    self.dirStructure.append_record(tr, dev_name, test_folder)
+                    self.logger.info(f'Appended record for folder {test_folder}')
+
+        # Step 3: Check for records in the directory structure that don't have corresponding folders on disk.
+        orphaned_records = recorded_folders_set - valid_folders_set
+        if orphaned_records:
+            self.logger.info(f'Orphaned records found without corresponding folders on disk: {orphaned_records}')
+            for orphaned_record in orphaned_records:
+                # Delete the orphaned record from the directory structure based on its test_folder.
+                self.dirStructure.delete_record(test_folder=orphaned_record)
+                self.logger.info(f'Deleted {len(orphaned_records)} orphaned records from directory structure.')
+
+        self.logger.info('Consistency check completed.')
 
     def process_cell(self, cell_name, numFiles = 1000, update_local_db=False):
         """

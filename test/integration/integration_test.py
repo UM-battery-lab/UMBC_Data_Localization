@@ -9,14 +9,13 @@ from src.viewer.Viewer import Viewer
 # Integration test
 def present_cell():
     dataManager = DataManager()
-    presenter = Presenter(dataManager)
+    presenter = Presenter()
     viewer = Viewer()
-    cell_name = "GMJuly2022_CELL018"
-    cell_data = presenter.get_measured_data_time(cell_name, start_time='2023-05-22_00-00-00', end_time='2023-07-22_23-59-59')
+    cell_name = "GMJuly2022_CELL019"
+
+    # test process_cell
+    cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt = dataManager.process_cell(cell_name, update_local_db=True)
+    cell_data = presenter.get_measured_data_time(cell_cycle_metrics, cell_data, cell_data_vdf, start_time='2023-05-22_00-00-00', end_time='2023-07-22_23-59-59')
     viewer.plot_process_cell(cell_name, cell_data)
-    cell_data = presenter.get_cycle_metrics_times(cell_name, start_time='2023-05-22_00-00-00', end_time='2023-07-22_23-59-59')
-    viewer.plot_cycle_metrics_time(cell_name, cell_data)
-    cell_data = presenter.get_cycle_metrics_AhT(cell_name, start_time='2023-05-22_00-00-00', end_time='2023-07-22_23-59-59')
-    viewer.plot_cycle_metrics_AhT(cell_name, cell_data)
 if __name__ == '__main__':
     present_cell()

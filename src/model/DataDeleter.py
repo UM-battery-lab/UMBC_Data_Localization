@@ -1,4 +1,5 @@
 import os
+import shutil
 from src.utils.logger_config import setup_logger
 
 
@@ -15,6 +16,8 @@ class DataDeleter:
     -------
     delete_file(file_path)
         Delete the file with the specified path
+    delete_folders(folder_list)
+        Delete the specified folders if they are empty or contain only tr.pickle or df.pickle
     """
     def __init__(self):
         self.logger = setup_logger()
@@ -24,3 +27,32 @@ class DataDeleter:
             os.remove(file_path)
         except Exception as e:
             self.logger.error(f'Error while deleting file {file_path}: {e}')
+
+    def delete_folders(self, folder_list):
+        """
+        Delete the specified folders if they are empty or contain only tr.pickle or df.pickle.
+
+        Parameters
+        ----------
+        folder_list: list of str
+            List of folder paths to be deleted.
+
+        Returns
+        -------
+        None
+        """
+        for folder in folder_list:
+            try:
+                # Check folder contents
+                current_files = [file.name for file in os.scandir(folder)]
+                if set(current_files) == {"tr.pickle", "df.pickle"}:
+                    self.logger.warning(f"Folder {folder} contains valid files. Skipping deletion.")
+                else:
+                    self.logger.info(f"Folder {folder} contains invalid files: {current_files}.")
+                    confirmation = input(f"Delete folder {folder}? (y/n): ")
+                    if confirmation != "y":
+                        continue
+                    shutil.rmtree(folder)
+                    self.logger.info(f"Deleted folder: {folder}")
+            except Exception as e:
+                self.logger.error(f"Error deleting folder {folder}: {e}")
