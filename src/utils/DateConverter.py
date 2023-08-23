@@ -1,5 +1,5 @@
 import datetime
-from src.utils.constants import TZ_INFO, DATE_FORMAT
+from src.config.time_config import TZ_INFO, DATE_FORMAT
 from src.utils.SinglentonMeta import SingletonMeta
 
 class DateConverter(metaclass=SingletonMeta):

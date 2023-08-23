@@ -147,7 +147,11 @@ To update specific device data:
 device_id = 12345  # replace with your device_id
 manager._updatedb(device_id=device_id)
 ```
-
+##### Check consistency
+ Check the consistency between the directory structure and local database, and repair the inconsistency
+```python
+manager.check_and_repair_consistency()
+```
 ##### Filtering
 
 Filter test records based on certain parameters:

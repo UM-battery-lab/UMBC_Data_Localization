@@ -1,7 +1,8 @@
 import os
 import json
-from src.utils.constants import JSON_FILE_PATH, DATE_FORMAT
-from src.utils.logger_config import setup_logger
+from src.config.time_config import DATE_FORMAT
+from src.config.path_config import JSON_FILE_PATH
+from src.utils.Logger import setup_logger
 
 class DirStructure:
     """

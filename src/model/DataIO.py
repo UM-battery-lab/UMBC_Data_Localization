@@ -5,8 +5,10 @@ import gzip
 import shutil
 from src.model.DirStructure import DirStructure
 from src.model.DataDeleter import DataDeleter
-from src.utils.constants import ROOT_PATH, DATE_FORMAT, TIME_COLUMNS
-from src.utils.logger_config import setup_logger
+from src.config.time_config import DATE_FORMAT
+from src.config.df_config import TIME_COLUMNS
+from src.config.path_config import ROOT_PATH
+from src.utils.Logger import setup_logger
 
 class DataIO:
     """

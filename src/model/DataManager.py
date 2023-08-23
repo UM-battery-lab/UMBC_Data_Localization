@@ -4,7 +4,7 @@ from src.model.DataIO import DataIO
 from src.model.DataDeleter import DataDeleter
 from src.model.DataFilter import DataFilter
 from src.model.DataProcessor import DataProcessor
-from src.utils.logger_config import setup_logger
+from src.utils.Logger import setup_logger
 from src.utils.SinglentonMeta import SingletonMeta
 from src.utils.DateConverter import DateConverter
 import os

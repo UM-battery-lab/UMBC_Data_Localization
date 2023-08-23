@@ -1,11 +1,3 @@
-import os
-from datetime import timedelta, timezone
-
-DATE_FORMAT = '%Y-%m-%d_%H-%M-%S'
-ROOT_PATH = "/Volumes/me-battery-controls-lab/voltaiq_data"
-JSON_FILE_PATH = os.path.join(ROOT_PATH, 'directory_structure.json')
-TZ_INFO = timezone(timedelta(days=-1, seconds=72000))
-TIME_TOLERANCE = timedelta(hours=2)
 CYCLE_ID_LIMS= {
     'RPT': {'V_max_cycle':4.1, 'V_min_cycle':3.8, 'dt_min': 600, 'dAh_min':0.1},
     'CYC': {'V_max_cycle':3.8, 'V_min_cycle':3.8, 'dt_min': 600, 'dAh_min':0.1},

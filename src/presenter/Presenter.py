@@ -1,5 +1,5 @@
 from src.dto.DataTransferObject import TimeSeriesDTO, ExpansionDTO, CycleMetricsDTO, IndexMetricsDTO, CellDataDTO
-from src.utils.logger_config import setup_logger
+from src.utils.Logger import setup_logger
 from src.utils.DateConverter import DateConverter
 
 class Presenter:

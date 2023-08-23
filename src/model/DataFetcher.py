@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 load_dotenv('voltaiq_mac.env')
 import voltaiq_studio as vs
 
-from src.utils.logger_config import setup_logger
+from src.utils.Logger import setup_logger
 
 
 class DataFetcher:

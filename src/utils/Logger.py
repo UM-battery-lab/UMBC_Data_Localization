@@ -1,4 +1,5 @@
 import logging
+from config import logger_config
 
 class SingletonLogger:
     """
@@ -14,11 +15,19 @@ class SingletonLogger:
     def get_instance(cls):
         if not cls._logger:
             cls._logger = logging.getLogger(__name__)
-            cls._logger.setLevel(logging.INFO)
+            cls._logger.setLevel(logger_config.LOG_LEVEL)
+
+            # create console handler
             handler = logging.StreamHandler()
-            formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+            formatter = logging.Formatter(logger_config.LOG_FORMAT)
             handler.setFormatter(formatter)
             cls._logger.addHandler(handler)
+
+            # create file handler
+            file_handler = logging.FileHandler(logger_config.LOG_FILE_PATH)
+            file_handler.setFormatter(formatter)
+            cls._logger.addHandler(file_handler)
+
         return cls._logger
 
 def setup_logger():

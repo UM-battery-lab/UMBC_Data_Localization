@@ -1,6 +1,6 @@
 import os
 import shutil
-from src.utils.logger_config import setup_logger
+from src.utils.Logger import setup_logger
 
 
 class DataDeleter:
