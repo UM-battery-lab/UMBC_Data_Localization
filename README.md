@@ -99,11 +99,9 @@ Add your voltaiq studio token in the first line of the .env file
     cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt = dataManager.process_cell(cell_name)
 ```
 
-### Update local database
-Use the file src/updatedb.py, in this line, you can specify the device id and start time of the test record you want to update. Or you can leave the parameter empty, it will update all the database.
-```
-dataManager._updatedb(device_id= 1778, start_before='2023-06-22_23-59-59',start_after='2023-06-22_00-00-00')
-```
+### ROOT PATH
+In the 'path_config.py' file located under the 'src/config/ directory', update the ROOT_PATH variable to point to the network drive mounted on your local machine.
+
 ### Directory Structure
 #### Folder Structure
 The folder structure of voltaiq data looks like this, the tr file is the metadata, and df file is the real data:
@@ -156,7 +154,7 @@ This file contains the useful metadata for us to locate the real data, the struc
     }, ...
 ```
 ### DataManager Usage
-DataManager is a robust utility class designed to manage local data, ensuring seamless interaction with the Voltaiq Studio. It encompasses functions to fetch, delete, update, filter, and process data pertaining to test records and devices. 
+DataManager is a robust utility class designed to manage local data, ensuring seamless interaction with the Voltaiq Studio. It encompasses functions to delete, filter, and process data pertaining to test records and devices. 
 
 ##### Initialization
 If have trouble with using Redis:
@@ -168,25 +166,6 @@ If you want to use Redis as local cache:
 manager = DataManager(use_redis=True)
 ```
 
-##### Update Local Database
-To create or update the local database with all test records and devices:
-
-```python
-manager._createdb()
-manager._updatedb()
-```
-
-To update specific device data:
-
-```python
-device_id = 12345  # replace with your device_id
-manager._updatedb(device_id=device_id)
-```
-##### Check consistency
- Check the consistency between the directory structure and local database, and repair the inconsistency
-```python
-manager.check_and_repair_consistency()
-```
 ##### Filtering
 
 Filter test records based on certain parameters:

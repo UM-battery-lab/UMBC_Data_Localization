@@ -1,4 +1,5 @@
 import sys
+# Change this path to your local path
 sys.path.insert(0, '/Users/yiliu/Documents/GitHub/UMBC_Data_Localization/UMBC_Data_Localization/src')
 
 
