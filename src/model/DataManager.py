@@ -7,6 +7,7 @@ from src.model.DataProcessor import DataProcessor
 from src.utils.Logger import setup_logger
 from src.utils.SinglentonMeta import SingletonMeta
 from src.utils.DateConverter import DateConverter
+from src.utils.RedisClient import RedisClient
 import os
 import gc
 
@@ -51,18 +52,17 @@ class DataManager(metaclass=SingletonMeta):
         Process the data for a cell and save the processed cell cycle metrics, cell data and cell data vdf to local disk
     """
     _is_initialized = False
-    def __init__(self):
+    def __init__(self, use_redis=False):
         if DataManager._is_initialized:
             return
         self.dirStructure = DirStructure()
         self.dataFetcher = DataFetcher()
         self.dataDeleter = DataDeleter()
-        self.dataIO = DataIO(self.dirStructure, self.dataDeleter)
+        self.dataIO = DataIO(self.dirStructure, self.dataDeleter, use_redis)
         self.dataFilter = DataFilter(self.dataIO, self.dirStructure)
         self.dataProcessor = DataProcessor(self.dataFilter, self.dirStructure)
         self.dataConverter = DateConverter()
         self.logger = setup_logger()
-        # self._createdb()
         DataManager._is_initialized = True
     
     def _createdb(self):

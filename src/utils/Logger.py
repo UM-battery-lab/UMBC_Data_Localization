@@ -1,4 +1,5 @@
 import logging
+import os
 from config import logger_config
 
 class SingletonLogger:
@@ -12,6 +13,15 @@ class SingletonLogger:
     """
     _logger = None
     @classmethod
+    def _ensure_log_file_directory_exists(cls):
+        """
+        Ensure the directory for the log file exists.
+        If not, create it.
+        """
+        log_dir = os.path.dirname(logger_config.LOG_FILE_PATH)
+        if not os.path.exists(log_dir):
+            os.makedirs(log_dir)
+    @classmethod
     def get_instance(cls):
         if not cls._logger:
             cls._logger = logging.getLogger(__name__)
@@ -24,6 +34,7 @@ class SingletonLogger:
             cls._logger.addHandler(handler)
 
             # create file handler
+            cls._ensure_log_file_directory_exists()
             file_handler = logging.FileHandler(logger_config.LOG_FILE_PATH)
             file_handler.setFormatter(formatter)
             cls._logger.addHandler(file_handler)

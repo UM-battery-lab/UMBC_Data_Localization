@@ -3,12 +3,14 @@ import pickle
 import pandas as pd
 import gzip
 import shutil
+import hashlib
 from src.model.DirStructure import DirStructure
 from src.model.DataDeleter import DataDeleter
 from src.config.time_config import DATE_FORMAT
 from src.config.df_config import TIME_COLUMNS
 from src.config.path_config import ROOT_PATH
 from src.utils.Logger import setup_logger
+from src.utils.RedisClient import RedisClient
 
 class DataIO:
     """
@@ -22,6 +24,8 @@ class DataIO:
         The object to manage the directory structure for the local data
     dataDeleter: DataDeleter object
         The object to delete data from the local disk
+    redisClient: RedisClient object
+        The object to interact with Redis cache
     logger: logger object
         The object to log information
         
@@ -40,10 +44,11 @@ class DataIO:
     load_dfs(test_folders)
         Load the dataframes based on the specified test folders
     """
-    def __init__(self, dirStructure: DirStructure, dataDeleter: DataDeleter):
+    def __init__(self, dirStructure: DirStructure, dataDeleter: DataDeleter, use_redis=True):
         self.rootPath = ROOT_PATH
         self.dirStructure = dirStructure
         self.dataDeleter = dataDeleter
+        self.redisClient = RedisClient() if use_redis else None
         self.logger = setup_logger()
 
     def create_dev_dic(self, devs):
@@ -251,10 +256,23 @@ class DataIO:
         return [self._load_pickle(file_path) for file_path in file_paths]
 
     def _load_pickle(self, file_path):
+        if self.redisClient is not None:
+            # Use the SHA256 hash of the file path as the key for Redis
+            redis_key = hashlib.sha256(file_path.encode()).hexdigest()
+            # Try to load from Redis cache first
+            data_from_cache = self.redisClient.get_pickle(redis_key)
+            if data_from_cache is not None:
+                self.logger.info(f"Loaded data from Redis cache for {file_path}")
+                return data_from_cache
+        # If not found in Redis cache, load from local disk
         try:
             with gzip.open(file_path, "rb") as f:
                 record = pickle.load(f)
-            self.logger.info(f"Loaded pickle file from {file_path}")
+            self.logger.info(f"Loaded pickle file from {file_path} successfully")
+            # Save to Redis cache
+            if self.redisClient is not None:
+                self.logger.debug(f"Saving data to Redis cache for {file_path}")
+                self.redisClient.set_pickle(redis_key, record)
             return record
         except FileNotFoundError:
             self.logger.error(f"File not found: {file_path}")
