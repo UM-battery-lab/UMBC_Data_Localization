@@ -1,5 +1,5 @@
 from matplotlib import pyplot as plt   
-from src.utils.logger_config import setup_logger
+from src.utils.Logger import setup_logger
 from src.dto.DataTransferObject import CellDataDTO
 
 class Viewer:

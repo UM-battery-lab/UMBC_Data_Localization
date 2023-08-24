@@ -15,6 +15,7 @@ This project seamlessly fetches data from Voltaiq and stores it locally, offerin
 
 - Python 3.7 or higher
 - pip (comes with Python)
+- Redis
 - Voltaiq Studio token
 
 ## Setting up a Virtual Environment
@@ -63,15 +64,38 @@ Once the virtual environment is activated, you can install the project's depende
 pip install -r requirements.txt
 ```
 
+Then install Redis:
+
+**On macOS:**
+
+    ```bash
+    brew install redis
+    ```
+**On Linux:**
+
+    ```bash
+    sudo apt update
+    sudo apt install redis-server
+    ```
+
+**On Windows:**
+    Check this web: https://redis.io/docs/getting-started/installation/install-redis-on-windows/#:~:text=Redis%20is%20not%20officially%20supported,Linux%20binaries%20natively%20on%20Windows.
+        
+
 ## Voltaiq Env
 
-Add your voltaiq studio token in the first line of .env file
+Add your voltaiq studio token in the first line of the .env file
 
 ## Usage
 
+### Update local database
+Use the file src/updatedb.py, in this line, you can specify the device id and start time of the test record you want to update. Or you can leave the parameter empty, it will update all the database.
+```
+dataManager._updatedb(device_id= 1778, start_before='2023-06-22_23-59-59',start_after='2023-06-22_00-00-00')
+```
 ### Directory Structure
 #### Folder Structure
-The folder structure of voltaiq data looks like this, tr file is the metadata and df file is the real data:
+The folder structure of voltaiq data looks like this, the tr file is the metadata, and df file is the real data:
 ```
 voltaiq_data/
 |-- directory_structure.json
@@ -124,8 +148,13 @@ This file contains the useful metadata for us to locate the real data, the struc
 DataManager is a robust utility class designed to manage local data, ensuring seamless interaction with the Voltaiq Studio. It encompasses functions to fetch, delete, update, filter, and process data pertaining to test records and devices. 
 
 ##### Initialization
+If have trouble with using Redis:
 ```python
 manager = DataManager()
+```
+If you want to use Redis as local cache:
+```python
+manager = DataManager(use_redis=True)
 ```
 
 ##### Update Local Database
@@ -142,7 +171,11 @@ To update specific device data:
 device_id = 12345  # replace with your device_id
 manager._updatedb(device_id=device_id)
 ```
-
+##### Check consistency
+ Check the consistency between the directory structure and local database, and repair the inconsistency
+```python
+manager.check_and_repair_consistency()
+```
 ##### Filtering
 
 Filter test records based on certain parameters:

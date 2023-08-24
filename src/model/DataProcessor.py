@@ -7,8 +7,8 @@ from itertools import compress
 
 from src.model.DirStructure import DirStructure
 from src.model.DataFilter import DataFilter
-from src.utils.logger_config import setup_logger
-from src.utils.constants import CYCLE_ID_LIMS, DEFAULT_TRACE_KEYS, DEFAULT_DF_LABELS
+from src.utils.Logger import setup_logger
+from src.config.df_config import CYCLE_ID_LIMS, DEFAULT_TRACE_KEYS, DEFAULT_DF_LABELS
 
 
 class DataProcessor:

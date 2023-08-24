@@ -14,4 +14,6 @@ venv/
 
 *.ipynb
 
+*.rdb
+
 __pycache__/
