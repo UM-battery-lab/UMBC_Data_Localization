@@ -1,8 +1,9 @@
 from src.dto.DataTransferObject import TimeSeriesDTO, ExpansionDTO, CycleMetricsDTO, IndexMetricsDTO, CellDataDTO
 from src.utils.Logger import setup_logger
 from src.utils.DateConverter import DateConverter
+from src.utils.ObserverPattern import Observer, Subject
 
-class Presenter:
+class Presenter(Observer, Subject):
     """
     Presenter class to present data to the frontend
 
@@ -15,11 +16,42 @@ class Presenter:
 
     Methods
     -------
-
+    attach(observer: Observer)
+        Attach an observer to the Presenter.
+    detach(observer: Observer)
+        Detach an observer from the Presenter.
+    notify(*args, **kwargs)
+        Notify all observers about an event.
+    update(cell_name, cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt)
+        Get the data from the data manager and notify the viewer
+    get_measured_data_time(cell_cycle_metrics, cell_data, cell_data_vdf, start_time=None, end_time=None, plot_cycles = True)
+        Get measured data for a cell
+    get_cycle_metrics_time(cell_cycle_metrics, cell_data, cell_data_vdf, start_time=None, end_time=None)
+        Get cycle metrics for a cell
+    get_cycle_metrics_AhT(cell_cycle_metrics, cell_data, cell_data_vdf, start_time=None, end_time=None)
+        Get cycle metrics for a cell
     """
     def __init__(self):
         self.dateConverter = DateConverter()
         self.logger = setup_logger()
+        self._observers = []
+
+    def attach(self, observer: Observer):
+        self._observers.append(observer)
+
+    def detach(self, observer: Observer):
+        self._observers.remove(observer)
+
+    def notify(self, *args, **kwargs):
+        for observer in self._observers:
+            observer.update(*args, **kwargs)
+
+    def update(self, cell_name, cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt):
+        #TODO: Get better way to process data to avoid excuting 'Time [s]'.apply(self.dateConverter._timestamp_to_datetime) multiple times
+        measured_data_time = self.get_measured_data_time(cell_cycle_metrics, cell_data, cell_data_vdf)
+        cycle_metrics_time = self.get_cycle_metrics_time(cell_cycle_metrics, cell_data, cell_data_vdf)
+        cycle_metrics_AhT = self.get_cycle_metrics_AhT(cell_cycle_metrics, cell_data, cell_data_vdf)
+        self.notify(cell_name, measured_data_time, cycle_metrics_time, cycle_metrics_AhT)
     
     def _mask_data(self, data, start_time=None, end_time=None):
         if start_time:
@@ -132,7 +164,7 @@ class Presenter:
         )
         return cell_data_dto
 
-    def get_cycle_metrics_times(self, cell_cycle_metrics, cell_data, cell_data_vdf, start_time=None, end_time=None):
+    def get_cycle_metrics_time(self, cell_cycle_metrics, cell_data, cell_data_vdf, start_time=None, end_time=None):
         """
         Get cycle metrics for a cell
 

@@ -5,13 +5,13 @@ from src.model.DataDeleter import DataDeleter
 from src.model.DataFilter import DataFilter
 from src.model.DataProcessor import DataProcessor
 from src.utils.Logger import setup_logger
-from src.utils.SinglentonMeta import SingletonMeta
+from src.utils.SinglentonMeta import SingletonABCMeta
 from src.utils.DateConverter import DateConverter
-from src.utils.RedisClient import RedisClient
+from src.utils.ObserverPattern import Subject, Observer
 import os
 import gc
 
-class DataManager(metaclass=SingletonMeta):
+class DataManager(Subject, metaclass=SingletonABCMeta):
     """
     The class to manage all the local data
 
@@ -34,6 +34,12 @@ class DataManager(metaclass=SingletonMeta):
     
     Methods
     -------
+    attach(observer: Observer)
+        Attach an observer to the DataManager.
+    detach(observer: Observer)
+        Detach an observer from the DataManager.
+    notify(*args, **kwargs)
+        Notify all observers about an event.
     _createdb()
         Create the local database with all the test records and devices
     _updatedb()
@@ -63,7 +69,18 @@ class DataManager(metaclass=SingletonMeta):
         self.dataProcessor = DataProcessor(self.dataFilter, self.dirStructure)
         self.dataConverter = DateConverter()
         self.logger = setup_logger()
+        self._observers = []
         DataManager._is_initialized = True
+
+    def attach(self, observer: Observer):
+        self._observers.append(observer)
+
+    def detach(self, observer: Observer):
+        self._observers.remove(observer)
+
+    def notify(self, *args, **kwargs):
+        for observer in self._observers:
+            observer.update(*args, **kwargs)
     
     def _createdb(self):
         """
@@ -325,6 +342,7 @@ class DataManager(metaclass=SingletonMeta):
         cell_data_vdf: dataframe
             The dataframe of cell data vdf for the cell
         """
+        #TODO: Add a parameter to decide which data to present
         if update_local_db:
             try:
                 self.logger.info(f'Trying to update data for device {cell_name}')
@@ -363,6 +381,7 @@ class DataManager(metaclass=SingletonMeta):
             self.dataIO.save_df(cell_data, filepath_cell_data)
             self.dataIO.save_df(cell_data_vdf, filepath_cell_data_vdf)  
             self.dataIO.save_df(cell_data_rpt, filepath_rpt)
+        self.notify(cell_name, cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt)
         return cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt
    
 

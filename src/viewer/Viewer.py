@@ -1,8 +1,9 @@
 from matplotlib import pyplot as plt   
 from src.utils.Logger import setup_logger
 from src.dto.DataTransferObject import CellDataDTO
+from src.utils.ObserverPattern import Observer
 
-class Viewer:
+class Viewer(Observer):
     """
     The class to view data from the local disk
 
@@ -15,6 +16,8 @@ class Viewer:
     
     Methods
     -------
+    update(cell_name, measured_data_time, cycle_metrics_time, cycle_metrics_AhT)
+        Update the viewer with the data
     plot_process_cell(cell, cell_data: CellDataDTO, downsample = 100)
         Plot the processed data of a cell
     plot_cycle_metrics_time(cell, cell_data: CellDataDTO, downsample = 100)
@@ -25,6 +28,11 @@ class Viewer:
     def __init__(self):
         self.plt = plt 
         self.logger = setup_logger()
+    
+    def update(self, cell_name, measured_data_time, cycle_metrics_time, cycle_metrics_AhT):
+        self.plot_process_cell(cell_name, measured_data_time)
+        self.plot_cycle_metrics_time(cell_name, cycle_metrics_time)
+        self.plot_cycle_metrics_AhT(cell_name, cycle_metrics_AhT)
 
     def plot_process_cell(self, cell, cell_data: CellDataDTO, downsample = 100):
         timeseries = cell_data.timeseries
@@ -146,6 +154,7 @@ class Viewer:
         capacity_check_in_cycle_idx = index_metrics.capacity_check_in_cycle_idx
         charge_idx = index_metrics.charge_idx
 
+        self.logger.info("Plotting cycle metrics: " + cell)
         # setup plot 
         fig, axes = self.plt.subplots(3,4,figsize=(18,6), sharex=True)
 
@@ -274,6 +283,8 @@ class Viewer:
         cycle_idx = index_metrics.cycle_idx
         capacity_check_idx = index_metrics.capacity_check_idx
         capacity_check_in_cycle_idx = index_metrics.capacity_check_in_cycle_idx
+
+        self.logger.info("Plotting cycle metrics AhT: " + cell)
 
         # setup plot 
         fig, axes = self.plt.subplots(3,4,figsize=(12,6), sharex=True)
