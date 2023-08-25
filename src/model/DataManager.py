@@ -320,7 +320,7 @@ class DataManager(Subject, metaclass=SingletonABCMeta):
 
         self.logger.info('Consistency check completed.')
 
-    def process_cell(self, cell_name, numFiles = 1000, update_local_db=False):
+    def process_cell(self, cell_name, start_time=None, end_time=None, numFiles = 1000):
         """
         Process the data for a cell and save the processed data to local disk
 
@@ -330,8 +330,10 @@ class DataManager(Subject, metaclass=SingletonABCMeta):
             The name of the cell to be processed
         numFiles: int
             The number of files to be processed
-        update_local_db: bool
-            Whether to update the local database before processing the cell
+        start_time: str, optional
+            The start time of the test records to be processed, in the format of 'YYYY-MM-DD_HH-MM-SS'
+        end_time: str, optional
+            The end time of the test records to be processed, in the format of 'YYYY-MM-DD_HH-MM-SS'
         
         Returns
         -------
@@ -342,14 +344,6 @@ class DataManager(Subject, metaclass=SingletonABCMeta):
         cell_data_vdf: dataframe
             The dataframe of cell data vdf for the cell
         """
-        #TODO: Add a parameter to decide which data to present
-        if update_local_db:
-            try:
-                self.logger.info(f'Trying to update data for device {cell_name}')
-                device_id = self.dirStructure.load_dev_id_by_dev_name(cell_name)
-                self._updatedb(device_id=device_id)
-            except:
-                self.logger.error(f'Failed to update data for device {cell_name}')
         cell_path = self.dirStructure.load_dev_folder(cell_name)
         # Filepaths for cycle metrics, cell data, cell data vdf and rpt
         filepath_ccm = os.path.join(cell_path, 'CCM.pickle')
@@ -366,9 +360,13 @@ class DataManager(Subject, metaclass=SingletonABCMeta):
         trs_biologic = self.dataFilter.filter_trs(tr_name_substring=cell_name, tags=['biologic'])
         trs_vdf = self.dataFilter.filter_trs(tr_name_substring=cell_name, tags=['vdf'])        
         # Sort trs
-        trs_neware = self.dataProcessor.sort_tests(trs_neware)
-        trs_arbin = self.dataProcessor.sort_tests(trs_arbin)
-        trs_biologic = self.dataProcessor.sort_tests(trs_biologic)
+        if start_time:
+            start_time = self.dataConverter._str_to_datetime(start_time)
+        if end_time:
+            end_time = self.dataConverter._str_to_datetime(end_time)   
+        trs_neware = self.dataProcessor.sort_tests(trs_neware, start_time, end_time)
+        trs_arbin = self.dataProcessor.sort_tests(trs_arbin, start_time, end_time)
+        trs_biologic = self.dataProcessor.sort_tests(trs_biologic, start_time, end_time)
         trs_cycler = self.dataProcessor.sort_tests(trs_neware + trs_arbin + trs_biologic)
         trs_vdf = self.dataProcessor.sort_tests(trs_vdf)
         # Process data
@@ -384,7 +382,7 @@ class DataManager(Subject, metaclass=SingletonABCMeta):
         self.notify(cell_name, cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt)
         return cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt
    
-
+        
     # Below are the methods for testing
     def test_createdb(self):
         """

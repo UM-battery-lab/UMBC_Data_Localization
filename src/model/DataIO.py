@@ -130,6 +130,11 @@ class DataIO:
         if tr is None or df is None:
             self.logger.error(f'Test record or dataframe is None')
             return None
+        #TODO: If VDF and Other data start at same time, this one file could overwrite to another. 
+        #If this really happen, we should change the df.pickle to vdf.pickle and arbin.pickle something like this.
+        if os.path.exists(tr_path) and os.path.exists(df_path):
+            self.logger.error(f'File already exists: {tr_path} and {df_path}, skipping...')
+            return None
         try:
             # Guarantee the transactional integrity
             self._save_to_pickle(tr, tr_path)
@@ -172,6 +177,7 @@ class DataIO:
             replace_time_keys = set(TIME_COLUMNS) & set(df.columns)
             if replace_time_keys:
                 replace_time_key = list(replace_time_keys)[0]
+                #TODO: Fix this warning. This is because the specified time column is not in the trace keys for vdf or some other dataframes
                 self.logger.warning(f'Replacing with time column: {replace_time_key}')
                 trace_keys = [replace_time_key if key in error_time_keys else key for key in trace_keys]
             else:
