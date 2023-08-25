@@ -137,7 +137,7 @@ class DataProcessor:
         update = len(trs_new_data)>0 or len(trs_new_data_vdf)>0
         return cell_cycle_metrics, cell_data, cell_data_vdf, update
     
-    def sort_tests(self, trs):
+    def sort_tests(self, trs, start_time=None, end_time=None):
         """
         Sort the test records by start time from low to high
 
@@ -145,6 +145,10 @@ class DataProcessor:
         ----------
         trs: list of TestRecord objects
             The list of test records to be sorted
+        start_time: float, optional
+            The start time of the test records
+        end_time: float, optional
+            The end time of the test records
         
         Returns
         -------
@@ -152,7 +156,7 @@ class DataProcessor:
             The list of test records sorted by start time from low to high
         """
         #TODO: The start time is from low to high, Maybe we should sort it from high to low, Or when we get the limit of data, we should get from back to front
-        idx_sorted = np.argsort([test.start_time for test in trs])
+        idx_sorted = np.argsort([test.start_time for test in trs if (start_time is None or test.start_time >= start_time) and (end_time is None or test.start_time <= end_time)])
         trs_sorted = [trs[i] for i in idx_sorted]
         return trs_sorted
     

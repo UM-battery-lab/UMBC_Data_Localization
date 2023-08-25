@@ -24,11 +24,11 @@ class Presenter(Observer, Subject):
         Notify all observers about an event.
     update(cell_name, cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt)
         Get the data from the data manager and notify the viewer
-    get_measured_data_time(cell_cycle_metrics, cell_data, cell_data_vdf, start_time=None, end_time=None, plot_cycles = True)
+    get_measured_data_time(cell_cycle_metrics, cell_data, cell_data_vdf, plot_cycles = True)
         Get measured data for a cell
-    get_cycle_metrics_time(cell_cycle_metrics, cell_data, cell_data_vdf, start_time=None, end_time=None)
+    get_cycle_metrics_time(cell_cycle_metrics, cell_data, cell_data_vdf)
         Get cycle metrics for a cell
-    get_cycle_metrics_AhT(cell_cycle_metrics, cell_data, cell_data_vdf, start_time=None, end_time=None)
+    get_cycle_metrics_AhT(cell_cycle_metrics, cell_data, cell_data_vdf)
         Get cycle metrics for a cell
     """
     def __init__(self):
@@ -53,18 +53,6 @@ class Presenter(Observer, Subject):
         cycle_metrics_AhT = self.get_cycle_metrics_AhT(cell_cycle_metrics, cell_data, cell_data_vdf)
         self.notify(cell_name, measured_data_time, cycle_metrics_time, cycle_metrics_AhT)
     
-    def _mask_data(self, data, start_time=None, end_time=None):
-        if start_time:
-            start_timestamp = self.dateConverter._str_to_timestamp(start_time)
-            if not data.empty:
-                mask = (data['Time [s]'] >= start_timestamp)
-                data = data[mask]
-        if end_time:
-            end_timestamp = self.dateConverter._str_to_timestamp(end_time)
-            if not data.empty:
-                mask = (data['Time [s]'] <= end_timestamp)
-                data = data[mask]
-        return data
     
     def _extract_timeseries(self, data) -> TimeSeriesDTO:
         return TimeSeriesDTO(
@@ -117,16 +105,8 @@ class Presenter(Observer, Subject):
             capacity_check_in_cycle_idx = cell_cycle_metrics[cell_cycle_metrics.capacity_check_indicator].index,
             charge_idx = cell_data.charge_cycle_indicator[cell_data.charge_cycle_indicator].index
         )
-    #TODO: update local db parameter is a problem here. we need to decouple the data manager and the presenter
-    def _get_data(self, cell_cycle_metrics, cell_data, cell_data_vdf, start_time=None, end_time=None, update_local_db=True):    
-        # Filter data based on start and end time
-        cell_cycle_metrics = self._mask_data(cell_cycle_metrics, start_time, end_time)
-        cell_data = self._mask_data(cell_data, start_time, end_time)
-        cell_data_vdf = self._mask_data(cell_data_vdf, start_time, end_time)
-        self.logger.info(f'Get measured data from {start_time} to {end_time}')
-        return cell_cycle_metrics, cell_data, cell_data_vdf
 
-    def get_measured_data_time(self, cell_cycle_metrics, cell_data, cell_data_vdf, start_time=None, end_time=None, plot_cycles = True): 
+    def get_measured_data_time(self, cell_cycle_metrics, cell_data, cell_data_vdf, plot_cycles = True): 
         """
         Get measured data for a cell
 
@@ -138,10 +118,6 @@ class Presenter(Observer, Subject):
             The dataframe of cell data
         cell_data_vdf: pandas Dataframe
             The dataframe of cell data vdf
-        start_time: str, optional
-            The start time of the data to be found, in the format of 'YYYY-MM-DD_HH-MM-SS'
-        end_time: str, optional
-            The end time of the data to be found, in the format of 'YYYY-MM-DD_HH-MM-SS'
         plot_cycles: bool, optional
             Whether to plot the cycles
         
@@ -150,7 +126,6 @@ class Presenter(Observer, Subject):
         CellDataDTO
             The data transfer object of the cell data
         """
-        cell_cycle_metrics, cell_data, cell_data_vdf = self._get_data(cell_cycle_metrics, cell_data, cell_data_vdf, start_time, end_time)
         # setup dto
         timeseries = self._extract_timeseries(cell_data)
         expansion = self._extract_expansion(cell_data_vdf)
@@ -164,7 +139,7 @@ class Presenter(Observer, Subject):
         )
         return cell_data_dto
 
-    def get_cycle_metrics_time(self, cell_cycle_metrics, cell_data, cell_data_vdf, start_time=None, end_time=None):
+    def get_cycle_metrics_time(self, cell_cycle_metrics, cell_data, cell_data_vdf):
         """
         Get cycle metrics for a cell
 
@@ -176,17 +151,12 @@ class Presenter(Observer, Subject):
             The dataframe of cell data
         cell_data_vdf: pandas Dataframe
             The dataframe of cell data vdf
-        start_time: str, optional
-            The start time of the data to be found, in the format of 'YYYY-MM-DD_HH-MM-SS'
-        end_time: str, optional
-            The end time of the data to be found, in the format of 'YYYY-MM-DD_HH-MM-SS'
         
         Returns
         -------
         CellDataDTO
             The data transfer object of the cell data
         """
-        cell_cycle_metrics, cell_data, cell_data_vdf = self._get_data(cell_cycle_metrics, cell_data, cell_data_vdf, start_time, end_time)
         # setup dto
         timeseries = self._extract_timeseries(cell_data)
         expansion = self._extract_expansion(cell_data_vdf)
@@ -200,7 +170,7 @@ class Presenter(Observer, Subject):
         )
         return cell_data_dto
     
-    def get_cycle_metrics_AhT(self, cell_cycle_metrics, cell_data, cell_data_vdf, start_time=None, end_time=None):
+    def get_cycle_metrics_AhT(self, cell_cycle_metrics, cell_data, cell_data_vdf):
         """
         Get cycle metrics for a cell
 
@@ -212,17 +182,12 @@ class Presenter(Observer, Subject):
             The dataframe of cell data
         cell_data_vdf: pandas Dataframe
             The dataframe of cell data vdf
-        start_time: str, optional
-            The start time of the data to be found, in the format of 'YYYY-MM-DD_HH-MM-SS'
-        end_time: str, optional
-            The end time of the data to be found, in the format of 'YYYY-MM-DD_HH-MM-SS'
         
         Returns
         -------
         CellDataDTO
             The data transfer object of the cell data  
         """
-        cell_cycle_metrics, cell_data, cell_data_vdf = self._get_data(cell_cycle_metrics, cell_data, cell_data_vdf, start_time, end_time)
         # setup dto
         timeseries = self._extract_timeseries(cell_data)
         cycle_metrics = self._extract_cycle_metrics(cell_cycle_metrics, is_ccm=True)

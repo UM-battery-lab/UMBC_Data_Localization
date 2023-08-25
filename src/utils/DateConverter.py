@@ -22,3 +22,7 @@ class DateConverter(metaclass=SingletonMeta):
             dt = dt.astimezone(self.TZ_INFO)  # Convert to the desired timezone
         timestamp = dt.timestamp() * 1000
         return timestamp
+
+    def _str_to_datetime(self, date_str):
+        timestamp = self._str_to_timestamp(date_str)
+        return self._timestamp_to_datetime(timestamp)

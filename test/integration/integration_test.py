@@ -16,6 +16,6 @@ def present_cell():
     presenter.attach(viewer)
 
     # test process_cell
-    cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt = dataManager.process_cell(cell_name, update_local_db=False)
+    cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt = dataManager.process_cell(cell_name, start_time='2023-07-01_00-00-00', end_time='2023-07-28_23-59-59')
 if __name__ == '__main__':
     present_cell()
