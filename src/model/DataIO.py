@@ -131,7 +131,7 @@ class DataIO:
             self.logger.error(f'Test record or dataframe is None')
             return None
         #TODO: If VDF and Other data start at same time, this one file could overwrite to another. 
-        #If this really happen, we should change the df.pickle to vdf.pickle and arbin.pickle something like this.
+        #If this really happen, we should change the df.pkl.gz to vdf.pkl.gz and arbin.pkl.gz something like this.
         if os.path.exists(tr_path) and os.path.exists(df_path):
             self.logger.error(f'File already exists: {tr_path} and {df_path}, skipping...')
             return None
@@ -304,7 +304,7 @@ class DataIO:
             file_set = set(files)
             if "directory_structure.json" in file_set:
                 continue
-            elif "tr.pickle" in file_set and "df.pickle" in file_set:
+            elif "tr.pkl.gz" in file_set and "df.pkl.gz" in file_set:
                 valid_folders.append(root)
             else:
                 self.logger.warning(f"Folder {root} is not complete. It contains the following files: {files}")

@@ -346,10 +346,10 @@ class DataManager(Subject, metaclass=SingletonABCMeta):
         """
         cell_path = self.dirStructure.load_dev_folder(cell_name)
         # Filepaths for cycle metrics, cell data, cell data vdf and rpt
-        filepath_ccm = os.path.join(cell_path, 'CCM.pickle')
-        filepath_cell_data = os.path.join(cell_path, 'CD.pickle')
-        filepath_cell_data_vdf = os.path.join(cell_path, 'CDvdf.pickle')
-        filepath_rpt = os.path.join(cell_path, 'RPT.pickle')
+        filepath_ccm = os.path.join(cell_path, 'CCM.pkl.gz')
+        filepath_cell_data = os.path.join(cell_path, 'CD.pkl.gz')
+        filepath_cell_data_vdf = os.path.join(cell_path, 'CDvdf.pkl.gz')
+        filepath_rpt = os.path.join(cell_path, 'RPT.pkl.gz')
         # Load dataframes for cycle metrics, cell data, cell data vdf
         cell_cycle_metrics = self.dataIO.load_df(df_path=filepath_ccm)
         cell_data = self.dataIO.load_df(df_path=filepath_cell_data)
