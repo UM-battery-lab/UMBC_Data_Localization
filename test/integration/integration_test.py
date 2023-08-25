@@ -8,14 +8,14 @@ from src.viewer.Viewer import Viewer
 
 # Integration test
 def present_cell():
-    dataManager = DataManager()
+    dataManager = DataManager(use_redis=True)
     presenter = Presenter()
     viewer = Viewer()
-    cell_name = "GMJuly2022_CELL019"
+    cell_name = "UMBL2022FEB_CELL152051"
+    dataManager.attach(presenter)
+    presenter.attach(viewer)
 
     # test process_cell
-    cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt = dataManager.process_cell(cell_name, update_local_db=True)
-    cell_data = presenter.get_measured_data_time(cell_cycle_metrics, cell_data, cell_data_vdf, start_time='2023-05-22_00-00-00', end_time='2023-07-22_23-59-59')
-    viewer.plot_process_cell(cell_name, cell_data)
+    cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt = dataManager.process_cell(cell_name, update_local_db=False)
 if __name__ == '__main__':
     present_cell()

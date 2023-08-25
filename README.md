@@ -88,6 +88,17 @@ Add your voltaiq studio token in the first line of the .env file
 
 ## Usage
 
+### Sample Useage:
+```python
+    dataManager = DataManager(use_redis=True)
+    presenter = Presenter()
+    viewer = Viewer()
+    cell_name = "UMBL2022FEB_CELL152051"
+    dataManager.attach(presenter)
+    presenter.attach(viewer)
+    cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt = dataManager.process_cell(cell_name)
+```
+
 ### Update local database
 Use the file src/updatedb.py, in this line, you can specify the device id and start time of the test record you want to update. Or you can leave the parameter empty, it will update all the database.
 ```
@@ -215,21 +226,6 @@ To create an instance of the Presenter, you must provide a `DataManager` object:
 
 ```python
 presenter = Presenter()
-```
-
-#### get_measured_data_time
-```python
-data = presenter.get_measured_data_time(cell_cycle_metrics, cell_data, cell_data_vdf, start_time="YYYY-MM-DD_HH-MM-SS", end_time="YYYY-MM-DD_HH-MM-SS", plot_cycles=True)
-```
-
-#### get_cycle_metrics_times
-```python
-metrics = presenter.get_cycle_metrics_times(cell_cycle_metrics, cell_data, cell_data_vdf, start_time="YYYY-MM-DD_HH-MM-SS", end_time="YYYY-MM-DD_HH-MM-SS")
-```
-
-#### get_cycle_metrics_AhT
-```python
-metrics = presenter.get_cycle_metrics_AhT(cell_cycle_metrics, cell_data, cell_data_vdf, start_time="YYYY-MM-DD_HH-MM-SS", end_time="YYYY-MM-DD_HH-MM-SS")
 ```
 
 ### Viewer
