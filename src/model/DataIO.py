@@ -44,7 +44,7 @@ class DataIO:
     load_dfs(test_folders)
         Load the dataframes based on the specified test folders
     """
-    def __init__(self, dirStructure: DirStructure, dataDeleter: DataDeleter, use_redis=True):
+    def __init__(self, dirStructure: DirStructure, dataDeleter: DataDeleter, use_redis=False):
         self.rootPath = ROOT_PATH
         self.dirStructure = dirStructure
         self.dataDeleter = dataDeleter

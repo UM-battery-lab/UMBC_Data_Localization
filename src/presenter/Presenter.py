@@ -1,9 +1,11 @@
 from src.dto.DataTransferObject import TimeSeriesDTO, ExpansionDTO, CycleMetricsDTO, IndexMetricsDTO, CellDataDTO
 from src.utils.Logger import setup_logger
 from src.utils.DateConverter import DateConverter
-from src.utils.ObserverPattern import Observer, Subject
+from src.utils.ObserverPattern import Subject, Observer
 
-class Presenter(Observer, Subject):
+@Subject
+@Observer
+class Presenter():
     """
     Presenter class to present data to the frontend
 
@@ -16,12 +18,6 @@ class Presenter(Observer, Subject):
 
     Methods
     -------
-    attach(observer: Observer)
-        Attach an observer to the Presenter.
-    detach(observer: Observer)
-        Detach an observer from the Presenter.
-    notify(*args, **kwargs)
-        Notify all observers about an event.
     update(cell_name, cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt)
         Get the data from the data manager and notify the viewer
     get_measured_data_time(cell_cycle_metrics, cell_data, cell_data_vdf, plot_cycles = True)
@@ -34,29 +30,24 @@ class Presenter(Observer, Subject):
     def __init__(self):
         self.dateConverter = DateConverter()
         self.logger = setup_logger()
-        self._observers = []
-
-    def attach(self, observer: Observer):
-        self._observers.append(observer)
-
-    def detach(self, observer: Observer):
-        self._observers.remove(observer)
-
-    def notify(self, *args, **kwargs):
-        for observer in self._observers:
-            observer.update(*args, **kwargs)
 
     def update(self, cell_name, cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt):
-        #TODO: Get better way to process data to avoid excuting 'Time [s]'.apply(self.dateConverter._timestamp_to_datetime) multiple times
+        cell_cycle_metrics = self._timestamp_to_datetime(cell_cycle_metrics)
+        cell_data = self._timestamp_to_datetime(cell_data)
+        cell_data_vdf = self._timestamp_to_datetime(cell_data_vdf)
         measured_data_time = self.get_measured_data_time(cell_cycle_metrics, cell_data, cell_data_vdf)
         cycle_metrics_time = self.get_cycle_metrics_time(cell_cycle_metrics, cell_data, cell_data_vdf)
         cycle_metrics_AhT = self.get_cycle_metrics_AhT(cell_cycle_metrics, cell_data, cell_data_vdf)
         self.notify(cell_name, measured_data_time, cycle_metrics_time, cycle_metrics_AhT)
     
+    def _timestamp_to_datetime(self, data):
+        data['Time [s]'] = data['Time [s]'].apply(self.dateConverter._timestamp_to_datetime)
+        return data
+
     
     def _extract_timeseries(self, data) -> TimeSeriesDTO:
         return TimeSeriesDTO(
-            t=data['Time [s]'].apply(self.dateConverter._timestamp_to_datetime),
+            t=data['Time [s]'],
             I=data['Current [A]'],
             V=data['Voltage [V]'],
             T=data['Temperature [degC]'],
@@ -65,7 +56,7 @@ class Presenter(Observer, Subject):
     
     def _extract_expansion(self, data) -> ExpansionDTO:
         return ExpansionDTO(
-            t_vdf=data['Time [s]'].apply(self.dateConverter._timestamp_to_datetime),
+            t_vdf=data['Time [s]'],
             exp_vdf=data['Expansion [-]'],
             T_vdf=data['Temperature [degC]']
         )
@@ -73,7 +64,7 @@ class Presenter(Observer, Subject):
     def _extract_cycle_metrics(self, data, is_ccm=False) -> CycleMetricsDTO:
         if is_ccm:
             return CycleMetricsDTO(
-                t_cycle=data['Time [s]'].apply(self.dateConverter._timestamp_to_datetime),
+                t_cycle=data['Time [s]'],
                 Q_c=data['Charge capacity [A.h]'],
                 Q_d=data['Discharge capacity [A.h]'],
                 AhT_cycle=data['Ah throughput [A.h]'],
@@ -86,7 +77,7 @@ class Presenter(Observer, Subject):
                 exp_rev = data['Reversible cycle expansion [-]'],
             )     
         return CycleMetricsDTO(
-            t_cycle=data['Time [s]'].apply(self.dateConverter._timestamp_to_datetime),
+            t_cycle=data['Time [s]'],
             Q_c=data['Charge capacity [A.h]'],
             Q_d=data['Discharge capacity [A.h]']
         )

@@ -1,39 +1,30 @@
-from abc import ABC, abstractmethod
+# This file contains the implementation of the Observer Pattern
 
-class Observer(ABC):
+def Subject(cls):
     """
-    The Observer interface declares the update method, used by subjects.
+    The decorator to add the Subject functionality to a class
+    """
+    class Wrapped(cls):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self._observers = []
+        
+        def attach(self, observer):
+            self._observers.append(observer)
+        
+        def detach(self, observer):
+            self._observers.remove(observer)
+        
+        def notify(self, *args, **kwargs):
+            for observer in self._observers:
+                observer.update(*args, **kwargs)
+    return Wrapped
 
-    Methods
-    -------
-    update(*args, **kwargs)
-        Receive update from subject.
+def Observer(cls):
     """
-    @abstractmethod
-    def update(self, *args, **kwargs):
-        pass
-
-class Subject(ABC):
+    The decorator to add the Observer functionality to a class
     """
-    The Subject interface declares a set of methods for managing subscribers.
-
-    Methods
-    -------
-    attach(observer: Observer)
-        Attach an observer to the subject.
-    detach(observer: Observer)
-        Detach an observer from the subject.
-    notify(*args, **kwargs)
-        Notify all observers about an event.
-    """
-    @abstractmethod
-    def attach(self, observer: Observer):
-        pass
-    
-    @abstractmethod
-    def detach(self, observer: Observer):
-        pass
-    
-    @abstractmethod
-    def notify(self, *args, **kwargs):
-        pass
+    class Wrapped(cls):
+        def update(self, *args, **kwargs):
+            super().update(*args, **kwargs)
+    return Wrapped

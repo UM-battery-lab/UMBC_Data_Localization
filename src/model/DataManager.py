@@ -5,13 +5,14 @@ from src.model.DataDeleter import DataDeleter
 from src.model.DataFilter import DataFilter
 from src.model.DataProcessor import DataProcessor
 from src.utils.Logger import setup_logger
-from src.utils.SinglentonMeta import SingletonABCMeta
+from src.utils.SinglentonMeta import SingletonMeta
 from src.utils.DateConverter import DateConverter
-from src.utils.ObserverPattern import Subject, Observer
+from src.utils.ObserverPattern import Subject
 import os
 import gc
 
-class DataManager(Subject, metaclass=SingletonABCMeta):
+@Subject
+class DataManager(metaclass=SingletonMeta):
     """
     The class to manage all the local data
 
@@ -34,12 +35,6 @@ class DataManager(Subject, metaclass=SingletonABCMeta):
     
     Methods
     -------
-    attach(observer: Observer)
-        Attach an observer to the DataManager.
-    detach(observer: Observer)
-        Detach an observer from the DataManager.
-    notify(*args, **kwargs)
-        Notify all observers about an event.
     _createdb()
         Create the local database with all the test records and devices
     _updatedb()
@@ -69,19 +64,8 @@ class DataManager(Subject, metaclass=SingletonABCMeta):
         self.dataProcessor = DataProcessor(self.dataFilter, self.dirStructure)
         self.dataConverter = DateConverter()
         self.logger = setup_logger()
-        self._observers = []
         DataManager._is_initialized = True
 
-    def attach(self, observer: Observer):
-        self._observers.append(observer)
-
-    def detach(self, observer: Observer):
-        self._observers.remove(observer)
-
-    def notify(self, *args, **kwargs):
-        for observer in self._observers:
-            observer.update(*args, **kwargs)
-    
     def _createdb(self):
         """
         Create the local database with all the test records and devices
@@ -345,6 +329,9 @@ class DataManager(Subject, metaclass=SingletonABCMeta):
             The dataframe of cell data vdf for the cell
         """
         cell_path = self.dirStructure.load_dev_folder(cell_name)
+        if cell_path is None:
+            self.logger.warning(f"No test record for the {cell_name} in our network drive. Please check if the cell name is correct.")
+            return None, None, None, None
         # Filepaths for cycle metrics, cell data, cell data vdf and rpt
         filepath_ccm = os.path.join(cell_path, 'CCM.pkl.gz')
         filepath_cell_data = os.path.join(cell_path, 'CD.pkl.gz')

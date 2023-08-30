@@ -35,8 +35,6 @@ class DirStructure:
         Load the dictionary of all the uuids to test record and dataframe paths from the directory structure
     load_dev_folder(dev_name)
         Load the device folder path from the directory structure by the device name
-    load_dev_id_by_dev_name(dev_name)
-        Load the device id by the device name from the directory structure by the device name
     get_tr_path(test_folder)
         Get the test record path from the directory structure by the test folder path
     get_df_path(test_folder)
@@ -114,19 +112,14 @@ class DirStructure:
         for record in self.structure:
             if record['dev_name'] == dev_name:
                 return self._get_device_path(record['test_folder'])
-        return None
-    
-    def load_dev_id_by_dev_name(self, dev_name):
-        for record in self.structure:
-            if record['dev_name'] == dev_name:
-                return record['device_id']
+        self.logger.warning(f"No related test record for {dev_name}")
         return None
     
     def get_tr_path(self, test_folder):
-        return os.path.join(test_folder, 'tr.pickle')
+        return os.path.join(test_folder, 'tr.pkl.gz')
     
     def get_df_path(self, test_folder):
-        return os.path.join(test_folder, 'df.pickle')
+        return os.path.join(test_folder, 'df.pkl.gz')
         
     def _get_device_path(self, test_folder):
         return os.path.dirname(test_folder)
