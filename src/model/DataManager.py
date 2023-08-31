@@ -290,7 +290,7 @@ class DataManager(metaclass=SingletonMeta):
                     continue
                 dev_name = device_id_to_name.get(tr.device_id)
                 if dev_name:
-                    self.dirStructure.append_record(tr, dev_name)
+                    self.dirStructure.append_record(tr, dev_name, test_folder)
                     self.logger.info(f'Appended record for folder {test_folder}')
 
         # Step 3: Check for records in the directory structure that don't have corresponding folders on disk.

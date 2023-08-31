@@ -1,7 +1,7 @@
 import os
 import json
 from src.config.time_config import DATE_FORMAT
-from src.config.path_config import JSON_FILE_PATH, ROOT_PATH
+from src.config.path_config import JSON_FILE_PATH
 from src.utils.Logger import setup_logger
 
 class DirStructure:
@@ -44,7 +44,6 @@ class DirStructure:
     """
     def __init__(self):
         self.filepath = JSON_FILE_PATH
-        self.rootpath = ROOT_PATH
         self.logger = setup_logger()
         if not os.path.exists(self.filepath):
             self.structure = []
@@ -68,7 +67,7 @@ class DirStructure:
         except Exception as e:
             self.logger.error(f'Error while saving directory structure: {e}')
 
-    def append_record(self, tr, dev_name):
+    def append_record(self, tr, dev_name, test_folder):
         record = {
             'uuid': tr.uuid,
             'device_id': tr.device_id,
@@ -76,6 +75,7 @@ class DirStructure:
             'dev_name': dev_name,
             'start_time': tr.start_time.strftime(DATE_FORMAT),
             'last_dp_timestamp': tr.last_dp_timestamp,
+            'test_folder': test_folder,
             'tags': tr.tags
         }
         self.structure.append(record)   # First, append the new record to the structure
@@ -90,9 +90,6 @@ class DirStructure:
         if self.structure:
             self.structure.pop()
 
-    def get_test_folder(self, record):
-        return os.path.join(self.rootpath, record['dev_name'], record['start_time'])
-
     def load_records(self):
         return self.structure
 
@@ -100,10 +97,7 @@ class DirStructure:
         return {record['uuid'] for record in self.structure}
     
     def load_test_folders(self):
-        test_folders = []
-        for record in self.structure:
-            test_folders.append(self.get_test_folder(record))
-        return test_folders
+        return {record['test_folder'] for record in self.structure}
 
     def load_dev_name(self):
         return {record['dev_name'] for record in self.structure}
@@ -112,13 +106,12 @@ class DirStructure:
         return {record['uuid']: record['last_dp_timestamp'] for record in self.structure}
 
     def load_uuid_to_tr_path_and_df_path(self):
-        return {record['uuid']: (self.get_tr_path(self.get_test_folder(record)), 
-                                 self.get_df_path(self.get_test_folder(record))) for record in self.structure}
+        return {record['uuid']: (self.get_tr_path(record['test_folder']), self.get_df_path(record['test_folder'])) for record in self.structure}
     
     def load_dev_folder(self, dev_name):
         for record in self.structure:
             if record['dev_name'] == dev_name:
-                return os.path.join(self.rootpath, record['dev_name'])
+                return self._get_device_path(record['test_folder'])
         self.logger.warning(f"No related test record for {dev_name}")
         return None
     
@@ -127,11 +120,14 @@ class DirStructure:
     
     def get_df_path(self, test_folder):
         return os.path.join(test_folder, 'df.pkl.gz')
+        
+    def _get_device_path(self, test_folder):
+        return os.path.dirname(test_folder)
     
     def delete_record(self, uuid=None, test_folder=None):
         # Filter out records based on provided uuid or test_folder
         if uuid:
             self.structure = [record for record in self.structure if record['uuid'] != uuid]
         elif test_folder:
-            self.structure = [record for record in self.structure if self.get_test_folder(record) != test_folder]
+            self.structure = [record for record in self.structure if record['test_folder'] != test_folder]
         self._save()
