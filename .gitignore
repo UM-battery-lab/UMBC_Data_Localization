@@ -17,3 +17,6 @@ venv/
 *.rdb
 
 __pycache__/
+voltaiq_studio/__pycache__/
+voltaiq_studio/flight/time_series/__pycache__/
+*.pyc
