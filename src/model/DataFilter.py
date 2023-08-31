@@ -92,7 +92,7 @@ class DataFilter:
             The list of test records that match the specified device id or name, and start time
         """
         matching_records = self._filter_records(device_id=device_id, tr_name_substring=tr_name_substring, start_time=start_time, tags=tags)
-        matching_test_folders = [record['test_folder'] for record in matching_records]
+        matching_test_folders = [self.dirStructure.get_test_folder(record) for record in matching_records]
         return self.dataIO.load_trs(matching_test_folders)
 
     def filter_dfs(self, device_id=None, tr_name_substring=None, start_time=None, tags=None):
@@ -116,7 +116,7 @@ class DataFilter:
             The list of dataframes that match the specified device id or name, and start time
         """
         matching_records = self._filter_records(device_id=device_id, tr_name_substring=tr_name_substring, start_time=start_time, tags=tags)
-        matching_test_folders = [record['test_folder'] for record in matching_records]
+        matching_test_folders = [self.dirStructure.get_test_folder(record) for record in matching_records]
         return self.dataIO.load_dfs(matching_test_folders)
 
     def filter_trs_and_dfs(self, device_id=None, tr_name_substring=None, start_time=None, tags=None):
@@ -142,7 +142,7 @@ class DataFilter:
             The list of dataframes that match the specified device id or name, start time and tags
         """
         matching_records = self._filter_records(device_id=device_id, tr_name_substring=tr_name_substring, start_time=start_time, tags=tags)
-        matching_test_folders = [record['test_folder'] for record in matching_records]
+        matching_test_folders = [self.dirStructure.get_test_folder(record) for record in matching_records]
         return self.dataIO.load_trs(matching_test_folders), self.dataIO.load_dfs(matching_test_folders)
 
     def filter_df_by_tr(self, tr, trace_keys=None):
@@ -166,7 +166,7 @@ class DataFilter:
         matching_test_folder = ""
         for record in dir_structure:
             if record['uuid'] == tr.uuid:
-                matching_test_folder = record['test_folder']
+                matching_test_folder = self.dirStructure.get_test_folder(record)
                 break
         if matching_test_folder == "":
             self.logger.warning(f"No dataframe found that matches test record {tr.uuid}, need to update the local data")

@@ -140,7 +140,7 @@ class DataIO:
             self._save_to_pickle(tr, tr_path)
             self._save_to_pickle(df, df_path)
             # Append the directory structure information to the list
-            self.dirStructure.append_record(tr, dev_name, test_folder)
+            self.dirStructure.append_record(tr, dev_name)
         except Exception as e:
             self.logger.error(f"Transaction failed: {e}")
             # Remove any possibly corrupted files
