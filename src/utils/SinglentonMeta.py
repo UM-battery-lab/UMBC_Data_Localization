@@ -1,5 +1,3 @@
-from abc import ABCMeta
-
 class SingletonMeta(type):
     """
     A metaclass that ensures the singleton behavior for its instances.
@@ -49,9 +47,3 @@ class SingletonMeta(type):
             cls._instances[cls] = instance
         return cls._instances[cls]
 
-
-class SingletonABCMeta(SingletonMeta, ABCMeta):
-    """
-    This metaclass allows the use of both Singleton and ABCMeta metaclasses.
-    """
-    pass

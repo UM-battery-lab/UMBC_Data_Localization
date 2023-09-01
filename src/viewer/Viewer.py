@@ -3,7 +3,8 @@ from src.utils.Logger import setup_logger
 from src.dto.DataTransferObject import CellDataDTO
 from src.utils.ObserverPattern import Observer
 
-class Viewer(Observer):
+@Observer
+class Viewer():
     """
     The class to view data from the local disk
 

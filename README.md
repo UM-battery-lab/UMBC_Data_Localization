@@ -112,25 +112,25 @@ voltaiq_data/
 |-- directory_structure.json
 |-- cell_1/
 |   |-- test_start_time_1/
-|       |-- tr.pickle
-|       |-- df.pickle
+|       |-- tr.pkl.gz
+|       |-- df.pkl.gz
 |   |-- test_start_time_2/
-|       |-- tr.pickle
-|       |-- df.pickle
+|       |-- tr.pkl.gz
+|       |-- df.pkl.gz
 |   |   |-- ...
 |-- cell_2/
 |   |-- test_start_time_1/
-|       |-- tr.pickle
-|       |-- df.pickle
+|       |-- tr.pkl.gz
+|       |-- df.pkl.gz
 |   |-- test_start_time_2/
-|       |-- tr.pickle
-|       |-- df.pickle
+|       |-- tr.pkl.gz
+|       |-- df.pkl.gz
 |   |   |-- ...
 |   |-- ...
 |   |-- cell_N/
 |       |-- test_start_time_1/
-|       |   |-- tr.pickle
-|       |   |-- df.pickle
+|       |   |-- tr.pkl.gz
+|       |   |-- df.pkl.gz
 |       |-- ...
 ```
 #### directory_structure.json 

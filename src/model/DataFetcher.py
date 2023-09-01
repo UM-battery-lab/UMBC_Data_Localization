@@ -1,4 +1,5 @@
 import pandas as pd
+import time
 # Enviroment Variables:
 from dotenv import load_dotenv
 load_dotenv('voltaiq_mac.env')
@@ -92,9 +93,11 @@ class DataFetcher:
             reader.add_trace_keys(*trace_keys)
 
             reader.add_info_keys('i_cycle_num')
-            df = pd.DataFrame()
-            for batch in reader.read_pandas_batches(): # Generator to read pandas data frames in supported sizes
-                df = pd.concat([df,batch])
+            # df = pd.DataFrame()
+            # for batch in reader.read_pandas_batches(): # Generator to read pandas data frames in supported sizes
+            #     df = pd.concat([df,batch])
+            df = reader.read_pandas()
+            time.sleep(0.5)
         except Exception as e:
             self.logger.error(f"Failed to get DataFrame for TestRecord with ID: {tr.id}. Error: {e}")
             return None

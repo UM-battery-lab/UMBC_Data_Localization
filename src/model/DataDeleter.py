@@ -17,7 +17,7 @@ class DataDeleter:
     delete_file(file_path)
         Delete the file with the specified path
     delete_folders(folder_list)
-        Delete the specified folders if they are empty or contain only tr.pickle or df.pickle
+        Delete the specified folders if they are empty or contain only tr.pkl.gz or df.pkl.gz
     """
     def __init__(self):
         self.logger = setup_logger()
@@ -30,7 +30,7 @@ class DataDeleter:
 
     def delete_folders(self, folder_list):
         """
-        Delete the specified folders if they are empty or contain only tr.pickle or df.pickle.
+        Delete the specified folders if they are empty or contain only tr.pkl.gz or df.pkl.gz.
 
         Parameters
         ----------
@@ -45,7 +45,7 @@ class DataDeleter:
             try:
                 # Check folder contents
                 current_files = [file.name for file in os.scandir(folder)]
-                if set(current_files) == {"tr.pickle", "df.pickle"}:
+                if set(current_files) == {"tr.pkl.gz", "df.pkl.gz"}:
                     self.logger.warning(f"Folder {folder} contains valid files. Skipping deletion.")
                 else:
                     self.logger.info(f"Folder {folder} contains invalid files: {current_files}.")

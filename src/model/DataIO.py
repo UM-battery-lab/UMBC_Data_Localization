@@ -44,7 +44,7 @@ class DataIO:
     load_dfs(test_folders)
         Load the dataframes based on the specified test folders
     """
-    def __init__(self, dirStructure: DirStructure, dataDeleter: DataDeleter, use_redis=True):
+    def __init__(self, dirStructure: DirStructure, dataDeleter: DataDeleter, use_redis=False):
         self.rootPath = ROOT_PATH
         self.dirStructure = dirStructure
         self.dataDeleter = dataDeleter
@@ -131,7 +131,7 @@ class DataIO:
             self.logger.error(f'Test record or dataframe is None')
             return None
         #TODO: If VDF and Other data start at same time, this one file could overwrite to another. 
-        #If this really happen, we should change the df.pickle to vdf.pickle and arbin.pickle something like this.
+        #If this really happen, we should change the df.pkl.gz to vdf.pkl.gz and arbin.pkl.gz something like this.
         if os.path.exists(tr_path) and os.path.exists(df_path):
             self.logger.error(f'File already exists: {tr_path} and {df_path}, skipping...')
             return None
@@ -140,7 +140,7 @@ class DataIO:
             self._save_to_pickle(tr, tr_path)
             self._save_to_pickle(df, df_path)
             # Append the directory structure information to the list
-            self.dirStructure.append_record(tr, dev_name, test_folder)
+            self.dirStructure.append_record(tr, dev_name)
         except Exception as e:
             self.logger.error(f"Transaction failed: {e}")
             # Remove any possibly corrupted files
@@ -304,7 +304,7 @@ class DataIO:
             file_set = set(files)
             if "directory_structure.json" in file_set:
                 continue
-            elif "tr.pickle" in file_set and "df.pickle" in file_set:
+            elif "tr.pkl.gz" in file_set and "df.pkl.gz" in file_set:
                 valid_folders.append(root)
             else:
                 self.logger.warning(f"Folder {root} is not complete. It contains the following files: {files}")
