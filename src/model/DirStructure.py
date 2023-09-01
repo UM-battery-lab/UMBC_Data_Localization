@@ -46,6 +46,7 @@ class DirStructure:
         self.filepath = JSON_FILE_PATH
         self.rootpath = ROOT_PATH
         self.logger = setup_logger()
+        self.valid_keys = {'uuid', 'device_id', 'tr_name', 'dev_name', 'start_time', 'last_dp_timestamp', 'tags'}
         if not os.path.exists(self.filepath):
             self.structure = []
             self._save()
@@ -84,6 +85,21 @@ class DirStructure:
         except Exception as e:
             self.logger.error(f'Error while saving directory structure: {e}')
             self._rollback()  # Rollback the changes if save fails
+
+    def check_records(self):
+        # Specify the set of keys that should be present in each record
+        for record in self.structure:
+            # Get the keys that are in the record but not in the valid_keys set
+            invalid_keys = set(record.keys()) - self.valid_keys
+            # Remove the invalid keys from the record
+            for key in invalid_keys:
+                self.logger.warning(f"Invalid key {key} in record {record['uuid']}")
+                del record[key]
+            # Add the missing keys to the record
+            for key in self.valid_keys - set(record.keys()):
+                self.logger.warning(f"Missing key {key} in record {record['uuid']}")
+                record[key] = None
+        self._save()
 
     def _rollback(self):
         """Remove the last added record."""
