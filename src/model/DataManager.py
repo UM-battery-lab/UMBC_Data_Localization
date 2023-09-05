@@ -89,7 +89,7 @@ class DataManager(metaclass=SingletonMeta):
         # Create device folder dictionary
         device_id_to_name = self.dataIO.create_dev_dic(devs)
         # Save test data and update directory structure
-        self._update_batch_data(trs, device_id_to_name, len(trs))
+        self._update_batch_data(trs, device_id_to_name)
 
     def _updatedb(self, device_id=None, start_before=None, start_after=None):
         """
@@ -178,7 +178,7 @@ class DataManager(metaclass=SingletonMeta):
         devices_id_to_name = self.dataIO.create_dev_dic(devs)
         self._update_batch_data(new_trs, devices_id_to_name)
     
-    def _update_batch_data(self, new_trs, devices_id_to_name, batch_size=20):
+    def _update_batch_data(self, new_trs, devices_id_to_name, batch_size=5):
         for i in range(0, len(new_trs), batch_size):
             new_trs_batch = new_trs[i:i+batch_size]
             # Get dataframes 
@@ -267,6 +267,20 @@ class DataManager(metaclass=SingletonMeta):
         """
         self.logger.info('Starting consistency check between directory structure and local database...')
 
+        # Check if the device folders are in the corrosponding peoject folders
+        self.logger.info('Checking if device folders are in the corrosponding peoject folders...')
+        devs = self.dataFetcher.fetch_devs()
+        _ = self.dataIO.create_dev_dic(devs)
+        for dev in devs:
+            if '_' not in dev.name:
+                continue
+            if os.path.exists(os.path.join(self.dirStructure.rootpath, dev.name)):
+                self.logger.warning(f'Found device folder {dev.name} not in the corrosponding peoject folder')
+                src_folder = os.path.join(self.dirStructure.rootpath, dev.name)
+                project_name = dev.name.split('_')[0]
+                dst_folder = os.path.join(self.dirStructure.rootpath, project_name, dev.name)
+                self.dataIO.merge_folders(src_folder, dst_folder)
+            
         # Step 1: Check for empty or incomplete folders and delete them.
         empty_folders, valid_folders = self.dataIO._check_folders()
         if empty_folders:

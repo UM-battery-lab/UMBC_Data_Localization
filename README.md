@@ -110,23 +110,25 @@ The folder structure of voltaiq data looks like this, the tr file is the metadat
 ```
 voltaiq_data/
 |-- directory_structure.json
-|-- cell_1/
-|   |-- test_start_time_1/
-|       |-- tr.pkl.gz
-|       |-- df.pkl.gz
-|   |-- test_start_time_2/
-|       |-- tr.pkl.gz
-|       |-- df.pkl.gz
-|   |   |-- ...
-|-- cell_2/
-|   |-- test_start_time_1/
-|       |-- tr.pkl.gz
-|       |-- df.pkl.gz
-|   |-- test_start_time_2/
-|       |-- tr.pkl.gz
-|       |-- df.pkl.gz
+|-- project_1
+|   |-- cell_1/
+|       |-- test_start_time_1/
+|           |-- tr.pkl.gz
+|           |-- df.pkl.gz
+|       |-- test_start_time_2/
+|           |-- tr.pkl.gz
+|           |-- df.pkl.gz
+|       |   |-- ...
+|   |-- cell_2/
+|       |-- test_start_time_1/
+|           |-- tr.pkl.gz
+|           |-- df.pkl.gz
+|       |-- test_start_time_2/
+|           |-- tr.pkl.gz
+|           |-- df.pkl.gz
 |   |   |-- ...
 |   |-- ...
+|-- project_N
 |   |-- cell_N/
 |       |-- test_start_time_1/
 |       |   |-- tr.pkl.gz
@@ -143,7 +145,6 @@ This file contains the useful metadata for us to locate the real data, the struc
         "dev_name": "GMFEB23S_CELL009",
         "start_time": "2023-08-15_08-57-21",
         "last_dp_timestamp": 1692369188000,
-        "test_folder": ".../voltaiq_data/GMFEB23S_CELL009/2023-08-15_08-57-21",
         "tags": [
             "Test Type: Reference Performance Test",
             "Procedure Version: 6",

@@ -106,8 +106,17 @@ class DirStructure:
         if self.structure:
             self.structure.pop()
 
+    def _get_project_name(self, tr_name):
+        return tr_name.split('_')[0]    
+
     def get_test_folder(self, record):
-        return os.path.join(self.rootpath, record['dev_name'], record['start_time'])
+        return os.path.join(self.rootpath, self._get_project_name(record['tr_name']), record['dev_name'], record['start_time'])
+   
+    def get_project_folder(self, record):
+        return os.path.join(self.rootpath, self._get_project_name(record['tr_name']))
+    
+    def get_outdated_folder(self, record):
+        return os.path.join(self.rootpath, record['dev_name'])
 
     def load_records(self):
         return self.structure

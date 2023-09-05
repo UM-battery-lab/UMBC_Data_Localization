@@ -67,7 +67,8 @@ class DataIO:
         """
         devices_id_to_name = {}
         for dev in devs:
-            device_folder = os.path.join(self.rootPath, dev.name)   
+            proj_name = dev.name.split('_')[0]
+            device_folder = os.path.join(self.rootPath, proj_name, dev.name)
             self._create_directory(device_folder)
             devices_id_to_name[dev.id] = dev.name
         return devices_id_to_name
@@ -111,7 +112,8 @@ class DataIO:
         self._save_to_pickle(df, df_path)
     
     def _handle_single_record(self, tr, df, dev_name):
-        device_folder = os.path.join(self.rootPath, dev_name)
+        proj_name = dev_name.split('_')[0]
+        device_folder = os.path.join(self.rootPath, proj_name, dev_name)
         if device_folder is None:
             self.logger.error(f'Device folder not found for device id {tr.device_id}')
             return None
@@ -158,7 +160,7 @@ class DataIO:
     def _save_to_pickle(self, data, file_path):
         temp_path = file_path + ".tmp"
         try:
-            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            self._create_directory(os.path.dirname(file_path))
             with gzip.open(temp_path, 'wb') as f:
                 pickle.dump(data, f)
             shutil.move(temp_path, file_path)
@@ -285,10 +287,9 @@ class DataIO:
             return None
             
     def _check_folders(self):
-        self.logger.info("Checking folder structure")
         # Use path depth to decide which folders to consider.
-        # For example, 'voltaiq_data/Cell_Expansion_11_OCV_wExpansion/' has a depth of 2.
-        min_depth = len(self.rootPath.rstrip(os.sep).split(os.sep)) + 1
+        # For example, 'voltaiq_data/GMJuly2022/GMJuly2022_CELL102/' has a depth of 3.
+        min_depth = len(self.rootPath.rstrip(os.sep).split(os.sep)) + 2
         empty_folders = []
         valid_folders = []
 
@@ -310,3 +311,31 @@ class DataIO:
                 self.logger.warning(f"Folder {root} is not complete. It contains the following files: {files}")
                 empty_folders.append(root)
         return empty_folders, valid_folders
+
+    def merge_folders(self, src, dest):
+        """
+        Merge the source folder into the destination folder
+
+        Parameters
+        ----------
+        src: str
+            The path of the source folder
+        dest: str
+            The path of the destination folder
+        
+        Returns
+        -------
+        None
+        """
+        for item in os.listdir(src):
+            s = os.path.join(src, item)
+            d = os.path.join(dest, item)
+            # If item is a folder, recursively merge it
+            if os.path.isdir(s):
+                if not os.path.exists(d):
+                    os.makedirs(d)
+                self.merge_folders(s, d)
+            else:
+                shutil.copy2(s, d)
+        # Remove the source folder
+        shutil.rmtree(src)
