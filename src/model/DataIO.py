@@ -62,24 +62,28 @@ class DataIO:
 
         Returns
         -------
-        dict
-            The dictionary of device id to device name
-        dict
-            The dictionary of device name to project name
+        list of str
+            The list of device id
+        list of str
+            The list of device name
+        list of str
+            The list of project name
         """
-        devices_id_to_name = {}
-        device_name_to_project_name = {}
+        devices_id = []
+        devices_name = []
+        projects_name = []
         for dev in devs:
             project_name = self.extract_project_name(dev.tags)
             device_folder = os.path.join(self.rootPath, project_name if project_name else '', dev.name)
-            device_name_to_project_name[dev.name] = project_name
             if not project_name:
                 self.logger.warning(f"The device {dev.name} does not have a project name. Put it in the device folder directly.")
             self._create_directory(device_folder)
-            devices_id_to_name[dev.id] = dev.name
-        return devices_id_to_name, device_name_to_project_name
+            devices_id.append(dev.id)
+            devices_name.append(dev.name)
+            projects_name.append(project_name)
+        return devices_id, devices_name, projects_name
     
-    def save_test_data_update_dict(self, trs, dfs, devices_id_to_name, device_name_to_project_name):
+    def save_test_data_update_dict(self, trs, dfs, devices_id, devices_name, projects_name):
         """
         Save test data to local disk and update the directory structure information
         
@@ -99,8 +103,9 @@ class DataIO:
         None
         """
         for tr, df in zip(trs, dfs):
-            dev_name = devices_id_to_name[tr.device_id]
-            project_name = device_name_to_project_name[dev_name]
+            i = devices_id.index(tr.device_id)
+            dev_name = devices_name[i]
+            project_name = projects_name[i]
             self._handle_single_record(tr, df, dev_name, project_name)
     
     def save_df(self, df, df_path):
