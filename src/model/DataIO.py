@@ -32,7 +32,7 @@ class DataIO:
     Methods
     -------
     create_dev_dic(devs)
-        Create the path for each device and return a dictionary of device id and device folder path
+        Create the path for each device and return a dictionary of device id and device folder path and a dictionary of device name and project name
     save_test_data_update_dict(trs, dfs, devices_id_to_name)
         Save test data to local disk and update the directory structure information
     save_df(df, df_path)
@@ -64,16 +64,22 @@ class DataIO:
         -------
         dict
             The dictionary of device id to device name
+        dict
+            The dictionary of device name to project name
         """
         devices_id_to_name = {}
+        device_name_to_project_name = {}
         for dev in devs:
-            proj_name = dev.name.split('_')[0]
-            device_folder = os.path.join(self.rootPath, proj_name, dev.name)
+            project_name = self.extract_project_name(dev.tags)
+            device_folder = os.path.join(self.rootPath, project_name if project_name else '', dev.name)
+            device_name_to_project_name[dev.name] = project_name
+            if not project_name:
+                self.logger.warning(f"The device {dev.name} does not have a project name. Put it in the device folder directly.")
             self._create_directory(device_folder)
             devices_id_to_name[dev.id] = dev.name
-        return devices_id_to_name
+        return devices_id_to_name, device_name_to_project_name
     
-    def save_test_data_update_dict(self, trs, dfs, devices_id_to_name):
+    def save_test_data_update_dict(self, trs, dfs, devices_id_to_name, device_name_to_project_name):
         """
         Save test data to local disk and update the directory structure information
         
@@ -85,6 +91,8 @@ class DataIO:
             The list of dataframes to be saved
         devices_id_to_name: dict
             The dictionary of device id and device name
+        device_name_to_project_name: dict
+            The dictionary of device name and project name
 
         Returns
         -------
@@ -92,7 +100,8 @@ class DataIO:
         """
         for tr, df in zip(trs, dfs):
             dev_name = devices_id_to_name[tr.device_id]
-            self._handle_single_record(tr, df, dev_name)
+            project_name = device_name_to_project_name[dev_name]
+            self._handle_single_record(tr, df, dev_name, project_name)
     
     def save_df(self, df, df_path):
         """
@@ -110,10 +119,20 @@ class DataIO:
         None
         """
         self._save_to_pickle(df, df_path)
+
+    def extract_project_name(self, tags):
+        prefix = "Project Name:"
+        for tag in tags:
+            if tag.startswith(prefix):
+                return tag.split(prefix)[1].strip()
+        self.logger.error(f"Project name not found in tags: {tags}")
+        return None
     
-    def _handle_single_record(self, tr, df, dev_name):
-        proj_name = dev_name.split('_')[0]
-        device_folder = os.path.join(self.rootPath, proj_name, dev_name)
+    def _handle_single_record(self, tr, df, dev_name, project_name):
+        device_folder = os.path.join(self.rootPath, project_name if project_name else '', dev_name)
+        if not project_name:
+            self.logger.warning(f"The device {dev_name} does not have a project name. Put it in the device folder directly.")
+        # device_folder = os.path.join(self.rootPath, dev_name)
         if device_folder is None:
             self.logger.error(f'Device folder not found for device id {tr.device_id}')
             return None
@@ -142,7 +161,7 @@ class DataIO:
             self._save_to_pickle(tr, tr_path)
             self._save_to_pickle(df, df_path)
             # Append the directory structure information to the list
-            self.dirStructure.append_record(tr, dev_name)
+            self.dirStructure.append_record(tr, dev_name, project_name)
         except Exception as e:
             self.logger.error(f"Transaction failed: {e}")
             # Remove any possibly corrupted files

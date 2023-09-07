@@ -69,12 +69,13 @@ class DirStructure:
         except Exception as e:
             self.logger.error(f'Error while saving directory structure: {e}')
 
-    def append_record(self, tr, dev_name):
+    def append_record(self, tr, dev_name, project_name):
         record = {
             'uuid': tr.uuid,
             'device_id': tr.device_id,
             'tr_name': tr.name,  
             'dev_name': dev_name,
+            'project_name': project_name,
             'start_time': tr.start_time.strftime(DATE_FORMAT),
             'last_dp_timestamp': tr.last_dp_timestamp,
             'tags': tr.tags
@@ -100,20 +101,26 @@ class DirStructure:
                 self.logger.warning(f"Missing key {key} in record {record['uuid']}")
                 record[key] = None
         self._save()
+    
+    def check_project_name(self, dev_to_project):
+        self.logger.info(f"Checking project name for {len(dev_to_project)} devices")
+        for record in self.structure:
+            if record['dev_name'] in dev_to_project:
+                record['project_name'] = dev_to_project[record['dev_name']]
+        self._save()
 
     def _rollback(self):
         """Remove the last added record."""
         if self.structure:
             self.structure.pop()
 
-    def _get_project_name(self, tr_name):
-        return tr_name.split('_')[0]    
 
     def get_test_folder(self, record):
-        return os.path.join(self.rootpath, self._get_project_name(record['tr_name']), record['dev_name'], record['start_time'])
+        # return os.path.join(self.rootpath, record['dev_name'], record['start_time'])
+        return os.path.join(self.rootpath, record['project_name'], record['dev_name'], record['start_time'])
    
     def get_project_folder(self, record):
-        return os.path.join(self.rootpath, self._get_project_name(record['tr_name']))
+        return os.path.join(self.rootpath, record['project_name'])
     
     def get_outdated_folder(self, record):
         return os.path.join(self.rootpath, record['dev_name'])

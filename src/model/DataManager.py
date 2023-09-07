@@ -87,9 +87,9 @@ class DataManager(metaclass=SingletonMeta):
             return
         
         # Create device folder dictionary
-        device_id_to_name = self.dataIO.create_dev_dic(devs)
+        device_id_to_name, device_name_to_project_name = self.dataIO.create_dev_dic(devs)
         # Save test data and update directory structure
-        self._update_batch_data(trs, device_id_to_name)
+        self._update_batch_data(trs, device_id_to_name, device_name_to_project_name)
 
     def _updatedb(self, device_id=None, start_before=None, start_after=None):
         """
@@ -175,16 +175,16 @@ class DataManager(metaclass=SingletonMeta):
             self.logger.info('No new test data found after filtering out existing records')
             return
 
-        devices_id_to_name = self.dataIO.create_dev_dic(devs)
-        self._update_batch_data(new_trs, devices_id_to_name)
+        devices_id_to_name, device_name_to_project_name  = self.dataIO.create_dev_dic(devs)
+        self._update_batch_data(new_trs, devices_id_to_name, device_name_to_project_name)
     
-    def _update_batch_data(self, new_trs, devices_id_to_name, batch_size=5):
+    def _update_batch_data(self, new_trs, devices_id_to_name, device_name_to_project_name, batch_size=5):
         for i in range(0, len(new_trs), batch_size):
             new_trs_batch = new_trs[i:i+batch_size]
             # Get dataframes 
             dfs_batch = self.dataFetcher.get_dfs_from_trs(new_trs_batch)
             # Save new test data and update directory structure
-            self.dataIO.save_test_data_update_dict(new_trs_batch, dfs_batch, devices_id_to_name)
+            self.dataIO.save_test_data_update_dict(new_trs_batch, dfs_batch, devices_id_to_name, device_name_to_project_name)
             gc.collect()
 
     def filter_trs(self, device_id=None, tr_name_substring=None, start_time=None, tags=None):
@@ -267,21 +267,28 @@ class DataManager(metaclass=SingletonMeta):
         """
         self.logger.info('Starting consistency check between directory structure and local database...')
 
-        # Check if the device folders are in the corrosponding peoject folders
+        # Step 1: Check if the device folders are in the corrosponding peoject folders
         self.logger.info('Checking if device folders are in the corrosponding peoject folders...')
         devs = self.dataFetcher.fetch_devs()
-        _ = self.dataIO.create_dev_dic(devs)
+        device_id_to_name, device_name_to_project_name = self.dataIO.create_dev_dic(devs)
         for dev in devs:
             if '_' not in dev.name:
                 continue
             if os.path.exists(os.path.join(self.dirStructure.rootpath, dev.name)):
                 self.logger.warning(f'Found device folder {dev.name} not in the corrosponding peoject folder')
                 src_folder = os.path.join(self.dirStructure.rootpath, dev.name)
-                project_name = dev.name.split('_')[0]
+                project_name = device_name_to_project_name.get(dev.name)
+                if project_name is None:
+                    self.logger.error(f'No project name found for device {dev.name}')
+                    continue
+                self.logger.info(f'Moving device folder {dev.name} to project folder {project_name}')
                 dst_folder = os.path.join(self.dirStructure.rootpath, project_name, dev.name)
                 self.dataIO.merge_folders(src_folder, dst_folder)
+        
+        # Step 2: Check if the project name be recorded in the directory structure is the same as the project name in the tags
+        self.dirStructure.check_project_name(device_name_to_project_name)
             
-        # Step 1: Check for empty or incomplete folders and delete them.
+        # Step 3: Check for empty or incomplete folders and delete them.
         empty_folders, valid_folders = self.dataIO._check_folders()
         if empty_folders:
             self.logger.info(f'Empty or incomplete folders found: {empty_folders}')
@@ -291,12 +298,10 @@ class DataManager(metaclass=SingletonMeta):
         valid_folders_set = set(valid_folders)
         recorded_folders_set = set(self.dirStructure.load_test_folders())
 
-        # Step 2: Check for folders present on disk but not recorded in the directory structure.
+        # Step 4: Check for folders present on disk but not recorded in the directory structure.
         unrecorded_folders = valid_folders_set - recorded_folders_set
         if unrecorded_folders:
             self.logger.info(f'{len(unrecorded_folders)} folders not recorded in directory structure')
-            devs = self.dataFetcher.fetch_devs()
-            device_id_to_name = self.dataIO.create_dev_dic(devs)
             trs = self.dataIO.load_trs(list(unrecorded_folders))
             for tr, test_folder in zip(trs, unrecorded_folders):
                 if tr is None:
@@ -304,10 +309,10 @@ class DataManager(metaclass=SingletonMeta):
                     continue
                 dev_name = device_id_to_name.get(tr.device_id)
                 if dev_name:
-                    self.dirStructure.append_record(tr, dev_name)
+                    self.dirStructure.append_record(tr, dev_name, device_name_to_project_name.get(dev_name))
                     self.logger.info(f'Appended record for folder {test_folder}')
 
-        # Step 3: Check for records in the directory structure that don't have corresponding folders on disk.
+        # Step 5: Check for records in the directory structure that don't have corresponding folders on disk.
         orphaned_records = recorded_folders_set - valid_folders_set
         if orphaned_records:
             self.logger.info(f'Orphaned records found without corresponding folders on disk: {orphaned_records}')
@@ -408,9 +413,9 @@ class DataManager(metaclass=SingletonMeta):
             return
         
         # Create device folder dictionary
-        device_id_to_name = self.dataIO.create_dev_dic(devs)
+        device_id_to_name, device_name_to_project_name = self.dataIO.create_dev_dic(devs)
         # Save test data and update directory structure
-        self._update_batch_data(test_trs, device_id_to_name)
+        self._update_batch_data(test_trs, device_id_to_name, device_name_to_project_name)
 
     def test_updatedb(self):
         """

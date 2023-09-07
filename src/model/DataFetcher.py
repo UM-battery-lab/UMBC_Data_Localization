@@ -121,3 +121,36 @@ class DataFetcher:
         """
         dfs = [self.get_df_from_tr(tr, trace_key) for tr in trs]
         return dfs
+    
+    def get_dev_from_tr(self, tr):
+        """
+        Get device from a TestRecord object
+
+        Parameters
+        ----------
+        tr: TestRecord object
+            The test record to be processed
+        
+        Returns
+        -------
+        Device object
+            The device object
+        """
+        device_id = tr.device_id
+        return self.vs.get_device(device_id)
+
+    def get_devs_from_trs(self, trs):
+        """
+        Get data from a list of TestRecord objects
+
+        Parameters
+        ----------
+        trs: list of TestRecord objects
+            The list of test records to be processed
+        
+        Returns
+        -------
+        list of DataFrame
+        """
+        devs = [self.get_dev_from_tr(tr) for tr in trs]
+        return devs
