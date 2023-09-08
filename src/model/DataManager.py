@@ -354,7 +354,8 @@ class DataManager(metaclass=SingletonMeta):
         cell_data_vdf: dataframe
             The dataframe of cell data vdf for the cell
         """
-        cell_path = self.dirStructure.load_dev_folder(cell_name)
+        cell_path = self.dirStructure.load_processed_dev_folder(cell_name)
+        self.dataIO._create_directory(cell_path)
         if cell_path is None:
             self.logger.warning(f"No test record for the {cell_name} in our network drive. Please check if the cell name is correct.")
             return None, None, None, None

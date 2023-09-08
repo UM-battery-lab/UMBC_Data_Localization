@@ -108,6 +108,10 @@ class DirStructure:
         for record in self.structure:
             if record['device_id'] in devices_id:
                 record['project_name'] = projects_name[devices_id.index(record['device_id'])]
+            # TODO: Delete the actual data folder if the project name is not in the list
+            else:
+                self.logger.warning(f"Device {record['device_id']} is not in the list")
+                self.structure.remove(record)
         self._save(self.dirStructurePath, self.structure)
 
     def _rollback(self):
@@ -145,8 +149,15 @@ class DirStructure:
     def load_dev_folder(self, dev_name):
         for record in self.structure:
             if record['dev_name'] == dev_name:
-                return os.path.join(self.rootPath, record['dev_name'])
+                return os.path.join(self.rootPath, record['project_name'], record['dev_name'])
         self.logger.warning(f"No related test record for {dev_name}")
+        return None
+    
+    def load_processed_dev_folder(self, dev_name):
+        for record in self.structure:
+            if record['dev_name'] == dev_name:
+                return os.path.join(self.rootPath, 'Processed', record['project_name'], record['dev_name'])
+        self.logger.warning(f"No processed test record for {dev_name}")
         return None
     
     def get_tr_path(self, test_folder):
