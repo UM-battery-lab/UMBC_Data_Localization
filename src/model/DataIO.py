@@ -37,12 +37,16 @@ class DataIO:
         Save test data to local disk and update the directory structure information
     save_df(df, df_path)
         Save the dataframe to a pickle file
+    extract_project_name(tags)
+        Extract the project name from the tags
     load_df(test_folder=None, df_path=None, trace_keys=None)
         Load the dataframe from the pickle file with the specified trace keys
     load_trs(test_folders)
         Load the test records based on the specified test folders
     load_dfs(test_folders)
         Load the dataframes based on the specified test folders
+    merge_folders(src, dest)
+        Merge the source folder into the destination folder
     """
     def __init__(self, dirStructure: DirStructure, dataDeleter: DataDeleter, use_redis=False):
         self.rootPath = ROOT_PATH

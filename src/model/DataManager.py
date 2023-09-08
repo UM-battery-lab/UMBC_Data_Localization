@@ -37,7 +37,7 @@ class DataManager(metaclass=SingletonMeta):
     -------
     _createdb()
         Create the local database with all the test records and devices
-    _updatedb()
+    _updatedb(device_id=None, project_name=None, start_before=None, start_after=None)
         Update the local database with all the test records
     update_test_data(trs=None, devs=None, batch_size=60)
         Update the test data and directory structure with the specified test records and devices
@@ -369,6 +369,7 @@ class DataManager(metaclass=SingletonMeta):
         cell_data = self.dataIO.load_df(df_path=filepath_cell_data)
         cell_data_vdf = self.dataIO.load_df(df_path=filepath_cell_data_vdf)
         # Load trs for cycler data
+        #TODO： use device name, not tr_name_substring
         trs_neware = self.dataFilter.filter_trs(tr_name_substring=cell_name, tags=['neware_xls_4000'])
         trs_arbin = self.dataFilter.filter_trs(tr_name_substring=cell_name, tags=['arbin'])
         trs_biologic = self.dataFilter.filter_trs(tr_name_substring=cell_name, tags=['biologic'])
@@ -382,7 +383,7 @@ class DataManager(metaclass=SingletonMeta):
         trs_arbin = self.dataProcessor.sort_tests(trs_arbin, start_time, end_time)
         trs_biologic = self.dataProcessor.sort_tests(trs_biologic, start_time, end_time)
         trs_cycler = self.dataProcessor.sort_tests(trs_neware + trs_arbin + trs_biologic)
-        trs_vdf = self.dataProcessor.sort_tests(trs_vdf)
+        trs_vdf = self.dataProcessor.sort_tests(trs_vdf, start_time, end_time)
         # Process data
         cell_cycle_metrics, cell_data, cell_data_vdf, update = self.dataProcessor.process_cell(trs_cycler, trs_vdf, cell_cycle_metrics, cell_data, cell_data_vdf, numFiles)
         #Save new data to pickle if there was new data

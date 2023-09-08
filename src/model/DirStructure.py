@@ -21,6 +21,14 @@ class DirStructure:
     -------
     append_record(tr, dev_name, tr_path, df_path)
         Append a record to the directory structure and save it to the json file
+    check_records()
+        Check the records in the directory structure and remove the invalid keys
+    check_project_name(devices_id, projects_name)
+        Check the project name for each device in the directory structure
+    get_test_folder(record)
+        Get the test folder path from the record
+    get_project_folder(record)
+        Get the project folder path from the record
     load_records()
         Load all the records information from the directory structure
     load_uuid()
@@ -41,6 +49,12 @@ class DirStructure:
         Get the dataframe path from the directory structure by the test folder path
     delete_record(uuid=None, test_folder=None)
         Delete the record from the directory structure by the uuid or test folder path
+    update_project_devices(devices_id, devices_name, projects_name)
+        Update the project devices information in the project_devices.json file
+    load_project_devices()
+        Load the project devices information from the project_devices.json file
+    get_project_devices_id(project_name)
+        Get the list of device ids for the project name
     """
     def __init__(self):
         self.dirStructurePath = DIR_STRUCTURE_PATH
