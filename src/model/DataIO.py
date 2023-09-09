@@ -325,6 +325,9 @@ class DataIO:
             # Ignore the root directory itself
             if root == self.rootPath:
                 continue
+            # # Ignore the Processed data folder
+            if 'voltaiq_data/Processed' in root:
+                continue
             # If this folder is not deep enough, we skip it
             depth = len(root.rstrip(os.sep).split(os.sep))
             if depth <= min_depth:
