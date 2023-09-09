@@ -32,17 +32,21 @@ class DataIO:
     Methods
     -------
     create_dev_dic(devs)
-        Create the path for each device and return a dictionary of device id and device folder path
+        Create the path for each device and return a dictionary of device id and device folder path and a dictionary of device name and project name
     save_test_data_update_dict(trs, dfs, devices_id_to_name)
         Save test data to local disk and update the directory structure information
     save_df(df, df_path)
         Save the dataframe to a pickle file
+    extract_project_name(tags)
+        Extract the project name from the tags
     load_df(test_folder=None, df_path=None, trace_keys=None)
         Load the dataframe from the pickle file with the specified trace keys
     load_trs(test_folders)
         Load the test records based on the specified test folders
     load_dfs(test_folders)
         Load the dataframes based on the specified test folders
+    merge_folders(src, dest)
+        Merge the source folder into the destination folder
     """
     def __init__(self, dirStructure: DirStructure, dataDeleter: DataDeleter, use_redis=False):
         self.rootPath = ROOT_PATH
@@ -62,17 +66,28 @@ class DataIO:
 
         Returns
         -------
-        dict
-            The dictionary of device id to device name
+        list of str
+            The list of device id
+        list of str
+            The list of device name
+        list of str
+            The list of project name
         """
-        devices_id_to_name = {}
+        devices_id = []
+        devices_name = []
+        projects_name = []
         for dev in devs:
-            device_folder = os.path.join(self.rootPath, dev.name)   
+            project_name = self.extract_project_name(dev.tags)
+            device_folder = os.path.join(self.rootPath, project_name if project_name else '', dev.name)
+            if not project_name:
+                self.logger.warning(f"The device {dev.name} does not have a project name. Put it in the device folder directly.")
             self._create_directory(device_folder)
-            devices_id_to_name[dev.id] = dev.name
-        return devices_id_to_name
+            devices_id.append(dev.id)
+            devices_name.append(dev.name)
+            projects_name.append(project_name)
+        return devices_id, devices_name, projects_name
     
-    def save_test_data_update_dict(self, trs, dfs, devices_id_to_name):
+    def save_test_data_update_dict(self, trs, dfs, devices_id, devices_name, projects_name):
         """
         Save test data to local disk and update the directory structure information
         
@@ -84,14 +99,18 @@ class DataIO:
             The list of dataframes to be saved
         devices_id_to_name: dict
             The dictionary of device id and device name
+        device_name_to_project_name: dict
+            The dictionary of device name and project name
 
         Returns
         -------
         None
         """
         for tr, df in zip(trs, dfs):
-            dev_name = devices_id_to_name[tr.device_id]
-            self._handle_single_record(tr, df, dev_name)
+            i = devices_id.index(tr.device_id)
+            dev_name = devices_name[i]
+            project_name = projects_name[i]
+            self._handle_single_record(tr, df, dev_name, project_name)
     
     def save_df(self, df, df_path):
         """
@@ -109,9 +128,20 @@ class DataIO:
         None
         """
         self._save_to_pickle(df, df_path)
+
+    def extract_project_name(self, tags):
+        prefix = "Project Name:"
+        for tag in tags:
+            if tag.startswith(prefix):
+                return tag.split(prefix)[1].strip()
+        self.logger.error(f"Project name not found in tags: {tags}")
+        return None
     
-    def _handle_single_record(self, tr, df, dev_name):
-        device_folder = os.path.join(self.rootPath, dev_name)
+    def _handle_single_record(self, tr, df, dev_name, project_name):
+        device_folder = os.path.join(self.rootPath, project_name if project_name else '', dev_name)
+        if not project_name:
+            self.logger.warning(f"The device {dev_name} does not have a project name. Put it in the device folder directly.")
+        # device_folder = os.path.join(self.rootPath, dev_name)
         if device_folder is None:
             self.logger.error(f'Device folder not found for device id {tr.device_id}')
             return None
@@ -140,7 +170,7 @@ class DataIO:
             self._save_to_pickle(tr, tr_path)
             self._save_to_pickle(df, df_path)
             # Append the directory structure information to the list
-            self.dirStructure.append_record(tr, dev_name)
+            self.dirStructure.append_record(tr, dev_name, project_name)
         except Exception as e:
             self.logger.error(f"Transaction failed: {e}")
             # Remove any possibly corrupted files
@@ -158,7 +188,7 @@ class DataIO:
     def _save_to_pickle(self, data, file_path):
         temp_path = file_path + ".tmp"
         try:
-            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            self._create_directory(os.path.dirname(file_path))
             with gzip.open(temp_path, 'wb') as f:
                 pickle.dump(data, f)
             shutil.move(temp_path, file_path)
@@ -285,16 +315,18 @@ class DataIO:
             return None
             
     def _check_folders(self):
-        self.logger.info("Checking folder structure")
         # Use path depth to decide which folders to consider.
-        # For example, 'voltaiq_data/Cell_Expansion_11_OCV_wExpansion/' has a depth of 2.
-        min_depth = len(self.rootPath.rstrip(os.sep).split(os.sep)) + 1
+        # For example, 'voltaiq_data/GMJuly2022/GMJuly2022_CELL102/' has a depth of 3.
+        min_depth = len(self.rootPath.rstrip(os.sep).split(os.sep)) + 2
         empty_folders = []
         valid_folders = []
 
         for root, _, files in os.walk(self.rootPath):
             # Ignore the root directory itself
             if root == self.rootPath:
+                continue
+            # # Ignore the Processed data folder
+            if 'voltaiq_data/Processed' in root:
                 continue
             # If this folder is not deep enough, we skip it
             depth = len(root.rstrip(os.sep).split(os.sep))
@@ -310,3 +342,31 @@ class DataIO:
                 self.logger.warning(f"Folder {root} is not complete. It contains the following files: {files}")
                 empty_folders.append(root)
         return empty_folders, valid_folders
+
+    def merge_folders(self, src, dest):
+        """
+        Merge the source folder into the destination folder
+
+        Parameters
+        ----------
+        src: str
+            The path of the source folder
+        dest: str
+            The path of the destination folder
+        
+        Returns
+        -------
+        None
+        """
+        for item in os.listdir(src):
+            s = os.path.join(src, item)
+            d = os.path.join(dest, item)
+            # If item is a folder, recursively merge it
+            if os.path.isdir(s):
+                if not os.path.exists(d):
+                    os.makedirs(d)
+                self.merge_folders(s, d)
+            else:
+                shutil.copy2(s, d)
+        # Remove the source folder
+        shutil.rmtree(src)

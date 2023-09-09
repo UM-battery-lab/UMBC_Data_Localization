@@ -37,7 +37,7 @@ class DataManager(metaclass=SingletonMeta):
     -------
     _createdb()
         Create the local database with all the test records and devices
-    _updatedb()
+    _updatedb(device_id=None, project_name=None, start_before=None, start_after=None)
         Update the local database with all the test records
     update_test_data(trs=None, devs=None, batch_size=60)
         Update the test data and directory structure with the specified test records and devices
@@ -87,11 +87,11 @@ class DataManager(metaclass=SingletonMeta):
             return
         
         # Create device folder dictionary
-        device_id_to_name = self.dataIO.create_dev_dic(devs)
+        devices_id, devices_name, projects_name = self.dataIO.create_dev_dic(devs)
         # Save test data and update directory structure
-        self._update_batch_data(trs, device_id_to_name, len(trs))
+        self._update_batch_data(trs, devices_id, devices_name, projects_name)
 
-    def _updatedb(self, device_id=None, start_before=None, start_after=None):
+    def _updatedb(self, device_id=None, project_name=None, start_before=None, start_after=None):
         """
         Update the local database with all the test records
 
@@ -99,6 +99,8 @@ class DataManager(metaclass=SingletonMeta):
         ----------
         device_id: int, optional
             The device id to be updated
+        project_name: str, optional
+            The project name to be updated
         start_before: str, optional
             The start time of test records to be updated should be earlier than this time, in the format of 'YYYY-MM-DD_HH-MM-SS'
         start_after: str, optional
@@ -112,6 +114,9 @@ class DataManager(metaclass=SingletonMeta):
         trs = self.dataFetcher.fetch_trs()
         if device_id:
             trs = [tr for tr in trs if tr.device_id == device_id]
+        if project_name:
+            project_devices_id = self.dirStructure.get_project_devices_id(project_name)
+            trs = [tr for tr in trs if tr.device_id in project_devices_id]
         if start_before:
             start_before = self.dataConverter._str_to_timestamp(start_before)
             trs = [tr for tr in trs if self.dataConverter._datetime_to_timestamp(tr.start_time) < start_before]
@@ -175,16 +180,17 @@ class DataManager(metaclass=SingletonMeta):
             self.logger.info('No new test data found after filtering out existing records')
             return
 
-        devices_id_to_name = self.dataIO.create_dev_dic(devs)
-        self._update_batch_data(new_trs, devices_id_to_name)
+        devices_id, devices_name, projects_name  = self.dataIO.create_dev_dic(devs)
+        self.dirStructure.update_project_devices(devices_id, devices_name, projects_name)
+        self._update_batch_data(new_trs, devices_id, devices_name, projects_name) 
     
-    def _update_batch_data(self, new_trs, devices_id_to_name, batch_size=20):
+    def _update_batch_data(self, new_trs, devices_id, devices_name, projects_name, batch_size=5):
         for i in range(0, len(new_trs), batch_size):
             new_trs_batch = new_trs[i:i+batch_size]
             # Get dataframes 
             dfs_batch = self.dataFetcher.get_dfs_from_trs(new_trs_batch)
             # Save new test data and update directory structure
-            self.dataIO.save_test_data_update_dict(new_trs_batch, dfs_batch, devices_id_to_name)
+            self.dataIO.save_test_data_update_dict(new_trs_batch, dfs_batch, devices_id, devices_name, projects_name)
             gc.collect()
 
     def filter_trs(self, device_id=None, tr_name_substring=None, start_time=None, tags=None):
@@ -267,7 +273,28 @@ class DataManager(metaclass=SingletonMeta):
         """
         self.logger.info('Starting consistency check between directory structure and local database...')
 
-        # Step 1: Check for empty or incomplete folders and delete them.
+        # Step 1: Check if the device folders are in the corrosponding peoject folders
+        self.logger.info('Checking if device folders are in the corrosponding peoject folders...')
+        devs = self.dataFetcher.fetch_devs()
+        devices_id, devices_name, projects_name = self.dataIO.create_dev_dic(devs)
+        for dev in devs:
+            if '_' not in dev.name:
+                continue
+            if os.path.exists(os.path.join(self.dirStructure.rootPath, dev.name)):
+                self.logger.warning(f'Found device folder {dev.name} not in the corrosponding peoject folder')
+                src_folder = os.path.join(self.dirStructure.rootPath, dev.name)
+                project_name = projects_name[devices_id.index(dev.id)]
+                if project_name is None:
+                    self.logger.error(f'No project name found for device {dev.name}')
+                    continue
+                self.logger.info(f'Moving device folder {dev.name} to project folder {project_name}')
+                dst_folder = os.path.join(self.dirStructure.rootPath, project_name, dev.name)
+                self.dataIO.merge_folders(src_folder, dst_folder)
+        
+        # Step 2: Check if the project name be recorded in the directory structure is the same as the project name in the tags
+        self.dirStructure.check_project_name(devices_id, projects_name)
+            
+        # Step 3: Check for empty or incomplete folders and delete them.
         empty_folders, valid_folders = self.dataIO._check_folders()
         if empty_folders:
             self.logger.info(f'Empty or incomplete folders found: {empty_folders}')
@@ -277,23 +304,22 @@ class DataManager(metaclass=SingletonMeta):
         valid_folders_set = set(valid_folders)
         recorded_folders_set = set(self.dirStructure.load_test_folders())
 
-        # Step 2: Check for folders present on disk but not recorded in the directory structure.
+        # Step 4: Check for folders present on disk but not recorded in the directory structure.
         unrecorded_folders = valid_folders_set - recorded_folders_set
         if unrecorded_folders:
             self.logger.info(f'{len(unrecorded_folders)} folders not recorded in directory structure')
-            devs = self.dataFetcher.fetch_devs()
-            device_id_to_name = self.dataIO.create_dev_dic(devs)
             trs = self.dataIO.load_trs(list(unrecorded_folders))
             for tr, test_folder in zip(trs, unrecorded_folders):
                 if tr is None:
                     self.logger.info(f'No test record found for folder {test_folder}')
                     continue
-                dev_name = device_id_to_name.get(tr.device_id)
+                dev_name = devices_name[devices_id.index(tr.device_id)]
+                project_name = projects_name[devices_id.index(tr.device_id)]
                 if dev_name:
-                    self.dirStructure.append_record(tr, dev_name)
+                    self.dirStructure.append_record(tr, dev_name, project_name)
                     self.logger.info(f'Appended record for folder {test_folder}')
 
-        # Step 3: Check for records in the directory structure that don't have corresponding folders on disk.
+        # Step 5: Check for records in the directory structure that don't have corresponding folders on disk.
         orphaned_records = recorded_folders_set - valid_folders_set
         if orphaned_records:
             self.logger.info(f'Orphaned records found without corresponding folders on disk: {orphaned_records}')
@@ -328,7 +354,8 @@ class DataManager(metaclass=SingletonMeta):
         cell_data_vdf: dataframe
             The dataframe of cell data vdf for the cell
         """
-        cell_path = self.dirStructure.load_dev_folder(cell_name)
+        cell_path = self.dirStructure.load_processed_dev_folder(cell_name)
+        self.dataIO._create_directory(cell_path)
         if cell_path is None:
             self.logger.warning(f"No test record for the {cell_name} in our network drive. Please check if the cell name is correct.")
             return None, None, None, None
@@ -342,6 +369,7 @@ class DataManager(metaclass=SingletonMeta):
         cell_data = self.dataIO.load_df(df_path=filepath_cell_data)
         cell_data_vdf = self.dataIO.load_df(df_path=filepath_cell_data_vdf)
         # Load trs for cycler data
+        #TODO： use device name, not tr_name_substring
         trs_neware = self.dataFilter.filter_trs(tr_name_substring=cell_name, tags=['neware_xls_4000'])
         trs_arbin = self.dataFilter.filter_trs(tr_name_substring=cell_name, tags=['arbin'])
         trs_biologic = self.dataFilter.filter_trs(tr_name_substring=cell_name, tags=['biologic'])
@@ -355,7 +383,7 @@ class DataManager(metaclass=SingletonMeta):
         trs_arbin = self.dataProcessor.sort_tests(trs_arbin, start_time, end_time)
         trs_biologic = self.dataProcessor.sort_tests(trs_biologic, start_time, end_time)
         trs_cycler = self.dataProcessor.sort_tests(trs_neware + trs_arbin + trs_biologic)
-        trs_vdf = self.dataProcessor.sort_tests(trs_vdf)
+        trs_vdf = self.dataProcessor.sort_tests(trs_vdf, start_time, end_time)
         # Process data
         cell_cycle_metrics, cell_data, cell_data_vdf, update = self.dataProcessor.process_cell(trs_cycler, trs_vdf, cell_cycle_metrics, cell_data, cell_data_vdf, numFiles)
         #Save new data to pickle if there was new data
@@ -394,9 +422,9 @@ class DataManager(metaclass=SingletonMeta):
             return
         
         # Create device folder dictionary
-        device_id_to_name = self.dataIO.create_dev_dic(devs)
+        devices_id, devices_name, projects_name = self.dataIO.create_dev_dic(devs)
         # Save test data and update directory structure
-        self._update_batch_data(test_trs, device_id_to_name)
+        self._update_batch_data(test_trs, devices_id, devices_name, projects_name)
 
     def test_updatedb(self):
         """

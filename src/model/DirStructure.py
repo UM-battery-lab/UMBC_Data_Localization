@@ -1,7 +1,7 @@
 import os
 import json
 from src.config.time_config import DATE_FORMAT
-from src.config.path_config import JSON_FILE_PATH, ROOT_PATH
+from src.config.path_config import DIR_STRUCTURE_PATH, ROOT_PATH, PROJECT_DEVICES_PATH
 from src.utils.Logger import setup_logger
 
 class DirStructure:
@@ -21,6 +21,14 @@ class DirStructure:
     -------
     append_record(tr, dev_name, tr_path, df_path)
         Append a record to the directory structure and save it to the json file
+    check_records()
+        Check the records in the directory structure and remove the invalid keys
+    check_project_name(devices_id, projects_name)
+        Check the project name for each device in the directory structure
+    get_test_folder(record)
+        Get the test folder path from the record
+    get_project_folder(record)
+        Get the project folder path from the record
     load_records()
         Load all the records information from the directory structure
     load_uuid()
@@ -41,47 +49,55 @@ class DirStructure:
         Get the dataframe path from the directory structure by the test folder path
     delete_record(uuid=None, test_folder=None)
         Delete the record from the directory structure by the uuid or test folder path
+    update_project_devices(devices_id, devices_name, projects_name)
+        Update the project devices information in the project_devices.json file
+    load_project_devices()
+        Load the project devices information from the project_devices.json file
+    get_project_devices_id(project_name)
+        Get the list of device ids for the project name
     """
     def __init__(self):
-        self.filepath = JSON_FILE_PATH
-        self.rootpath = ROOT_PATH
+        self.dirStructurePath = DIR_STRUCTURE_PATH
+        self.rootPath = ROOT_PATH
+        self.projectDevicesPath = PROJECT_DEVICES_PATH
         self.logger = setup_logger()
-        self.valid_keys = {'uuid', 'device_id', 'tr_name', 'dev_name', 'start_time', 'last_dp_timestamp', 'tags'}
-        if not os.path.exists(self.filepath):
+        self.validKeys = {'uuid', 'device_id', 'tr_name', 'dev_name', 'start_time', 'last_dp_timestamp', 'tags'}
+        if not os.path.exists(self.dirStructurePath):
             self.structure = []
-            self._save()
+            self._save(self.dirStructurePath, self.structure)
         else:
-            self.structure = self._load()
+            self.structure = self._load(self.dirStructurePath)
 
-    def _load(self):
+    def _load(self, path):
         try:
-            with open(self.filepath, 'r') as f:
+            with open(path, 'r') as f:
                 return json.load(f)
         except Exception as e:
-            self.logger.error(f'Error while loading directory structure: {e}')
+            self.logger.error(f'Error while loading json file: {e}')
             return []
-
-    def _save(self):
+        
+    def _save(self, path, data):
         try:
-            os.makedirs(os.path.dirname(self.filepath), exist_ok=True)
-            with open(self.filepath, 'w') as f:
-                json.dump(self.structure, f, indent=4)
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, 'w') as f:
+                json.dump(data, f, indent=4)
         except Exception as e:
-            self.logger.error(f'Error while saving directory structure: {e}')
+            self.logger.error(f'Error while saving json file: {e}')
 
-    def append_record(self, tr, dev_name):
+    def append_record(self, tr, dev_name, project_name):
         record = {
             'uuid': tr.uuid,
             'device_id': tr.device_id,
             'tr_name': tr.name,  
             'dev_name': dev_name,
+            'project_name': project_name,
             'start_time': tr.start_time.strftime(DATE_FORMAT),
             'last_dp_timestamp': tr.last_dp_timestamp,
             'tags': tr.tags
         }
         self.structure.append(record)   # First, append the new record to the structure
         try:
-            self._save()  # Then, try to save the structure
+            self._save(self.dirStructurePath, self.structure)  # Then, try to save the structure
         except Exception as e:
             self.logger.error(f'Error while saving directory structure: {e}')
             self._rollback()  # Rollback the changes if save fails
@@ -90,16 +106,27 @@ class DirStructure:
         # Specify the set of keys that should be present in each record
         for record in self.structure:
             # Get the keys that are in the record but not in the valid_keys set
-            invalid_keys = set(record.keys()) - self.valid_keys
+            invalid_keys = set(record.keys()) - self.validKeys
             # Remove the invalid keys from the record
             for key in invalid_keys:
                 self.logger.warning(f"Invalid key {key} in record {record['uuid']}")
                 del record[key]
             # Add the missing keys to the record
-            for key in self.valid_keys - set(record.keys()):
+            for key in self.validKeys - set(record.keys()):
                 self.logger.warning(f"Missing key {key} in record {record['uuid']}")
                 record[key] = None
-        self._save()
+        self._save(self.dirStructurePath, self.structure)
+    
+    def check_project_name(self, devices_id, projects_name):
+        self.logger.info(f"Checking project name for {len(devices_id)} devices")
+        for record in self.structure:
+            if record['device_id'] in devices_id:
+                record['project_name'] = projects_name[devices_id.index(record['device_id'])]
+            # TODO: Delete the actual data folder if the project name is not in the list
+            else:
+                self.logger.warning(f"Device {record['device_id']} is not in the list")
+                self.structure.remove(record)
+        self._save(self.dirStructurePath, self.structure)
 
     def _rollback(self):
         """Remove the last added record."""
@@ -107,7 +134,12 @@ class DirStructure:
             self.structure.pop()
 
     def get_test_folder(self, record):
-        return os.path.join(self.rootpath, record['dev_name'], record['start_time'])
+        if record['project_name'] is None:
+            return os.path.join(self.rootPath, record['dev_name'], record['start_time'])
+        return os.path.join(self.rootPath, record['project_name'], record['dev_name'], record['start_time'])
+   
+    def get_project_folder(self, record):
+        return os.path.join(self.rootPath, record['project_name'])
 
     def load_records(self):
         return self.structure
@@ -120,9 +152,6 @@ class DirStructure:
         for record in self.structure:
             test_folders.append(self.get_test_folder(record))
         return test_folders
-
-    def load_dev_name(self):
-        return {record['dev_name'] for record in self.structure}
     
     def load_uuid_to_last_dp_timestamp(self):
         return {record['uuid']: record['last_dp_timestamp'] for record in self.structure}
@@ -134,8 +163,15 @@ class DirStructure:
     def load_dev_folder(self, dev_name):
         for record in self.structure:
             if record['dev_name'] == dev_name:
-                return os.path.join(self.rootpath, record['dev_name'])
+                return os.path.join(self.rootPath, record['project_name'], record['dev_name'])
         self.logger.warning(f"No related test record for {dev_name}")
+        return None
+    
+    def load_processed_dev_folder(self, dev_name):
+        for record in self.structure:
+            if record['dev_name'] == dev_name:
+                return os.path.join(self.rootPath, 'Processed', record['project_name'], record['dev_name'])
+        self.logger.warning(f"No processed test record for {dev_name}")
         return None
     
     def get_tr_path(self, test_folder):
@@ -150,4 +186,24 @@ class DirStructure:
             self.structure = [record for record in self.structure if record['uuid'] != uuid]
         elif test_folder:
             self.structure = [record for record in self.structure if self.get_test_folder(record) != test_folder]
-        self._save()
+        self._save(self.dirStructurePath, self.structure)
+
+    def update_project_devices(self, devices_id, devices_name, projects_name):
+        self.logger.info(f"Updating project devices for {len(devices_name)} devices")
+        proj_to_dev_id_name = {}
+        for i in range(len(devices_name)):
+            if projects_name[i] not in proj_to_dev_id_name:
+                proj_to_dev_id_name[projects_name[i]] = []
+            proj_to_dev_id_name[projects_name[i]].append((devices_id[i], devices_name[i]))
+        self._save(self.projectDevicesPath, proj_to_dev_id_name)
+
+    def load_project_devices(self):
+        return self._load(self.projectDevicesPath)
+    
+    def get_project_devices_id(self, project_name):
+        proj_to_dev_id_name = self.load_project_devices()
+        if project_name in proj_to_dev_id_name:
+            return [item[0] for item in proj_to_dev_id_name[project_name]]
+        return []
+    
+        

@@ -91,6 +91,7 @@ class DataFilter:
         list of TestRecord object
             The list of test records that match the specified device id or name, and start time
         """
+        #TODO: Change the pipeline
         matching_records = self._filter_records(device_id=device_id, tr_name_substring=tr_name_substring, start_time=start_time, tags=tags)
         matching_test_folders = [self.dirStructure.get_test_folder(record) for record in matching_records]
         return self.dataIO.load_trs(matching_test_folders)
