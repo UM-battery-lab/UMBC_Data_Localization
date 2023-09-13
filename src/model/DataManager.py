@@ -115,7 +115,7 @@ class DataManager(metaclass=SingletonMeta):
         if device_id:
             trs = [tr for tr in trs if tr.device_id == device_id]
         if project_name:
-            project_devices_id = self.dirStructure.get_project_devices_id(project_name)
+            project_devices_id = self.dirStructure.project_to_devices_id(project_name)
             trs = [tr for tr in trs if tr.device_id in project_devices_id]
         if start_before:
             start_before = self.dataConverter._str_to_timestamp(start_before)
@@ -380,6 +380,27 @@ class DataManager(metaclass=SingletonMeta):
             self.dataIO.save_processed_data(cell_name, cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt)
         self.notify(cell_name, cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt, start_time, end_time)
         return cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt
+    
+    def process_project(self, project_name, numFiles = 1000):
+        """
+        Process the data for a project and save the processed data to local disk
+
+        Parameters
+        ----------
+        project_name: str
+            The name of the project to be processed
+        numFiles: int
+            The number of files to be processed for each cell
+
+        Returns
+        -------
+        None
+        """
+        cells_name = self.dirStructure.project_to_devices_name(project_name)
+        for cell_name in cells_name:
+            _, _, _, _ = self.process_cell(cell_name, numFiles)
+
+        
    
     def load_processed_data(self, cell_name):
         """
@@ -402,6 +423,22 @@ class DataManager(metaclass=SingletonMeta):
             The dataframe of cell data rpt for the cell
         """
         return self.dataIO.load_processed_data(cell_name)
+    
+    def load_ccm_csv(self, cell_name):
+        """
+        Get the cycle metrics csv for a cell
+
+        Parameters
+        ----------
+        cell_name: str
+            The name of the cell to be processed
+
+        Returns
+        -------
+        ccm_csv: str
+            The csv string of the cycle metrics for the cell
+        """
+        return self.dataIO.load_ccm_csv(cell_name)
         
     # Below are the methods for testing
     def test_createdb(self):
@@ -430,21 +467,3 @@ class DataManager(metaclass=SingletonMeta):
         devices_id, devices_name, projects_name = self.dataIO.create_dev_dic(devs)
         # Save test data and update directory structure
         self._update_batch_data(test_trs, devices_id, devices_name, projects_name)
-
-    def test_updatedb(self):
-        """
-        Update the local database for testing
-
-        Parameters
-        ----------
-        None
-
-        Returns
-        -------
-        None
-        """
-        # Fetch test records and devices
-        trs = self.dataFetcher.fetch_trs()
-        test_trs = trs[:1000]
-        devs = self.dataFetcher.fetch_devs()
-        self.update_test_data(test_trs, devs, len(test_trs))

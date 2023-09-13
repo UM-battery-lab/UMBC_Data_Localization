@@ -360,6 +360,31 @@ class DataIO:
         self.save_df(cell_data_vdf, filepath_cell_data_vdf)
         self.save_df(cell_data_rpt, filepath_rpt)
 
+    def load_ccm_csv(self, cell_name):
+        """
+        Load the cycle metrics csv from the processed folder
+
+        Parameters
+        ----------
+        cell_name: str
+            The name of the cell
+
+        Returns
+        -------
+        csv_string: str
+            The csv string of the cycle metrics
+        """
+        cell_path = self.dirStructure.load_processed_dev_folder(cell_name)
+        if cell_path is None:
+            self.logger.warning(f"No test record for the {cell_name} in our network drive. Please check if the cell name is correct.")
+            return None, None, None, None
+        # Filepaths for cycle metrics, cell data, cell data vdf and rpt
+        filepath_ccm = os.path.join(cell_path, 'CCM.pkl.gz')     
+        cell_cycle_metrics = self.load_df(df_path=filepath_ccm)   
+        csv_string = cell_cycle_metrics.to_csv(index=False, sep=',')
+        return csv_string
+
+
     def _load_pickles(self, file_paths):
         return [self._load_pickle(file_path) for file_path in file_paths]
 

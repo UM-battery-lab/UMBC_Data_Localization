@@ -200,10 +200,15 @@ class DirStructure:
     def load_project_devices(self):
         return self._load(self.projectDevicesPath)
     
-    def get_project_devices_id(self, project_name):
+    def project_to_devices_id(self, project_name):
         proj_to_dev_id_name = self.load_project_devices()
         if project_name in proj_to_dev_id_name:
             return [item[0] for item in proj_to_dev_id_name[project_name]]
         return []
     
+    def project_to_devices_name(self, project_name):
+        proj_to_dev_id_name = self.load_project_devices()
+        if project_name in proj_to_dev_id_name:
+            return [item[1] for item in proj_to_dev_id_name[project_name]]
+        return []
         
