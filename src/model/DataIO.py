@@ -287,6 +287,78 @@ class DataIO:
         """
         df_paths = [self.dirStructure.get_df_path(test_folder) for test_folder in test_folders]
         return self._load_pickles(df_paths)
+    
+    def load_processed_data(self, cell_name):
+        """
+        load the processed data from the processed folder
+
+        Parameters
+        ----------
+        cell_name: str
+            The name of the cell
+        
+        Returns
+        -------
+        cell_cycle_metrics: Dataframe
+            The dataframe of cell cycle metrics
+        cell_data: Dataframe
+            The dataframe of cell data
+        cell_data_vdf: Dataframe
+            The dataframe of cell data vdf
+        cell_data_rpt: Dataframe
+            The dataframe of cell data rpt
+        """
+        cell_path = self.dirStructure.load_processed_dev_folder(cell_name)
+        if cell_path is None:
+            self.logger.warning(f"No test record for the {cell_name} in our network drive. Please check if the cell name is correct.")
+            return None, None, None, None
+        # Filepaths for cycle metrics, cell data, cell data vdf and rpt
+        filepath_ccm = os.path.join(cell_path, 'CCM.pkl.gz')
+        filepath_cell_data = os.path.join(cell_path, 'CD.pkl.gz')
+        filepath_cell_data_vdf = os.path.join(cell_path, 'CDvdf.pkl.gz')
+        filepath_rpt = os.path.join(cell_path, 'RPT.pkl.gz')
+        # Load dataframes for cycle metrics, cell data, cell data vdf
+        cell_cycle_metrics = self.load_df(df_path=filepath_ccm)
+        cell_data = self.load_df(df_path=filepath_cell_data)
+        cell_data_vdf = self.load_df(df_path=filepath_cell_data_vdf)
+        cell_data_rpt = self.load_df(df_path=filepath_rpt)
+        return cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt
+    
+    def save_processed_data(self, cell_name, cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt):
+        """
+        Save the processed data to the processed folder
+
+        Parameters
+        ----------
+        cell_name: str
+            The name of the cell
+        cell_cycle_metrics: Dataframe
+            The dataframe of cell cycle metrics
+        cell_data: Dataframe
+            The dataframe of cell data
+        cell_data_vdf: Dataframe
+            The dataframe of cell data vdf
+        cell_data_rpt: Dataframe
+            The dataframe of cell data rpt
+        
+        Returns
+        -------
+        None
+        """
+        cell_path = self.dirStructure.load_processed_dev_folder(cell_name)
+        if cell_path is None:
+            self.logger.warning(f"No test record for the {cell_name} in our network drive. Please check if the cell name is correct.")
+            return None
+        # Filepaths for cycle metrics, cell data, cell data vdf and rpt
+        filepath_ccm = os.path.join(cell_path, 'CCM.pkl.gz')
+        filepath_cell_data = os.path.join(cell_path, 'CD.pkl.gz')
+        filepath_cell_data_vdf = os.path.join(cell_path, 'CDvdf.pkl.gz')
+        filepath_rpt = os.path.join(cell_path, 'RPT.pkl.gz')
+        # Save dataframes for cycle metrics, cell data, cell data vdf
+        self.save_df(cell_cycle_metrics, filepath_ccm)
+        self.save_df(cell_data, filepath_cell_data)
+        self.save_df(cell_data_vdf, filepath_cell_data_vdf)
+        self.save_df(cell_data_rpt, filepath_rpt)
 
     def _load_pickles(self, file_paths):
         return [self._load_pickle(file_path) for file_path in file_paths]
