@@ -2,6 +2,7 @@ from src.dto.DataTransferObject import TimeSeriesDTO, ExpansionDTO, CycleMetrics
 from src.utils.Logger import setup_logger
 from src.utils.DateConverter import DateConverter
 from src.utils.ObserverPattern import Subject, Observer
+import pandas as pd
 
 @Subject
 @Observer
@@ -31,18 +32,22 @@ class Presenter():
         self.dateConverter = DateConverter()
         self.logger = setup_logger()
 
-    def update(self, cell_name, cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt):
-        cell_cycle_metrics = self._timestamp_to_datetime(cell_cycle_metrics)
-        cell_data = self._timestamp_to_datetime(cell_data)
-        cell_data_vdf = self._timestamp_to_datetime(cell_data_vdf)
+    def update(self, cell_name, cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt, start_time, end_time):
+        cell_cycle_metrics = self._timestamp_to_datetime(cell_cycle_metrics, start_time, end_time)
+        cell_data = self._timestamp_to_datetime(cell_data, start_time, end_time)
+        cell_data_vdf = self._timestamp_to_datetime(cell_data_vdf, start_time, end_time)
         measured_data_time = self.get_measured_data_time(cell_cycle_metrics, cell_data, cell_data_vdf)
         cycle_metrics_time = self.get_cycle_metrics_time(cell_cycle_metrics, cell_data, cell_data_vdf)
         cycle_metrics_AhT = self.get_cycle_metrics_AhT(cell_cycle_metrics, cell_data, cell_data_vdf)
         self.notify(cell_name, measured_data_time, cycle_metrics_time, cycle_metrics_AhT)
     
-    def _timestamp_to_datetime(self, data):
+    def _timestamp_to_datetime(self, data, start_time=None, end_time=None):
         data['Time [s]'] = data['Time [s]'].apply(self.dateConverter._timestamp_to_datetime)
-        return data
+        start_condition = (data['Time [s]'] >= start_time) if start_time else pd.Series([True] * len(data))
+        end_condition = (data['Time [s]'] <= end_time) if end_time else pd.Series([True] * len(data))
+        
+        mask = start_condition & end_condition
+        return data[mask]
 
     
     def _extract_timeseries(self, data) -> TimeSeriesDTO:

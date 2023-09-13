@@ -366,11 +366,11 @@ class DataManager(metaclass=SingletonMeta):
             start_time = self.dataConverter._str_to_datetime(start_time)
         if end_time:
             end_time = self.dataConverter._str_to_datetime(end_time)   
-        trs_neware = self.dataProcessor.sort_tests(trs_neware, start_time, end_time)
-        trs_arbin = self.dataProcessor.sort_tests(trs_arbin, start_time, end_time)
-        trs_biologic = self.dataProcessor.sort_tests(trs_biologic, start_time, end_time)
+        trs_neware = self.dataProcessor.sort_tests(trs_neware)
+        trs_arbin = self.dataProcessor.sort_tests(trs_arbin)
+        trs_biologic = self.dataProcessor.sort_tests(trs_biologic)
         trs_cycler = self.dataProcessor.sort_tests(trs_neware + trs_arbin + trs_biologic)
-        trs_vdf = self.dataProcessor.sort_tests(trs_vdf, start_time, end_time)
+        trs_vdf = self.dataProcessor.sort_tests(trs_vdf)
         # Process data
         cell_cycle_metrics, cell_data, cell_data_vdf, update = self.dataProcessor.process_cell(trs_cycler, trs_vdf, cell_cycle_metrics, cell_data, cell_data_vdf, numFiles)
         #Save new data to pickle if there was new data
@@ -378,7 +378,7 @@ class DataManager(metaclass=SingletonMeta):
         if update:
             cell_data_rpt = self.dataProcessor.summarize_rpt_data(cell_data, cell_data_vdf, cell_cycle_metrics)
             self.dataIO.save_processed_data(cell_name, cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt)
-        self.notify(cell_name, cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt)
+        self.notify(cell_name, cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt, start_time, end_time)
         return cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt
    
     def load_processed_data(self, cell_name):
