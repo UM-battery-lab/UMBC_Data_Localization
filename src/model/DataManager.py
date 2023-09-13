@@ -354,20 +354,7 @@ class DataManager(metaclass=SingletonMeta):
         cell_data_vdf: dataframe
             The dataframe of cell data vdf for the cell
         """
-        cell_path = self.dirStructure.load_processed_dev_folder(cell_name)
-        self.dataIO._create_directory(cell_path)
-        if cell_path is None:
-            self.logger.warning(f"No test record for the {cell_name} in our network drive. Please check if the cell name is correct.")
-            return None, None, None, None
-        # Filepaths for cycle metrics, cell data, cell data vdf and rpt
-        filepath_ccm = os.path.join(cell_path, 'CCM.pkl.gz')
-        filepath_cell_data = os.path.join(cell_path, 'CD.pkl.gz')
-        filepath_cell_data_vdf = os.path.join(cell_path, 'CDvdf.pkl.gz')
-        filepath_rpt = os.path.join(cell_path, 'RPT.pkl.gz')
-        # Load dataframes for cycle metrics, cell data, cell data vdf
-        cell_cycle_metrics = self.dataIO.load_df(df_path=filepath_ccm)
-        cell_data = self.dataIO.load_df(df_path=filepath_cell_data)
-        cell_data_vdf = self.dataIO.load_df(df_path=filepath_cell_data_vdf)
+        cell_cycle_metrics, cell_data, cell_data_vdf, _ = self.load_processed_data(cell_name)
         # Load trs for cycler data
         #TODO： use device name, not tr_name_substring
         trs_neware = self.dataFilter.filter_trs(tr_name_substring=cell_name, tags=['neware_xls_4000'])
@@ -390,13 +377,31 @@ class DataManager(metaclass=SingletonMeta):
         cell_data_rpt = None
         if update:
             cell_data_rpt = self.dataProcessor.summarize_rpt_data(cell_data, cell_data_vdf, cell_cycle_metrics)
-            self.dataIO.save_df(cell_cycle_metrics, filepath_ccm)
-            self.dataIO.save_df(cell_data, filepath_cell_data)
-            self.dataIO.save_df(cell_data_vdf, filepath_cell_data_vdf)  
-            self.dataIO.save_df(cell_data_rpt, filepath_rpt)
+            self.dataIO.save_processed_data(cell_name, cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt)
         self.notify(cell_name, cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt)
         return cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt
    
+    def load_processed_data(self, cell_name):
+        """
+        Get the processed data for a cell
+
+        Parameters
+        ----------
+        cell_name: str
+            The name of the cell to be processed
+
+        Returns
+        -------
+        cell_cycle_metrics: dataframe
+            The dataframe of cycle metrics for the cell
+        cell_data: dataframe
+            The dataframe of cell data for the cell
+        cell_data_vdf: dataframe
+            The dataframe of cell data vdf for the cell
+        cell_data_rpt: dataframe
+            The dataframe of cell data rpt for the cell
+        """
+        return self.dataIO.load_processed_data(cell_name)
         
     # Below are the methods for testing
     def test_createdb(self):
