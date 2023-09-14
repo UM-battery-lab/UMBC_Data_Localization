@@ -14,7 +14,8 @@ def filter_test():
     dataManager = DataManager()
     # test filter
     trs, dfs = dataManager.filter_trs_and_dfs(tr_name_substring='GMJuly2022_CELL080')
-    print(trs)
+    for tr in trs:
+        print(type(tr.get_cycle_stats()))
     # print(dfs)
     # dfs = dataManager.filter_dfs(tr_name_substring='GMJuly2022_CELL018')
     # for df in dfs:
@@ -41,9 +42,15 @@ def read_csv_test():
     with open("output.csv", "w", encoding="utf-8") as f:
         f.write(ccm_csv)
 
+def update_cycle_stats_test():
+    dataManager = DataManager()
+    # test update_cs
+    dataManager.update_cycle_stats()
+
 if __name__ == '__main__':
     # createdb_test()
     # filter_test()
     # process_cell_test()
-    # consistency_test()
-    read_csv_test()
+    consistency_test()
+    # read_csv_test()
+    # update_cycle_stats_test()

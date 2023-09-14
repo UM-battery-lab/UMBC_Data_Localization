@@ -158,3 +158,43 @@ class DataFetcher:
         """
         devs = [self.get_dev_from_tr(tr) for tr in trs]
         return devs
+    
+    def get_cycle_stats(self, tr):
+        """
+        Get cycle stats from a TestRecord object
+
+        Parameters
+        ----------
+        tr: TestRecord object
+            The test record to be processed
+        
+        Returns
+        -------
+        dict
+            The cycle stats
+        """
+        self.logger.info(f"Getting cycle stats for TestRecord with ID: {tr.id}")
+        try:
+            cycle_stats = tr.get_cycle_stats()
+        except Exception as e:
+            self.logger.error(f"Failed to get cycle stats for TestRecord with ID: {tr.id}. Error: {e}")
+            return None
+        self.logger.info(f"Successfully got cycle stats for TestRecord with ID: {tr.id}")
+        return cycle_stats
+    
+    def get_cycle_stats_from_trs(self, trs):
+        """
+        Get cycle stats from a list of TestRecord objects
+
+        Parameters
+        ----------
+        trs: list of TestRecord objects
+            The list of test records to be processed
+        
+        Returns
+        -------
+        list of dict
+            The cycle stats
+        """
+        cycle_stats = [self.get_cycle_stats(tr) for tr in trs]
+        return cycle_stats  

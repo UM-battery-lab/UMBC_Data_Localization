@@ -154,7 +154,7 @@ class DataManager(metaclass=SingletonMeta):
         """
         existing_uuids = self.dirStructure.load_uuid()
         uuid_to_last_dp_timestamp = self.dirStructure.load_uuid_to_last_dp_timestamp()
-        uuid_to_tr_path_and_df_path = self.dirStructure.load_uuid_to_tr_path_and_df_path()
+        uuid_to_tr_df_cs_path = self.dirStructure.load_uuid_to_tr_df_cs_path()
 
         # Filter out existing test records
         new_trs = []
@@ -175,10 +175,11 @@ class DataManager(metaclass=SingletonMeta):
                     self.logger.info(f'No new data found for test record {tr.uuid}') 
                     continue
                 # Delete the old test data and update the directory structure
-                old_tr_file, old_df_file = uuid_to_tr_path_and_df_path[tr.uuid]
+                old_tr_file, old_df_file, old_cs_file = uuid_to_tr_df_cs_path[tr.uuid]
                 self.logger.info(f'Deleting old test data: {old_tr_file}, {old_df_file}')
                 self.dataDeleter.delete_file(old_tr_file)
                 self.dataDeleter.delete_file(old_df_file)
+                self.dataDeleter.delete_file(old_cs_file)
                 self.dirStructure.delete_record(tr.uuid)
                 new_trs.append(tr)
                 if len(new_trs) >= num_new_trs:
@@ -197,9 +198,32 @@ class DataManager(metaclass=SingletonMeta):
             new_trs_batch = new_trs[i:i+batch_size]
             # Get dataframes 
             dfs_batch = self.dataFetcher.get_dfs_from_trs(new_trs_batch)
+            cycle_stats_batch = self.dataFetcher.get_cycle_stats_from_trs(new_trs_batch)
             # Save new test data and update directory structure
-            self.dataIO.save_test_data_update_dict(new_trs_batch, dfs_batch, devices_id, devices_name, projects_name)
+            self.dataIO.save_test_data_update_dict(new_trs_batch, dfs_batch, cycle_stats_batch, devices_id, devices_name, projects_name)
             gc.collect()
+
+    def update_cycle_stats(self):
+        """
+        Update the cycle status for local recorded test records
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        None
+        """
+        self.logger.info('Updating cycle status...')
+        uuid_to_tr_df_cs_path = self.dirStructure.load_uuid_to_tr_df_cs_path()
+        for uuid, (tr_path, _, cycle_stats_path) in uuid_to_tr_df_cs_path.items():
+            if not os.path.exists(cycle_stats_path):
+                self.logger.info(f'Updating cycle status for test record {uuid}')
+                tr = self.dataIO.load_tr(tr_path)
+                cycle_stats = self.dataFetcher.get_cycle_stats(tr)
+                self.dataIO._save_to_pickle(cycle_stats, cycle_stats_path)
+
 
     def filter_trs(self, device_id=None, tr_name_substring=None, start_time=None, tags=None):
         """

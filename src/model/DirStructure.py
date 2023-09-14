@@ -156,9 +156,10 @@ class DirStructure:
     def load_uuid_to_last_dp_timestamp(self):
         return {record['uuid']: record['last_dp_timestamp'] for record in self.structure}
 
-    def load_uuid_to_tr_path_and_df_path(self):
+    def load_uuid_to_tr_df_cs_path(self):
         return {record['uuid']: (self.get_tr_path(self.get_test_folder(record)), 
-                                 self.get_df_path(self.get_test_folder(record))) for record in self.structure}
+                                 self.get_df_path(self.get_test_folder(record)),
+                                 self.get_cycle_stats_path(self.get_test_folder(record))) for record in self.structure}
     
     def load_dev_folder(self, dev_name):
         for record in self.structure:
@@ -179,6 +180,9 @@ class DirStructure:
     
     def get_df_path(self, test_folder):
         return os.path.join(test_folder, 'df.pkl.gz')
+    
+    def get_cycle_stats_path(self, test_folder):
+        return os.path.join(test_folder, 'cycle_stats.pkl.gz')
     
     def delete_record(self, uuid=None, test_folder=None):
         # Filter out records based on provided uuid or test_folder

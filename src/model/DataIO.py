@@ -96,7 +96,7 @@ class DataIO:
             projects_name.append(project_name)
         return devices_id, devices_name, projects_name
     
-    def save_test_data_update_dict(self, trs, dfs, devices_id, devices_name, projects_name):
+    def save_test_data_update_dict(self, trs, dfs, cycle_stats, devices_id, devices_name, projects_name):
         """
         Save test data to local disk and update the directory structure information
         
@@ -106,6 +106,8 @@ class DataIO:
             The list of test records to be saved
         dfs: list of pandas Dataframe
             The list of dataframes to be saved
+        cycle_stats: list of pandas Dataframe
+            The list of cycle status dataframes to be saved
         devices_id_to_name: dict
             The dictionary of device id and device name
         device_name_to_project_name: dict
@@ -115,11 +117,11 @@ class DataIO:
         -------
         None
         """
-        for tr, df in zip(trs, dfs):
+        for tr, df, cycle_stat in zip(trs, dfs, cycle_stats):
             i = devices_id.index(tr.device_id)
             dev_name = devices_name[i]
             project_name = projects_name[i]
-            self._handle_single_record(tr, df, dev_name, project_name)
+            self._handle_single_record(tr, df, cycle_stat, dev_name, project_name)
     
     def save_df(self, df, df_path):
         """
@@ -146,7 +148,7 @@ class DataIO:
         self.logger.error(f"Project name not found in tags: {tags}")
         return None
     
-    def _handle_single_record(self, tr, df, dev_name, project_name):
+    def _handle_single_record(self, tr, df, cycle_stat, dev_name, project_name):
         device_folder = os.path.join(self.rootPath, project_name if project_name else '', dev_name)
         if not project_name:
             self.logger.warning(f"The device {dev_name} does not have a project name. Put it in the device folder directly.")
@@ -166,6 +168,8 @@ class DataIO:
         tr_path = self.dirStructure.get_tr_path(test_folder)
         # Save the time series data to a pickle file
         df_path = self.dirStructure.get_df_path(test_folder)
+        # Save the cycle status data to a pickle file
+        cycle_stats_path = self.dirStructure.get_cycle_stats_path(test_folder)
         if tr is None or df is None:
             self.logger.error(f'Test record or dataframe is None')
             return None
@@ -178,6 +182,8 @@ class DataIO:
             # Guarantee the transactional integrity
             self._save_to_pickle(tr, tr_path)
             self._save_to_pickle(df, df_path)
+            if cycle_stat is not None:
+                self._save_to_pickle(cycle_stat, cycle_stats_path)
             # Append the directory structure information to the list
             self.dirStructure.append_record(tr, dev_name, project_name)
         except Exception as e:
@@ -262,6 +268,22 @@ class DataIO:
                 self.logger.error(f"DataFrame is None when attempting to filter by trace keys: {trace_keys}")
                 return None
         return df
+    
+    def load_tr(self, tr_path):
+        """
+        Load the test record from the pickle file
+
+        Parameters
+        ----------
+        tr_path: str
+            The path of the pickle file
+
+        Returns
+        -------
+        TestRecord
+            The test record loaded from the pickle file
+        """
+        return self._load_pickle(tr_path)
 
     def load_trs(self, test_folders):
         """
