@@ -138,6 +138,13 @@ class DirStructure:
             return os.path.join(self.rootPath, record['dev_name'], record['start_time'])
         return os.path.join(self.rootPath, record['project_name'], record['dev_name'], record['start_time'])
    
+    def load_test_folder(self, uuid):
+        for record in self.structure:
+            if record['uuid'] == uuid:
+                return self.get_test_folder(record)
+        self.logger.warning(f"No related test record for {uuid}")
+        return None
+
     def get_project_folder(self, record):
         return os.path.join(self.rootPath, record['project_name'])
 

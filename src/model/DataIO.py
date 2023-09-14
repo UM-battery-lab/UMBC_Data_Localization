@@ -319,6 +319,25 @@ class DataIO:
         df_paths = [self.dirStructure.get_df_path(test_folder) for test_folder in test_folders]
         return self._load_pickles(df_paths)
     
+    def load_cycle_stats(self, test_folder):
+        """
+        Load the cycle status data from the pickle file
+
+        Parameters
+        ----------
+        test_folder: str
+            The path of the test folder
+        
+        Returns
+        -------
+        Dataframe
+            The dataframe loaded from the pickle file
+        """
+        cycle_stats_path = self.dirStructure.get_cycle_stats_path(test_folder)
+        return self._load_pickle(cycle_stats_path)
+
+        
+
     def load_processed_data(self, cell_name):
         """
         load the processed data from the processed folder
