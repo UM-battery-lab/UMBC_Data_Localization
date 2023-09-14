@@ -418,7 +418,7 @@ class DataIO:
         self._create_directory(filepath_figs)
         for i, fig in enumerate(figs):
             self.logger.info(f"Saving figure {i} to {filepath_figs}")
-            fig.savefig(os.path.join(filepath_figs, f'fig{i}.png'))
+            fig.savefig(os.path.join(filepath_figs, f'{cell_name}_fig{i}.png'))
             plt.close(fig)
 
     def _load_pickles(self, file_paths):
