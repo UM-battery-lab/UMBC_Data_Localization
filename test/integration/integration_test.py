@@ -9,8 +9,10 @@ from src.viewer.Viewer import Viewer
 # Integration test
 def present_cell():
     dataManager = DataManager(use_redis=True)
+    def save_figs(figs, cell_name):
+        dataManager.save_figs(figs, cell_name)
     presenter = Presenter()
-    viewer = Viewer()
+    viewer = Viewer(call_back=save_figs)
     cell_name = "UMBL2022FEB_CELL152051"
     dataManager.attach(presenter)
     presenter.attach(viewer)

@@ -51,6 +51,14 @@ class DataManager(metaclass=SingletonMeta):
         Check the consistency between the directory structure and local database, and repair the inconsistency
     process_cell(cell_name, numFiles = 1000, update_local_db=False)
         Process the data for a cell and save the processed cell cycle metrics, cell data and cell data vdf to local disk
+    process_project(project_name, numFiles = 1000)
+        Process all the cells in a project and save the processed cell cycle metrics, cell data and cell data vdf to local disk
+    save_figs(figs, cell_name)
+        Save the figures to local disk, used by callback function
+    load_processed_data(cell_name)
+        Get the processed data for a cell
+    load_ccm_csv(cell_name)
+        Get the cycle metrics csv for a cell
     """
     _is_initialized = False
     def __init__(self, use_redis=False):
@@ -400,7 +408,8 @@ class DataManager(metaclass=SingletonMeta):
         for cell_name in cells_name:
             _, _, _, _ = self.process_cell(cell_name, numFiles)
 
-        
+    def save_figs(self, figs, cell_name):
+        self.dataIO.save_figs(figs, cell_name)
    
     def load_processed_data(self, cell_name):
         """

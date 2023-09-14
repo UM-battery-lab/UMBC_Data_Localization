@@ -14,6 +14,8 @@ class Viewer():
         The object to plot data
     logger: logger object
         The object to log information
+    call_back: function
+        The function to call back when the viewer is updated
     
     Methods
     -------
@@ -26,14 +28,18 @@ class Viewer():
     plot_cycle_metrics_AhT(cell, cell_data: CellDataDTO, downsample = 100)
         Plot the cycle metrics of a cell and the AhT
     """
-    def __init__(self):
+    def __init__(self, call_back = None):
         self.plt = plt 
         self.logger = setup_logger()
+        self.call_back = call_back
     
     def update(self, cell_name, measured_data_time, cycle_metrics_time, cycle_metrics_AhT):
-        self.plot_process_cell(cell_name, measured_data_time)
-        self.plot_cycle_metrics_time(cell_name, cycle_metrics_time)
-        self.plot_cycle_metrics_AhT(cell_name, cycle_metrics_AhT)
+        fig_1 = self.plot_process_cell(cell_name, measured_data_time)
+        fig_2 = self.plot_cycle_metrics_time(cell_name, cycle_metrics_time)
+        fig_3 = self.plot_cycle_metrics_AhT(cell_name, cycle_metrics_AhT)
+        if self.call_back:
+            self.call_back([fig_1, fig_2, fig_3], cell_name)
+
 
     def plot_process_cell(self, cell, cell_data: CellDataDTO, downsample = 100):
         timeseries = cell_data.timeseries
@@ -120,7 +126,8 @@ class Viewer():
         fig.autofmt_xdate()
         fig.suptitle("Cell: "+cell)
         fig.tight_layout()
-        self.plt.show()
+        # self.plt.show()
+        return fig
     
     def plot_cycle_metrics_time(self, cell, cell_data: CellDataDTO, downsample = 100):
         timeseries = cell_data.timeseries
@@ -258,7 +265,8 @@ class Viewer():
         fig.autofmt_xdate()
         fig.suptitle("Cell: "+cell)
         fig.tight_layout()
-        self.plt.show()
+        # self.plt.show()
+        return fig
 
     def plot_cycle_metrics_AhT(self, cell, cell_data: CellDataDTO, downsample = 100):
         timeseries = cell_data.timeseries
@@ -372,4 +380,5 @@ class Viewer():
         fig.autofmt_xdate()
         fig.suptitle("Cell: "+cell)
         fig.tight_layout()
-        self.plt.show()
+        # self.plt.show()
+        return fig

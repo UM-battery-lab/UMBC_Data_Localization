@@ -91,8 +91,10 @@ Add your voltaiq studio token in the first line of the .env file
 ### Sample Useage:
 ```python
     dataManager = DataManager(use_redis=True)
+    def save_figs(figs, cell_name):
+        dataManager.save_figs(figs, cell_name)
     presenter = Presenter()
-    viewer = Viewer()
+    viewer = Viewer(call_back=save_figs)
     cell_name = "UMBL2022FEB_CELL152051"
     dataManager.attach(presenter)
     presenter.attach(viewer)
@@ -217,6 +219,21 @@ cell_name = "your_cell_name"
 cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt = manager.process_cell(cell_name)
 ```
 
+If you want to get the processed data directly, try:
+
+```python
+cell_name = "your_cell_name"
+cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt = manager.load_processed_data(cell_name)
+```
+
+Get the csv file of the cell cycle metrics and save to your local disk:
+
+```python
+cell_name = "your_cell_name"
+ccm_csv = dataManager.load_ccm_csv(cell_name)
+with open("output.csv", "w", encoding="utf-8") as f:
+    f.write(ccm_csv)
+```
 ### Presenter
 
 The Presenter class is designed to manage the presentation of data to a frontend. It works in tandem with a data manager to handle data processing and querying. 

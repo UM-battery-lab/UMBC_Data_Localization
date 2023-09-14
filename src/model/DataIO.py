@@ -4,6 +4,7 @@ import pandas as pd
 import gzip
 import shutil
 import hashlib
+import matplotlib.pyplot as plt
 from src.model.DirStructure import DirStructure
 from src.model.DataDeleter import DataDeleter
 from src.config.time_config import DATE_FORMAT
@@ -45,6 +46,14 @@ class DataIO:
         Load the test records based on the specified test folders
     load_dfs(test_folders)
         Load the dataframes based on the specified test folders
+    load_processed_data(cell_name)
+        Load the processed data from the processed folder
+    save_processed_data(cell_name, cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt)
+        Save the processed data to the processed folder
+    load_ccm_csv(cell_name)
+        Load the cycle metrics csv from the processed folder
+    save_figs(figs, cell_name)
+        Save the figures to the processed folder
     merge_folders(src, dest)
         Merge the source folder into the destination folder
     """
@@ -384,6 +393,33 @@ class DataIO:
         csv_string = cell_cycle_metrics.to_csv(index=False, sep=',')
         return csv_string
 
+    def save_figs(self, figs, cell_name):
+        """
+        Save the figures to the processed folder
+
+        Parameters
+        ----------
+        figs: list of Figure objects
+            The list of figures to be saved
+        cell_name: str
+            The name of the cell
+        
+        Returns
+        -------
+        None
+        """
+        cell_path = self.dirStructure.load_processed_dev_folder(cell_name)
+        if cell_path is None:
+            self.logger.warning(f"No test record for the {cell_name} in our network drive. Please check if the cell name is correct.")
+            return None
+        # Filepaths for figures
+        filepath_figs = os.path.join(cell_path, 'figs')
+        # Save figures
+        self._create_directory(filepath_figs)
+        for i, fig in enumerate(figs):
+            self.logger.info(f"Saving figure {i} to {filepath_figs}")
+            fig.savefig(os.path.join(filepath_figs, f'fig{i}.png'))
+            plt.close(fig)
 
     def _load_pickles(self, file_paths):
         return [self._load_pickle(file_path) for file_path in file_paths]
