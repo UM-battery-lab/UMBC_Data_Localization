@@ -213,6 +213,28 @@ class DataIO:
                 os.remove(temp_path)
             self.logger.error(f'Error occurred while writing file {file_path}: {err}')
 
+    def save_df_to_csv(self, data, file_path):
+        """
+        Save the dataframe to a csv file
+        
+        Parameters
+        ----------
+        data: pandas Dataframe
+            The dataframe to be saved
+        file_path: str
+            The path of the csv file
+        
+        Returns
+        -------
+        None
+        """
+        try:
+            self._create_directory(os.path.dirname(file_path))
+            data.to_csv(file_path, index=False, sep=',')
+            self.logger.info(f'Saved csv file to {file_path}')
+        except Exception as err:
+            self.logger.error(f'Error occurred while writing file {file_path}: {err}')
+
     def _check_time_column_in_trace_keys(self, df, trace_keys):
         # Find invalid time columns in trace_keys
         error_time_keys = set(trace_keys) & (set(TIME_COLUMNS) - set(df.columns))   
@@ -336,7 +358,29 @@ class DataIO:
         cycle_stats_path = self.dirStructure.get_cycle_stats_path(test_folder)
         return self._load_pickle(cycle_stats_path)
 
+    def load_csv(self, file_path):
+        """
+        Load the csv file
+
+        Parameters
+        ----------
+        file_path: str
+            The path of the csv file
         
+        Returns
+        -------
+        csv string
+            The csv string of the csv file
+        """
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                csv_string = f.read()
+            self.logger.info(f"Loaded csv file from {file_path} successfully")
+            return csv_string
+        except FileNotFoundError:
+            self.logger.error(f"File not found: {file_path}")
+            return None
+
 
     def load_processed_data(self, cell_name):
         """
@@ -404,11 +448,14 @@ class DataIO:
         filepath_cell_data = os.path.join(cell_path, 'CD.pkl.gz')
         filepath_cell_data_vdf = os.path.join(cell_path, 'CDvdf.pkl.gz')
         filepath_rpt = os.path.join(cell_path, 'RPT.pkl.gz')
+        filepath_csv = os.path.join(cell_path, 'CCM.csv')
         # Save dataframes for cycle metrics, cell data, cell data vdf
         self.save_df(cell_cycle_metrics, filepath_ccm)
         self.save_df(cell_data, filepath_cell_data)
         self.save_df(cell_data_vdf, filepath_cell_data_vdf)
         self.save_df(cell_data_rpt, filepath_rpt)
+        # Save csv for cycle metrics
+        self.save_df_to_csv(cell_cycle_metrics, filepath_csv)
 
     def load_ccm_csv(self, cell_name):
         """
@@ -430,8 +477,7 @@ class DataIO:
             return None, None, None, None
         # Filepaths for cycle metrics, cell data, cell data vdf and rpt
         filepath_ccm = os.path.join(cell_path, 'CCM.pkl.gz')     
-        cell_cycle_metrics = self.load_df(df_path=filepath_ccm)   
-        csv_string = cell_cycle_metrics.to_csv(index=False, sep=',')
+        csv_string = self.load_csv(filepath_ccm)
         return csv_string
 
     def save_figs(self, figs, cell_name):
