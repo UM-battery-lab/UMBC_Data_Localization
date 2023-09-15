@@ -42,7 +42,7 @@ def read_csv_test():
     # test read_csv
     ccm_csv = dataManager.load_ccm_csv("GMJuly2022_CELL018")
     print(ccm_csv)
-    with open("output.csv", "w", encoding="utf-8") as f:
+    with open("V:\\voltaiq_data\\Processed\\GMJuly2022\\output.csv", "w", encoding="utf-8") as f:
         f.write(ccm_csv)
 
 def update_cycle_stats_test():
