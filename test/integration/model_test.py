@@ -10,16 +10,12 @@ def createdb_test():
     # test create db
     dataManager.test_createdb()
 
-def updatedb_test():
-    dataManager = DataManager()
-    # test update db
-    dataManager.test_updatedb()
-
 def filter_test():
     dataManager = DataManager()
     # test filter
-    trs, dfs = dataManager.filter_trs_and_dfs(device_id=3521)
-    print(trs)
+    trs, dfs = dataManager.filter_trs_and_dfs(tr_name_substring='GMJuly2022_CELL080')
+    for tr in trs:
+        print(type(tr.get_cycle_stats()))
     # print(dfs)
     # dfs = dataManager.filter_dfs(tr_name_substring='GMJuly2022_CELL018')
     # for df in dfs:
@@ -38,11 +34,23 @@ def process_cell_test():
     print(cell_data_vdf)
     print(cell_cycle_metrics)
 
+def read_csv_test():
+    dataManager = DataManager()
+    # test read_csv
+    ccm_csv = dataManager.load_ccm_csv("UMBL2022FEB_CELL152051")
+    print(ccm_csv)
+    with open("output.csv", "w", encoding="utf-8") as f:
+        f.write(ccm_csv)
+
+def update_cycle_stats_test():
+    dataManager = DataManager()
+    # test update_cs
+    dataManager.update_cycle_stats()
 
 if __name__ == '__main__':
     # createdb_test()
-    # updatedb_test()
     # filter_test()
     # process_cell_test()
     consistency_test()
-    
+    # read_csv_test()
+    # update_cycle_stats_test()

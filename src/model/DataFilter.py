@@ -174,3 +174,21 @@ class DataFilter:
             return None
         self.logger.info(f"Found dataframe that matches test record {tr.uuid}")
         return self.dataIO.load_df(matching_test_folder, trace_keys=trace_keys)
+    
+    def filter_cycle_end_times(self, tr):
+        """
+        Filter the cycle end times with the specified test record
+
+        Parameters
+        ----------
+        tr: TestRecord object
+            The test record to be found
+
+        Returns
+        -------
+        list of str
+            The list of cycle end times that matches the specified test record
+        """
+        test_folder = self.dirStructure.load_test_folder(tr.uuid)
+        cycle_stats = self.dataIO.load_cycle_stats(test_folder)
+        return cycle_stats.cyc_end_datapoint_time 

@@ -4,6 +4,7 @@ import pandas as pd
 import gzip
 import shutil
 import hashlib
+import matplotlib.pyplot as plt
 from src.model.DirStructure import DirStructure
 from src.model.DataDeleter import DataDeleter
 from src.config.time_config import DATE_FORMAT
@@ -45,6 +46,14 @@ class DataIO:
         Load the test records based on the specified test folders
     load_dfs(test_folders)
         Load the dataframes based on the specified test folders
+    load_processed_data(cell_name)
+        Load the processed data from the processed folder
+    save_processed_data(cell_name, cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt)
+        Save the processed data to the processed folder
+    load_ccm_csv(cell_name)
+        Load the cycle metrics csv from the processed folder
+    save_figs(figs, cell_name)
+        Save the figures to the processed folder
     merge_folders(src, dest)
         Merge the source folder into the destination folder
     """
@@ -87,7 +96,7 @@ class DataIO:
             projects_name.append(project_name)
         return devices_id, devices_name, projects_name
     
-    def save_test_data_update_dict(self, trs, dfs, devices_id, devices_name, projects_name):
+    def save_test_data_update_dict(self, trs, dfs, cycle_stats, devices_id, devices_name, projects_name):
         """
         Save test data to local disk and update the directory structure information
         
@@ -97,6 +106,8 @@ class DataIO:
             The list of test records to be saved
         dfs: list of pandas Dataframe
             The list of dataframes to be saved
+        cycle_stats: list of pandas Dataframe
+            The list of cycle status dataframes to be saved
         devices_id_to_name: dict
             The dictionary of device id and device name
         device_name_to_project_name: dict
@@ -106,11 +117,11 @@ class DataIO:
         -------
         None
         """
-        for tr, df in zip(trs, dfs):
+        for tr, df, cycle_stat in zip(trs, dfs, cycle_stats):
             i = devices_id.index(tr.device_id)
             dev_name = devices_name[i]
             project_name = projects_name[i]
-            self._handle_single_record(tr, df, dev_name, project_name)
+            self._handle_single_record(tr, df, cycle_stat, dev_name, project_name)
     
     def save_df(self, df, df_path):
         """
@@ -137,7 +148,7 @@ class DataIO:
         self.logger.error(f"Project name not found in tags: {tags}")
         return None
     
-    def _handle_single_record(self, tr, df, dev_name, project_name):
+    def _handle_single_record(self, tr, df, cycle_stat, dev_name, project_name):
         device_folder = os.path.join(self.rootPath, project_name if project_name else '', dev_name)
         if not project_name:
             self.logger.warning(f"The device {dev_name} does not have a project name. Put it in the device folder directly.")
@@ -157,6 +168,8 @@ class DataIO:
         tr_path = self.dirStructure.get_tr_path(test_folder)
         # Save the time series data to a pickle file
         df_path = self.dirStructure.get_df_path(test_folder)
+        # Save the cycle status data to a pickle file
+        cycle_stats_path = self.dirStructure.get_cycle_stats_path(test_folder)
         if tr is None or df is None:
             self.logger.error(f'Test record or dataframe is None')
             return None
@@ -169,6 +182,8 @@ class DataIO:
             # Guarantee the transactional integrity
             self._save_to_pickle(tr, tr_path)
             self._save_to_pickle(df, df_path)
+            if cycle_stat is not None:
+                self._save_to_pickle(cycle_stat, cycle_stats_path)
             # Append the directory structure information to the list
             self.dirStructure.append_record(tr, dev_name, project_name)
         except Exception as e:
@@ -253,6 +268,22 @@ class DataIO:
                 self.logger.error(f"DataFrame is None when attempting to filter by trace keys: {trace_keys}")
                 return None
         return df
+    
+    def load_tr(self, tr_path):
+        """
+        Load the test record from the pickle file
+
+        Parameters
+        ----------
+        tr_path: str
+            The path of the pickle file
+
+        Returns
+        -------
+        TestRecord
+            The test record loaded from the pickle file
+        """
+        return self._load_pickle(tr_path)
 
     def load_trs(self, test_folders):
         """
@@ -287,6 +318,149 @@ class DataIO:
         """
         df_paths = [self.dirStructure.get_df_path(test_folder) for test_folder in test_folders]
         return self._load_pickles(df_paths)
+    
+    def load_cycle_stats(self, test_folder):
+        """
+        Load the cycle status data from the pickle file
+
+        Parameters
+        ----------
+        test_folder: str
+            The path of the test folder
+        
+        Returns
+        -------
+        Dataframe
+            The dataframe loaded from the pickle file
+        """
+        cycle_stats_path = self.dirStructure.get_cycle_stats_path(test_folder)
+        return self._load_pickle(cycle_stats_path)
+
+        
+
+    def load_processed_data(self, cell_name):
+        """
+        load the processed data from the processed folder
+
+        Parameters
+        ----------
+        cell_name: str
+            The name of the cell
+        
+        Returns
+        -------
+        cell_cycle_metrics: Dataframe
+            The dataframe of cell cycle metrics
+        cell_data: Dataframe
+            The dataframe of cell data
+        cell_data_vdf: Dataframe
+            The dataframe of cell data vdf
+        cell_data_rpt: Dataframe
+            The dataframe of cell data rpt
+        """
+        cell_path = self.dirStructure.load_processed_dev_folder(cell_name)
+        if cell_path is None:
+            self.logger.warning(f"No test record for the {cell_name} in our network drive. Please check if the cell name is correct.")
+            return None, None, None, None
+        # Filepaths for cycle metrics, cell data, cell data vdf and rpt
+        filepath_ccm = os.path.join(cell_path, 'CCM.pkl.gz')
+        filepath_cell_data = os.path.join(cell_path, 'CD.pkl.gz')
+        filepath_cell_data_vdf = os.path.join(cell_path, 'CDvdf.pkl.gz')
+        filepath_rpt = os.path.join(cell_path, 'RPT.pkl.gz')
+        # Load dataframes for cycle metrics, cell data, cell data vdf
+        cell_cycle_metrics = self.load_df(df_path=filepath_ccm)
+        cell_data = self.load_df(df_path=filepath_cell_data)
+        cell_data_vdf = self.load_df(df_path=filepath_cell_data_vdf)
+        cell_data_rpt = self.load_df(df_path=filepath_rpt)
+        return cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt
+    
+    def save_processed_data(self, cell_name, cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt):
+        """
+        Save the processed data to the processed folder
+
+        Parameters
+        ----------
+        cell_name: str
+            The name of the cell
+        cell_cycle_metrics: Dataframe
+            The dataframe of cell cycle metrics
+        cell_data: Dataframe
+            The dataframe of cell data
+        cell_data_vdf: Dataframe
+            The dataframe of cell data vdf
+        cell_data_rpt: Dataframe
+            The dataframe of cell data rpt
+        
+        Returns
+        -------
+        None
+        """
+        cell_path = self.dirStructure.load_processed_dev_folder(cell_name)
+        if cell_path is None:
+            self.logger.warning(f"No test record for the {cell_name} in our network drive. Please check if the cell name is correct.")
+            return None
+        # Filepaths for cycle metrics, cell data, cell data vdf and rpt
+        filepath_ccm = os.path.join(cell_path, 'CCM.pkl.gz')
+        filepath_cell_data = os.path.join(cell_path, 'CD.pkl.gz')
+        filepath_cell_data_vdf = os.path.join(cell_path, 'CDvdf.pkl.gz')
+        filepath_rpt = os.path.join(cell_path, 'RPT.pkl.gz')
+        # Save dataframes for cycle metrics, cell data, cell data vdf
+        self.save_df(cell_cycle_metrics, filepath_ccm)
+        self.save_df(cell_data, filepath_cell_data)
+        self.save_df(cell_data_vdf, filepath_cell_data_vdf)
+        self.save_df(cell_data_rpt, filepath_rpt)
+
+    def load_ccm_csv(self, cell_name):
+        """
+        Load the cycle metrics csv from the processed folder
+
+        Parameters
+        ----------
+        cell_name: str
+            The name of the cell
+
+        Returns
+        -------
+        csv_string: str
+            The csv string of the cycle metrics
+        """
+        cell_path = self.dirStructure.load_processed_dev_folder(cell_name)
+        if cell_path is None:
+            self.logger.warning(f"No test record for the {cell_name} in our network drive. Please check if the cell name is correct.")
+            return None, None, None, None
+        # Filepaths for cycle metrics, cell data, cell data vdf and rpt
+        filepath_ccm = os.path.join(cell_path, 'CCM.pkl.gz')     
+        cell_cycle_metrics = self.load_df(df_path=filepath_ccm)   
+        csv_string = cell_cycle_metrics.to_csv(index=False, sep=',')
+        return csv_string
+
+    def save_figs(self, figs, cell_name):
+        """
+        Save the figures to the processed folder
+
+        Parameters
+        ----------
+        figs: list of Figure objects
+            The list of figures to be saved
+        cell_name: str
+            The name of the cell
+        
+        Returns
+        -------
+        None
+        """
+        cell_path = self.dirStructure.load_processed_dev_folder(cell_name)
+        if cell_path is None:
+            self.logger.warning(f"No test record for the {cell_name} in our network drive. Please check if the cell name is correct.")
+            return None
+        # Filepaths for figures
+        filepath_figs = os.path.join(cell_path, 'figs')
+        # Save figures
+        self._create_directory(filepath_figs)
+        for i, fig in enumerate(figs):
+            self.logger.info(f"Saving figure {i} to {filepath_figs}")
+            fig.savefig(os.path.join(filepath_figs, f'{cell_name}_fig{i}.png'))
+            plt.close(fig)
 
     def _load_pickles(self, file_paths):
         return [self._load_pickle(file_path) for file_path in file_paths]

@@ -115,7 +115,7 @@ class DataProcessor:
                 for test in trs_new_data_vdf:
                     self.logger.info(f"Processing new vdf data: {test.name}")
                     # process test file
-                    cell_data_vdf_new, cell_cycle_metrics_new = self._process_cycler_expansion([test], cell_cycle_metrics_new,numFiles = numFiles)
+                    cell_data_vdf_new, cell_cycle_metrics_new = self._process_cycler_expansion([test], cell_cycle_metrics, numFiles = numFiles)
                     # load test data to df and get start and end times
                     df_test = self._test_to_df(test, test_trace_keys = ['h_datapoint_time'], df_labels =['Time [s]'])
                     file_start_time, file_end_time = df_test['Time [s]'].iloc[0], df_test['Time [s]'].iloc[-1] 
@@ -181,14 +181,13 @@ class DataProcessor:
         recorded_cycle_times = cell_cycle_metrics['Time [s]']
         trs_new_data = []
         # for each file, check that cell_cycle_metrics has timestamps in this range
-        for test in trs:
-            #TODO use local method to get cycle end times
-            cycle_end_times = test.get_cycle_stats().cyc_end_datapoint_time #from cycler's cycle count
+        for tr in trs:
+            cycle_end_times = self.dataFilter.filter_cycle_end_times(tr)
             last_cycle_time_in_file = cycle_end_times.iloc[-1] if not last_cycle_time else last_cycle_time
             if len(cycle_end_times) > 1:
-                timestamps_in_range_count = sum(1 for t in recorded_cycle_times if test.start_time.timestamp() <= t <= last_cycle_time_in_file)
+                timestamps_in_range_count = sum(1 for t in recorded_cycle_times if tr.start_time.timestamp() <= t <= last_cycle_time_in_file)
                 if timestamps_in_range_count == 0:
-                    trs_new_data.append(test)  
+                    trs_new_data.append(tr)          
         return trs_new_data
     
     def _update_dataframe(self, df, df_new, file_start_time, file_end_time, update_AhT=True):

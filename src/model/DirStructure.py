@@ -138,6 +138,13 @@ class DirStructure:
             return os.path.join(self.rootPath, record['dev_name'], record['start_time'])
         return os.path.join(self.rootPath, record['project_name'], record['dev_name'], record['start_time'])
    
+    def load_test_folder(self, uuid):
+        for record in self.structure:
+            if record['uuid'] == uuid:
+                return self.get_test_folder(record)
+        self.logger.warning(f"No related test record for {uuid}")
+        return None
+
     def get_project_folder(self, record):
         return os.path.join(self.rootPath, record['project_name'])
 
@@ -156,9 +163,10 @@ class DirStructure:
     def load_uuid_to_last_dp_timestamp(self):
         return {record['uuid']: record['last_dp_timestamp'] for record in self.structure}
 
-    def load_uuid_to_tr_path_and_df_path(self):
+    def load_uuid_to_tr_df_cs_path(self):
         return {record['uuid']: (self.get_tr_path(self.get_test_folder(record)), 
-                                 self.get_df_path(self.get_test_folder(record))) for record in self.structure}
+                                 self.get_df_path(self.get_test_folder(record)),
+                                 self.get_cycle_stats_path(self.get_test_folder(record))) for record in self.structure}
     
     def load_dev_folder(self, dev_name):
         for record in self.structure:
@@ -180,6 +188,9 @@ class DirStructure:
     def get_df_path(self, test_folder):
         return os.path.join(test_folder, 'df.pkl.gz')
     
+    def get_cycle_stats_path(self, test_folder):
+        return os.path.join(test_folder, 'cycle_stats.pkl.gz')
+    
     def delete_record(self, uuid=None, test_folder=None):
         # Filter out records based on provided uuid or test_folder
         if uuid:
@@ -200,10 +211,15 @@ class DirStructure:
     def load_project_devices(self):
         return self._load(self.projectDevicesPath)
     
-    def get_project_devices_id(self, project_name):
+    def project_to_devices_id(self, project_name):
         proj_to_dev_id_name = self.load_project_devices()
         if project_name in proj_to_dev_id_name:
             return [item[0] for item in proj_to_dev_id_name[project_name]]
         return []
     
+    def project_to_devices_name(self, project_name):
+        proj_to_dev_id_name = self.load_project_devices()
+        if project_name in proj_to_dev_id_name:
+            return [item[1] for item in proj_to_dev_id_name[project_name]]
+        return []
         
