@@ -90,9 +90,9 @@ Add your voltaiq studio token in the first line of the .env file
 
 ## Usage
 
-1.Connect our network drive to your PC.
-2.Navigate to 'src/config/path_config.py'.
-3.Update the 'ROOT_PATH' value to reflect the path of the newly connected network drive.
+1. Connect our network drive to your PC.  
+2. Navigate to 'src/config/path_config.py'.  
+3. Update the 'ROOT_PATH' value to reflect the path of the newly connected network drive.  
 
 In the test folder, execute both the model and integration tests. Update the sys.path.insert value to point to your src code directory.
 
@@ -176,6 +176,36 @@ This file contains the useful metadata for us to locate the real data, the struc
         ]
     }, ...
 ```
+
+
+#### project_devices.json 
+This file maps project names to their corresponding device names and IDs.
+```
+{
+    "GMJuly2022": [
+            [
+                3110,
+                "GMJuly2022_CELL087"
+            ],
+            [
+                3594,
+                "GMJuly2022_CELL034"
+            ],
+            ...]
+    "UMBL2022FEB": [
+        [
+            3255,
+            "UMBL2022FEB_CELL152057"
+        ],
+        [
+            3257,
+            "UMBL2022FEB_CELL152088"
+        ],
+        ...]
+    ...
+    }, ...
+```
+
 ### DataManager Usage
 DataManager is a robust utility class designed to manage local data, ensuring seamless interaction with the Voltaiq Studio. It encompasses functions to fetch, delete, update, filter, and process data pertaining to test records and devices. 
 
