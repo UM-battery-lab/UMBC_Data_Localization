@@ -110,7 +110,8 @@ In the test folder, execute both the model and integration tests. Update the sys
 ```
 
 ### Update local database
-**Jason will handle updating our local database daily, so we won't need to do it ourselves.**
+**Jason will handle updating our local database daily, so we won't need to do it ourselves.**  
+
 Use the file src/updatedb.py, in this line, you can specify the device id and start time of the test record you want to update. Or you can leave the parameter empty, it will update all the database.
 ```
 dataManager._updatedb(device_id= 1778, start_before='2023-06-22_23-59-59',start_after='2023-06-22_00-00-00')
@@ -220,8 +221,6 @@ If you want to use Redis as local cache:
 manager = DataManager(use_redis=True)
 ```
 
-##### Update Local Database
-```
 ##### Check consistency
  Check the consistency between the directory structure and local database, and repair the inconsistency
 ```python
@@ -289,10 +288,11 @@ The Presenter class is designed to manage the presentation of data to a frontend
 
 #### Initialization
 
-To create an instance of the Presenter, you must provide a `DataManager` object:
+Create an instance of the Presenter, then attach it to the dataManager:
 
 ```python
 presenter = Presenter()
+dataManager.attach(presenter)
 ```
 
 ### Viewer
@@ -301,17 +301,13 @@ The Viewer class is a utility designed to visualize data from a local disk perta
 
 #### Example useage
 
-Get the processed data from the Presenter, then plot it
 
-```python
-viewer = Viewer()
-viewer.plot_process_cell(cell_name, cell_data) # use get_measured_data_time() method to get cell_data
-```
-If you add the call back function as following, the figures will be saved by datamanager:
+Add the call back function when creating the Viewer, the figures will be saved by datamanager:
 ```python
 def save_figs(figs, cell_name):
     dataManager.save_figs(figs, cell_name)
 viewer = Viewer(call_back=save_figs)
+presenter.attach(viewer)
 ```
 #### Recommendations
 While the default downsample value is set to 100, users can adjust this parameter for finer or coarser visualizations as required.
