@@ -26,3 +26,9 @@ class DateConverter(metaclass=SingletonMeta):
     def _str_to_datetime(self, date_str):
         timestamp = self._str_to_timestamp(date_str)
         return self._timestamp_to_datetime(timestamp)
+    
+    def _format_date_str(self, date_str):
+        # Parse the given date string
+        date_obj = datetime.datetime.strptime(date_str, '%m/%d/%Y')
+        # Convert to the desired format
+        return date_obj.strftime(self.DATE_FORMAT)

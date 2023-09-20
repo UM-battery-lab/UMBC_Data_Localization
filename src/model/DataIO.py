@@ -5,11 +5,12 @@ import gzip
 import shutil
 import hashlib
 import matplotlib.pyplot as plt
+import csv
 from src.model.DirStructure import DirStructure
 from src.model.DataDeleter import DataDeleter
 from src.config.time_config import DATE_FORMAT
 from src.config.df_config import TIME_COLUMNS
-from src.config.path_config import ROOT_PATH
+from src.config.path_config import ROOT_PATH, SANITY_CHECK_CSV_PATH, WRONG_TR_NAME_PATH
 from src.utils.Logger import setup_logger
 from src.utils.RedisClient import RedisClient
 
@@ -381,6 +382,55 @@ class DataIO:
             self.logger.error(f"File not found: {file_path}")
             return None
 
+    def _read_csv(self, file_path):
+        """
+        Read the csv file line by line
+
+        Parameters
+        ----------
+        file_path: str
+            The path of the csv file
+        
+        Returns
+        -------
+        iterator
+            An iterator of the rows in the csv file
+        """
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                # Use csv.reader to read the file and convert it to a list of rows
+                rows = list(csv.reader(f))
+            self.logger.info(f"Loaded csv file from {file_path} successfully")
+            return iter(rows)
+        except FileNotFoundError:
+            self.logger.error(f"File not found: {file_path}")
+            return None
+
+    def read_sanity_check_csv(self):
+        """
+        Read the sanity check csv file
+
+        Returns
+        -------
+        iterator
+            An iterator of the rows in the csv file
+        """
+        return self._read_csv(SANITY_CHECK_CSV_PATH)
+    
+    def save_wrong_trs_name(self, wrong_tr_name):
+        """
+        Save the wrong test record name to the json file
+
+        Parameters
+        ----------
+        wrong_tr_name: dict
+            The dictionary of wrong test record name
+        
+        Returns
+        -------
+        None
+        """
+        self.dirStructure._save(WRONG_TR_NAME_PATH, wrong_tr_name)
 
     def load_processed_data(self, cell_name):
         """
