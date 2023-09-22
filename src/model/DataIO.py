@@ -526,7 +526,7 @@ class DataIO:
             self.logger.warning(f"No test record for the {cell_name} in our network drive. Please check if the cell name is correct.")
             return None, None, None, None
         # Filepaths for cycle metrics, cell data, cell data vdf and rpt
-        filepath_ccm = os.path.join(cell_path, 'CCM.pkl.gz')     
+        filepath_ccm = os.path.join(cell_path, 'CCM.pkl.gz') 
         csv_string = self.load_csv(filepath_ccm)
         return csv_string
 
@@ -640,3 +640,25 @@ class DataIO:
                 shutil.copy2(s, d)
         # Remove the source folder
         shutil.rmtree(src)
+
+    def move_tr(self, old_path, new_path):
+        """
+        Move the test record from the old path to the new path
+
+        Parameters
+        ----------
+        old_path: str
+            The path of the old test record
+        new_path: str
+            The path of the new test record
+        
+        Returns
+        -------
+        None
+        """
+        self.logger.info(f"Moving test record from {old_path} to {new_path}")
+        try:
+            shutil.move(old_path, new_path)
+        except FileNotFoundError:
+            self.logger.error(f"File not found: {old_path}")
+            return None

@@ -361,6 +361,28 @@ class DataManager(metaclass=SingletonMeta):
                 self.dirStructure.delete_record(test_folder=orphaned_record)
                 self.logger.info(f'Deleted {len(orphaned_records)} orphaned records from directory structure.')
 
+        # Step 6: Check for local test records that are not consistent with the test records in Voltaiq Studio
+        self.logger.info('Checking for local test records that are not consistent with the test records in Voltaiq Studio...')
+        trs = self.dataFetcher.fetch_trs()
+        tr_uuid_to_tr = {tr.uuid: tr for tr in trs}
+        for record in self.dirStructure.load_records():
+            if record['uuid'] not in tr_uuid_to_tr:
+                self.logger.error(f'Local test record {record["uuid"]} not found in Voltaiq Studio')
+                continue
+            if record['device_id'] != tr_uuid_to_tr[record['uuid']].device_id:
+                self.logger.error(f'Local test record {record["uuid"]} has wrong device id')
+                # Move the test record to the correct device folder and update the directory structure
+                dev_name = devices_name[devices_id.index(tr_uuid_to_tr[record['uuid']].device_id)]
+                project_name = projects_name[devices_id.index(tr_uuid_to_tr[record['uuid']].device_id)]
+                if dev_name is None or project_name is None:
+                    self.logger.error(f'No device name or project name found for test record {record["uuid"]}')
+                    continue
+                old_path = self.dirStructure.get_test_folder(record)
+                new_path = os.path.join(self.dirStructure.rootPath, project_name, dev_name, record['start_time'])
+                self.dataIO.move_tr(old_path, new_path)
+                self.dirStructure.delete_record(record['uuid'])
+                self.dirStructure.append_record(tr_uuid_to_tr[record['uuid']], dev_name, project_name)  
+
         self.logger.info('Consistency check completed.')
 
     def process_cell(self, cell_name, start_time=None, end_time=None, numFiles = 1000):
