@@ -1,7 +1,9 @@
-import sys
-sys.path.insert(0, '/Users/yiliu/Documents/GitHub/UMBC_Data_Localization/UMBC_Data_Localization/src')
-
-
+import sys,os
+sys.path.append(os.path.dirname(os.path.abspath("__file__")))
+if os.name=="nt":
+    sys.path.append(os.path.dirname(os.path.abspath("__file__"))+"\\src")
+else:
+    sys.path.append(os.path.dirname(os.path.abspath("__file__"))+"/src")
 from src.model.DataManager import DataManager
 
 # Integration test
