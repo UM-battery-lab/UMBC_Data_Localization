@@ -71,6 +71,7 @@ class DirStructure:
     def _load(self, path):
         try:
             with open(path, 'r') as f:
+                self.logger.info(f'Loading json file from {path}')
                 return json.load(f)
         except Exception as e:
             self.logger.error(f'Error while loading json file: {e}')
@@ -80,6 +81,7 @@ class DirStructure:
         try:
             os.makedirs(os.path.dirname(path), exist_ok=True)
             with open(path, 'w') as f:
+                self.logger.info(f'Saving json file to {path}')
                 json.dump(data, f, indent=4)
         except Exception as e:
             self.logger.error(f'Error while saving json file: {e}')

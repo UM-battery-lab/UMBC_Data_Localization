@@ -10,6 +10,7 @@ from src.utils.DateConverter import DateConverter
 from src.utils.ObserverPattern import Subject
 import os
 import gc
+import re
 
 @Subject
 class DataManager(metaclass=SingletonMeta):
@@ -360,6 +361,28 @@ class DataManager(metaclass=SingletonMeta):
                 self.dirStructure.delete_record(test_folder=orphaned_record)
                 self.logger.info(f'Deleted {len(orphaned_records)} orphaned records from directory structure.')
 
+        # Step 6: Check for local test records that are not consistent with the test records in Voltaiq Studio
+        self.logger.info('Checking for local test records that are not consistent with the test records in Voltaiq Studio...')
+        trs = self.dataFetcher.fetch_trs()
+        tr_uuid_to_tr = {tr.uuid: tr for tr in trs}
+        for record in self.dirStructure.load_records():
+            if record['uuid'] not in tr_uuid_to_tr:
+                self.logger.error(f'Local test record {record["uuid"]} not found in Voltaiq Studio')
+                continue
+            if record['device_id'] != tr_uuid_to_tr[record['uuid']].device_id:
+                self.logger.error(f'Local test record {record["uuid"]} has wrong device id')
+                # Move the test record to the correct device folder and update the directory structure
+                dev_name = devices_name[devices_id.index(tr_uuid_to_tr[record['uuid']].device_id)]
+                project_name = projects_name[devices_id.index(tr_uuid_to_tr[record['uuid']].device_id)]
+                if dev_name is None or project_name is None:
+                    self.logger.error(f'No device name or project name found for test record {record["uuid"]}')
+                    continue
+                old_path = self.dirStructure.get_test_folder(record)
+                new_path = os.path.join(self.dirStructure.rootPath, project_name, dev_name, record['start_time'])
+                self.dataIO.move_tr(old_path, new_path)
+                self.dirStructure.delete_record(record['uuid'])
+                self.dirStructure.append_record(tr_uuid_to_tr[record['uuid']], dev_name, project_name)  
+
         self.logger.info('Consistency check completed.')
 
     def process_cell(self, cell_name, start_time=None, end_time=None, numFiles = 1000):
@@ -472,7 +495,69 @@ class DataManager(metaclass=SingletonMeta):
             The csv string of the cycle metrics for the cell
         """
         return self.dataIO.load_ccm_csv(cell_name)
+
+    def sanity_check(self):
+        self.logger.info('Starting sanity check...')
+        trs = self.dataFetcher.fetch_trs()
+        # Read sanity check csv line by line
+        snaity_csv = self.dataIO.read_sanity_check_csv()
+        header = next(snaity_csv)
+        # Get the index of the columns
+        project_index, cell_name_index, neware_rack_index, channel_index = header.index('Project'), header.index('Cell Name'), header.index('Neware Rack'), header.index('Channel')
+        start_date_index, removal_date_index = header.index('Start Date (Aging)'), header.index('Removal Date')
         
+        wrong_trs = {}
+
+        for row in snaity_csv:
+            try:
+                # Get the test records for the cell
+                project, cell_number, correct_neware_rack, correct_channel = row[project_index], row[cell_name_index], row[neware_rack_index], row[channel_index]
+                start_date, removal_date = row[start_date_index], row[removal_date_index]
+                cell_number = project + "_CELL" + cell_number.zfill(3)
+                cell_trs = [tr for tr in trs if tr.name.startswith(cell_number)]
+                # Check if there is overlapping between the time range of the test records and the time range in the sanity check csv
+                if start_date:
+                    start_date = self.dataConverter._str_to_timestamp(self.dataConverter._format_date_str(start_date))
+                    cell_trs = [tr for tr in cell_trs if tr.last_dp_timestamp >= start_date]
+                if removal_date:
+                    removal_date = self.dataConverter._str_to_timestamp(self.dataConverter._format_date_str(removal_date))
+                    cell_trs = [tr for tr in cell_trs if self.dataConverter._datetime_to_timestamp(tr.start_time) <= removal_date]
+                neware_trs = [tr for tr in cell_trs if 'neware_xls_4000' in tr.tags]
+                arbin_trs = [tr for tr in cell_trs if 'arbin' in tr.tags]
+            except Exception as e:
+                self.logger.error(f'Error {e} while processing row {row}')
+                continue
+            
+            # Check the neware trs
+            for tr in neware_trs:
+                try:
+                    neware_rack = tr.name.split("_")[-4]
+                    channel = tr.name.split("_")[-3] + '-' +tr.name.split("_")[-2]
+                    if neware_rack != correct_neware_rack or channel != correct_channel:
+                        self.logger.warning(f'Neware tr: {tr.name} has wrong neware rack or channel')
+                        wrong_trs[tr.name] = [correct_neware_rack, correct_channel]
+                except Exception as e:
+                    self.logger.error(f"Error while checking neware tr: {tr.name}, {e}")
+                    continue
+
+            # Check the arbin trs
+            for tr in arbin_trs:
+                try:
+                    comments = tr.comments
+                    comments_str = ''.join([str(comment) for comment in comments])
+                    match = re.search(r'Channel Index: #(\d+)', comments_str)
+                    channel_idx = int(match.group(1)) if match else None
+                    if channel_idx != correct_channel:
+                        self.logger.warning(f'Arbin tr: {tr.name} has wrong channel index')
+                        wrong_trs[tr.name] = [correct_channel]
+                except Exception as e:
+                    self.logger.error(f"Error while checking arbin tr: {tr.name}, {e}")
+                    continue
+
+        self.logger.info(f'{len(wrong_trs)} wrong trs found')  
+        # Save the wrong trs to json
+        self.dataIO.save_wrong_trs_name(wrong_trs)
+
     # Below are the methods for testing
     def test_createdb(self):
         """
