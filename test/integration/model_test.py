@@ -1,7 +1,10 @@
 import sys
-sys.path.insert(0, '/Users/yiliu/Documents/GitHub/UMBC_Data_Localization/UMBC_Data_Localization/src')
-
-
+import os
+current_directory = os.path.dirname(os.path.abspath(__file__))
+project_directory = os.path.dirname(os.path.dirname(current_directory))
+src_directory = os.path.join(project_directory, "src")
+sys.path.insert(0, project_directory)
+sys.path.insert(0, src_directory)
 from src.model.DataManager import DataManager
 
 # Integration test
@@ -54,9 +57,9 @@ def sanity_check_test():
 
 if __name__ == '__main__':
     # createdb_test()
-    # filter_test()
+    filter_test()
     # process_cell_test()
-    consistency_test()
+    # consistency_test()
     # read_csv_test()
     # update_cycle_stats_test()
     # sanity_check_test()
