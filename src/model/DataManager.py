@@ -70,8 +70,8 @@ class DataManager(metaclass=SingletonMeta):
         self.dataDeleter = DataDeleter()
         self.dataIO = DataIO(self.dirStructure, self.dataDeleter, use_redis)
         self.dataFilter = DataFilter(self.dataIO, self.dirStructure)
-        self.dataProcessor = DataProcessor(self.dataFilter, self.dirStructure)
-        self.dataConverter = DateConverter()
+        self.dateConverter = DateConverter()
+        self.dataProcessor = DataProcessor(self.dataFilter, self.dirStructure, self.dateConverter)
         self.logger = setup_logger()
         DataManager._is_initialized = True
 
@@ -127,11 +127,11 @@ class DataManager(metaclass=SingletonMeta):
             project_devices_id = self.dirStructure.project_to_devices_id(project_name)
             trs = [tr for tr in trs if tr.device_id in project_devices_id]
         if start_before:
-            start_before = self.dataConverter._str_to_timestamp(start_before)
-            trs = [tr for tr in trs if self.dataConverter._datetime_to_timestamp(tr.start_time) < start_before]
+            start_before = self.dateConverter._str_to_timestamp(start_before)
+            trs = [tr for tr in trs if self.dateConverter._datetime_to_timestamp(tr.start_time) < start_before]
         if start_after:
-            start_after = self.dataConverter._str_to_timestamp(start_after)
-            trs = [tr for tr in trs if self.dataConverter._datetime_to_timestamp(tr.start_time) > start_after]
+            start_after = self.dateConverter._str_to_timestamp(start_after)
+            trs = [tr for tr in trs if self.dateConverter._datetime_to_timestamp(tr.start_time) > start_after]
         self.logger.info(f'Find {len(trs)} test records meeting the criteria')
         devs = self.dataFetcher.fetch_devs()
         self.update_test_data(trs, devs, len(trs))
@@ -410,24 +410,20 @@ class DataManager(metaclass=SingletonMeta):
             The dataframe of cell data vdf for the cell
         """
         cell_cycle_metrics, cell_data, cell_data_vdf, _ = self.load_processed_data(cell_name)
-        # Load trs for cycler data
-        #TODO： use device name, not tr_name_substring
-        trs_neware = self.dataFilter.filter_trs(tr_name_substring=cell_name, tags=['neware_xls_4000'])
-        trs_arbin = self.dataFilter.filter_trs(tr_name_substring=cell_name, tags=['arbin'])
-        trs_biologic = self.dataFilter.filter_trs(tr_name_substring=cell_name, tags=['biologic'])
-        trs_vdf = self.dataFilter.filter_trs(tr_name_substring=cell_name, tags=['vdf'])        
+    
+        records_neware = self.dataFilter.filter_records(tr_name_substring=cell_name, tags=['neware_xls_4000'])
+        records_arbin = self.dataFilter.filter_records(tr_name_substring=cell_name, tags=['arbin'])
+        records_biologic = self.dataFilter.filter_records(tr_name_substring=cell_name, tags=['biologic'])
+        records_vdf = self.dataFilter.filter_records(tr_name_substring=cell_name, tags=['vdf'])     
         # Sort trs
-        if start_time:
-            start_time = self.dataConverter._str_to_datetime(start_time)
-        if end_time:
-            end_time = self.dataConverter._str_to_datetime(end_time)   
-        trs_neware = self.dataProcessor.sort_tests(trs_neware)
-        trs_arbin = self.dataProcessor.sort_tests(trs_arbin)
-        trs_biologic = self.dataProcessor.sort_tests(trs_biologic)
-        trs_cycler = self.dataProcessor.sort_tests(trs_neware + trs_arbin + trs_biologic)
-        trs_vdf = self.dataProcessor.sort_tests(trs_vdf)
+        records_neware = self.dataProcessor.sort_records(records_neware)
+        records_arbin = self.dataProcessor.sort_records(records_arbin)
+        records_biologic = self.dataProcessor.sort_records(records_biologic)
+        records_cycler = self.dataProcessor.sort_records(records_neware + records_arbin + records_biologic)
+        records_vdf = self.dataProcessor.sort_records(records_vdf)
+
         # Process data
-        cell_cycle_metrics, cell_data, cell_data_vdf, update = self.dataProcessor.process_cell(trs_cycler, trs_vdf, cell_cycle_metrics, cell_data, cell_data_vdf, numFiles)
+        cell_cycle_metrics, cell_data, cell_data_vdf, update = self.dataProcessor.process_cell(records_cycler, records_vdf, cell_cycle_metrics, cell_data, cell_data_vdf, numFiles)
         #Save new data to pickle if there was new data
         cell_data_rpt = None
         if update:
@@ -517,11 +513,11 @@ class DataManager(metaclass=SingletonMeta):
                 cell_trs = [tr for tr in trs if tr.name.startswith(cell_number)]
                 # Check if there is overlapping between the time range of the test records and the time range in the sanity check csv
                 if start_date:
-                    start_date = self.dataConverter._str_to_timestamp(self.dataConverter._format_date_str(start_date))
+                    start_date = self.dateConverter._str_to_timestamp(self.dateConverter._format_date_str(start_date))
                     cell_trs = [tr for tr in cell_trs if tr.last_dp_timestamp >= start_date]
                 if removal_date:
-                    removal_date = self.dataConverter._str_to_timestamp(self.dataConverter._format_date_str(removal_date))
-                    cell_trs = [tr for tr in cell_trs if self.dataConverter._datetime_to_timestamp(tr.start_time) <= removal_date]
+                    removal_date = self.dateConverter._str_to_timestamp(self.dateConverter._format_date_str(removal_date))
+                    cell_trs = [tr for tr in cell_trs if self.dateConverter._datetime_to_timestamp(tr.start_time) <= removal_date]
                 neware_trs = [tr for tr in cell_trs if 'neware_xls_4000' in tr.tags]
                 arbin_trs = [tr for tr in cell_trs if 'arbin' in tr.tags]
             except Exception as e:

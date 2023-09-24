@@ -65,7 +65,7 @@ Once the virtual environment is activated, you can install the project's depende
 pip install -r requirements.txt
 ```
 
-Then install Redis:
+Then install Redis (If you're using Windows or prefer not to use this feature, please skip this section.):
 
 **On macOS:**
 
