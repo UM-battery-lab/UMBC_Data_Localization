@@ -365,11 +365,14 @@ class DataManager(metaclass=SingletonMeta):
         self.logger.info('Checking for local test records that are not consistent with the test records in Voltaiq Studio...')
         trs = self.dataFetcher.fetch_trs()
         tr_uuid_to_tr = {tr.uuid: tr for tr in trs}
+        expired_folders = []
         for record in self.dirStructure.load_records():
             if record['uuid'] not in tr_uuid_to_tr:
                 self.logger.error(f'Local test record {record["uuid"]} not found in Voltaiq Studio')
-                continue
-            if record['device_id'] != tr_uuid_to_tr[record['uuid']].device_id:
+                # Delete the test record from the directory structure based on its uuid.
+                expired_folders.append(self.dirStructure.get_test_folder(record))
+                self.dirStructure.delete_record(record['uuid'])
+            elif record['device_id'] != tr_uuid_to_tr[record['uuid']].device_id:
                 self.logger.error(f'Local test record {record["uuid"]} has wrong device id')
                 # Move the test record to the correct device folder and update the directory structure
                 dev_name = devices_name[devices_id.index(tr_uuid_to_tr[record['uuid']].device_id)]
@@ -382,7 +385,9 @@ class DataManager(metaclass=SingletonMeta):
                 self.dataIO.move_tr(old_path, new_path)
                 self.dirStructure.delete_record(record['uuid'])
                 self.dirStructure.append_record(tr_uuid_to_tr[record['uuid']], dev_name, project_name)  
-
+        if expired_folders:
+            self.logger.info(f'Expired folders found: {expired_folders}')
+            self.dataDeleter.delete_folders(expired_folders)
         self.logger.info('Consistency check completed.')
 
     def process_cell(self, cell_name, start_time=None, end_time=None, numFiles = 1000):

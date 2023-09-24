@@ -94,7 +94,6 @@ Add your voltaiq studio token in the first line of the .env file
 2. Navigate to 'src/config/path_config.py'.  
 3. Update the 'ROOT_PATH' value to reflect the path of the newly connected network drive.  
 
-In the test folder, execute both the model and integration tests. Update the sys.path.insert value to point to your src code directory.
 
 ### Sample Useage:
 ```python
