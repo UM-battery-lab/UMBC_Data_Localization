@@ -5,6 +5,7 @@ from src.model.DataIO import DataIO
 from src.model.DirStructure import DirStructure
 from src.config.time_config import DATE_FORMAT, TIME_TOLERANCE
 
+#TODO: We don't need this class anymore, the functions can separate into DataIO and DirStructure
 class DataFilter:
     """
     The class to filter data from the local disk
@@ -20,6 +21,8 @@ class DataFilter:
     
     Methods
     -------
+    filter_records(device_id=None, tr_name_substring=None, start_time=None, tags=None)
+        Filter the records with the specified device id or name or start time or tags
     filter_trs(device_id=None, tr_name_substring=None, start_time=None, tags=None)
         Filter the test records with the specified device id or name or start time or tags
     filter_dfs(device_id=None, tr_name_substring=None, start_time=None, tags=None)
@@ -34,7 +37,7 @@ class DataFilter:
         self.dirStructure = dirStructure
         self.logger = setup_logger()
     
-    def _filter_records(self, device_id=None, tr_name_substring=None, start_time=None, tags=None):
+    def filter_records(self, device_id=None, tr_name_substring=None, start_time=None, tags=None):
         """
         Fileter the records with the specified device id or name, and start time
 
@@ -92,7 +95,7 @@ class DataFilter:
             The list of test records that match the specified device id or name, and start time
         """
         #TODO: Change the pipeline
-        matching_records = self._filter_records(device_id=device_id, tr_name_substring=tr_name_substring, start_time=start_time, tags=tags)
+        matching_records = self.filter_records(device_id=device_id, tr_name_substring=tr_name_substring, start_time=start_time, tags=tags)
         matching_test_folders = [self.dirStructure.get_test_folder(record) for record in matching_records]
         return self.dataIO.load_trs(matching_test_folders)
 
@@ -116,7 +119,7 @@ class DataFilter:
         list of Dataframe
             The list of dataframes that match the specified device id or name, and start time
         """
-        matching_records = self._filter_records(device_id=device_id, tr_name_substring=tr_name_substring, start_time=start_time, tags=tags)
+        matching_records = self.filter_records(device_id=device_id, tr_name_substring=tr_name_substring, start_time=start_time, tags=tags)
         matching_test_folders = [self.dirStructure.get_test_folder(record) for record in matching_records]
         return self.dataIO.load_dfs(matching_test_folders)
 
@@ -142,17 +145,17 @@ class DataFilter:
         list of Dataframe
             The list of dataframes that match the specified device id or name, start time and tags
         """
-        matching_records = self._filter_records(device_id=device_id, tr_name_substring=tr_name_substring, start_time=start_time, tags=tags)
+        matching_records = self.filter_records(device_id=device_id, tr_name_substring=tr_name_substring, start_time=start_time, tags=tags)
         matching_test_folders = [self.dirStructure.get_test_folder(record) for record in matching_records]
         return self.dataIO.load_trs(matching_test_folders), self.dataIO.load_dfs(matching_test_folders)
 
-    def filter_df_by_tr(self, tr, trace_keys=None):
+    def filter_df_by_record(self, record, trace_keys=None):
         """
         Filter the dataframe with the specified test record
 
         Parameters
         ----------
-        tr: TestRecord object
+        record: dict
             The test record to be found
         trace_keys: list of str, optional
             The list of trace keys to be found
@@ -162,26 +165,20 @@ class DataFilter:
         DataFrame
             The dataframe that matches the specified test record
         """
-        self.logger.info(f"Finding dataframe that matches test record {tr.uuid}")
-        dir_structure = self.dirStructure.load_records()
-        matching_test_folder = ""
-        for record in dir_structure:
-            if record['uuid'] == tr.uuid:
-                matching_test_folder = self.dirStructure.get_test_folder(record)
-                break
-        if matching_test_folder == "":
-            self.logger.warning(f"No dataframe found that matches test record {tr.uuid}, need to update the local data")
+        test_folder = self.dirStructure.get_test_folder(record)
+        if test_folder == "":
+            self.logger.warning(f"No dataframe found that matches test record {record['tr_name']}, need to update the local data")
             return None
-        self.logger.info(f"Found dataframe that matches test record {tr.uuid}")
-        return self.dataIO.load_df(matching_test_folder, trace_keys=trace_keys)
+        self.logger.info(f"Found dataframe that matches test record {record['tr_name']}")
+        return self.dataIO.load_df(test_folder, trace_keys=trace_keys)
     
-    def filter_cycle_end_times(self, tr):
+    def filter_cycle_end_times(self, record):
         """
         Filter the cycle end times with the specified test record
 
         Parameters
         ----------
-        tr: TestRecord object
+        record: dict
             The test record to be found
 
         Returns
@@ -189,6 +186,6 @@ class DataFilter:
         list of str
             The list of cycle end times that matches the specified test record
         """
-        test_folder = self.dirStructure.load_test_folder(tr.uuid)
+        test_folder = self.dirStructure.get_test_folder(record)
         cycle_stats = self.dataIO.load_cycle_stats(test_folder)
         return cycle_stats.cyc_end_datapoint_time 
