@@ -1,10 +1,11 @@
-import sys
-import os
-current_directory = os.path.dirname(os.path.abspath(__file__))
-project_directory = os.path.dirname(os.path.dirname(current_directory))
-src_directory = os.path.join(project_directory, "src")
-sys.path.insert(0, project_directory)
-sys.path.insert(0, src_directory)
+import sys,os
+sys.path.append(os.path.dirname(os.path.abspath("__file__")))
+if os.name=="nt":
+    sys.path.append(os.path.dirname(os.path.abspath("__file__"))+"\\src")
+else:
+    sys.path.append(os.path.dirname(os.path.abspath("__file__"))+"/src")
+print(sys.path)
+
 
 from src.model.DataManager import DataManager
 from src.presenter.Presenter import Presenter 
