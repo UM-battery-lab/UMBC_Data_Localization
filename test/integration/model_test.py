@@ -4,6 +4,7 @@ if os.name=="nt":
     sys.path.append(os.path.dirname(os.path.abspath("__file__"))+"\\src")
 else:
     sys.path.append(os.path.dirname(os.path.abspath("__file__"))+"/src")
+
 from src.model.DataManager import DataManager
 
 # Integration test
@@ -15,9 +16,9 @@ def createdb_test():
 def filter_test():
     dataManager = DataManager()
     # test filter
-    trs, dfs = dataManager.filter_trs_and_dfs(tr_name_substring='GMJuly2022_CELL080')
+    trs, dfs = dataManager.filter_trs_and_dfs(tr_name_substring='UMBL2022FEB')
     for tr in trs:
-        print(type(tr.get_cycle_stats()))
+        print(tr)
     # print(dfs)
     # dfs = dataManager.filter_dfs(tr_name_substring='GMJuly2022_CELL018')
     # for df in dfs:
@@ -39,7 +40,7 @@ def process_cell_test():
 def read_csv_test():
     dataManager = DataManager()
     # test read_csv
-    ccm_csv = dataManager.load_ccm_csv("UMBL2022FEB_CELL152051")
+    ccm_csv = dataManager.load_ccm_csv("GMJuly2022_CELL018")
     print(ccm_csv)
     with open("output.csv", "w", encoding="utf-8") as f:
         f.write(ccm_csv)
@@ -49,10 +50,16 @@ def update_cycle_stats_test():
     # test update_cs
     dataManager.update_cycle_stats()
 
+def sanity_check_test():
+    dataManager = DataManager()
+    # test sanity_check
+    dataManager.sanity_check()
+
 if __name__ == '__main__':
     # createdb_test()
-    # filter_test()
+    filter_test()
     # process_cell_test()
-    consistency_test()
+    # consistency_test()
     # read_csv_test()
     # update_cycle_stats_test()
+    # sanity_check_test()

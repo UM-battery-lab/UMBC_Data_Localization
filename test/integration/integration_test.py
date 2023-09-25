@@ -6,6 +6,7 @@ else:
     sys.path.append(os.path.dirname(os.path.abspath("__file__"))+"/src")
 print(sys.path)
 
+
 from src.model.DataManager import DataManager
 from src.presenter.Presenter import Presenter 
 from src.viewer.Viewer import Viewer
@@ -17,11 +18,11 @@ def present_cell():
         dataManager.save_figs(figs, cell_name)
     presenter = Presenter()
     viewer = Viewer(call_back=save_figs)
-    cell_name = "UMBL2022FEB_CELL152051"
+    cell_name = "GMJuly2022_CELL081"
     dataManager.attach(presenter)
     presenter.attach(viewer)
 
     # test process_cell
-    cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt = dataManager.process_cell(cell_name, start_time='2023-07-01_00-00-00', end_time='2023-07-28_23-59-59')
+    cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt = dataManager.process_cell(cell_name)
 if __name__ == '__main__':
     present_cell()
