@@ -561,6 +561,10 @@ class DataProcessor:
                 df_labels_arbin = ['Time [s]','Test Time [s]', 'Current [A]', 'Voltage [V]', 'Ah throughput [A.h]', 'Step index']
                 test_data = self._record_to_df(record, test_trace_keys_arbin, df_labels_arbin, ms = isRPT)
                 test_data['Temperature [degC]'] = [np.nan]*len(test_data) # make arbin tables with same columns as neware files
+                if ('biologic' in record['tags']):
+                    if(max(abs(test_data['Current [A]']))>20): # current data is ma vs A divide by 1000.
+                        test_data['Current [A]']=test_data['Current [A]']/1000
+                        test_data['Ah throughput [A.h]']=test_data['Ah throughput [A.h]']/1000
             # 1b. for neware files
             elif 'neware_xls_4000' in record['tags']: 
                 test_data = self._record_to_df(record, ms = isRPT)
