@@ -32,7 +32,7 @@ def consistency_test():
 def process_cell_test():
     dataManager = DataManager()
     # test process_cell
-    cell_data, cell_data_vdf, cell_cycle_metrics = dataManager.process_cell('GMJuly2022_CELL034')
+    cell_data, cell_data_vdf, cell_cycle_metrics, cell_data_rpt = dataManager.process_cell('GMJuly2022_CELL018')
     print(cell_data)
     print(cell_data_vdf)
     print(cell_cycle_metrics)
@@ -57,8 +57,8 @@ def sanity_check_test():
 
 if __name__ == '__main__':
     # createdb_test()
-    filter_test()
-    # process_cell_test()
+    # filter_test()
+    process_cell_test()
     # consistency_test()
     # read_csv_test()
     # update_cycle_stats_test()

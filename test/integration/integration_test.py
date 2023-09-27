@@ -6,7 +6,6 @@ else:
     sys.path.append(os.path.dirname(os.path.abspath("__file__"))+"/src")
 print(sys.path)
 
-
 from src.model.DataManager import DataManager
 from src.presenter.Presenter import Presenter 
 from src.viewer.Viewer import Viewer
