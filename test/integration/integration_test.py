@@ -6,11 +6,8 @@ else:
     sys.path.append(os.path.dirname(os.path.abspath("__file__"))+"/src")
 print(sys.path)
 
-#import sys
-#sys.path.insert(0, '/Users/yiliu/Documents/GitHub/UMBC_Data_Localization/UMBC_Data_Localization/src')
-#sys.path.insert(0, 'C:\\Users\\siegeljb\\Documents\\UMBC_Data_Localization\\src')
-from multiprocessing import Pool
 
+from multiprocessing import Pool
 from src.model.DataManager import DataManager
 from src.presenter.Presenter import Presenter 
 from src.viewer.Viewer import Viewer

@@ -413,6 +413,8 @@ class DataManager(metaclass=SingletonMeta):
             The dataframe of cell data for the cell
         cell_data_vdf: dataframe
             The dataframe of cell data vdf for the cell
+        cell_data_rpt: dataframe    
+            The dataframe of cell data rpt for the cell
         """
         cell_cycle_metrics, cell_data, cell_data_vdf, _ = self.load_processed_data(cell_name)
     
