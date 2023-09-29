@@ -6,6 +6,8 @@ else:
     sys.path.append(os.path.dirname(os.path.abspath("__file__"))+"/src")
 
 from src.model.DataManager import DataManager
+from src.presenter.Presenter import Presenter 
+from src.viewer.Viewer import Viewer
 
 # Integration test
 def createdb_test():
@@ -30,9 +32,21 @@ def consistency_test():
     dataManager.check_and_repair_consistency()
 
 def process_cell_test():
-    dataManager = DataManager()
+    #dataManager = DataManager()
+    dataManager = DataManager(use_redis=False)
+    def save_figs(figs, cell_name):
+        dataManager.save_figs(figs, cell_name)
+    presenter = Presenter()
+    viewer = Viewer(call_back=save_figs)
+    #cell_name = "UMBL2022FEB_CELL152051"
+
+    dataManager.attach(presenter)
+    presenter.attach(viewer)
+
     # test process_cell
-    cell_data, cell_data_vdf, cell_cycle_metrics, cell_data_rpt = dataManager.process_cell('GMJuly2022_CELL018')
+
+    cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt = dataManager.process_cell('GMJuly2022_CELL051')
+
     print(cell_data)
     print(cell_data_vdf)
     print(cell_cycle_metrics)
@@ -40,9 +54,9 @@ def process_cell_test():
 def read_csv_test():
     dataManager = DataManager()
     # test read_csv
-    ccm_csv = dataManager.load_ccm_csv("GMJuly2022_CELL018")
+    ccm_csv = dataManager.load_ccm_csv("GMJuly2022_CELL050")
     print(ccm_csv)
-    with open("output.csv", "w", encoding="utf-8") as f:
+    with open("V:\\voltaiq_data\\Processed\\GMJuly2022\\output.csv", "w", encoding="utf-8") as f:
         f.write(ccm_csv)
 
 def update_cycle_stats_test():
@@ -57,9 +71,11 @@ def sanity_check_test():
 
 if __name__ == '__main__':
     # createdb_test()
+
     # filter_test()
     process_cell_test()
     # consistency_test()
+
     # read_csv_test()
-    # update_cycle_stats_test()
+    #update_cycle_stats_test()
     # sanity_check_test()

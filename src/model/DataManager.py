@@ -503,15 +503,15 @@ class DataManager(metaclass=SingletonMeta):
         self.logger.info('Starting sanity check...')
         trs = self.dataFetcher.fetch_trs()
         # Read sanity check csv line by line
-        snaity_csv = self.dataIO.read_sanity_check_csv()
-        header = next(snaity_csv)
+        sanity_csv = self.dataIO.read_sanity_check_csv()
+        header = next(sanity_csv)
         # Get the index of the columns
         project_index, cell_name_index, neware_rack_index, channel_index = header.index('Project'), header.index('Cell Name'), header.index('Neware Rack'), header.index('Channel')
         start_date_index, removal_date_index = header.index('Start Date (Aging)'), header.index('Removal Date')
         
         wrong_trs = {}
 
-        for row in snaity_csv:
+        for row in sanity_csv:
             try:
                 # Get the test records for the cell
                 project, cell_number, correct_neware_rack, correct_channel = row[project_index], row[cell_name_index], row[neware_rack_index], row[channel_index]
