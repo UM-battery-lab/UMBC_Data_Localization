@@ -41,6 +41,7 @@ class DataProcessor:
         self.dataFilter = dataFilter
         self.dirStructure = dirStructure
         self.dateConverter = dateConverter
+        self.last_AHT=0
         self.logger = setup_logger()
 
     def _build_empty_expansion_data(self, cell_cycle_metrics):

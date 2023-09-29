@@ -39,6 +39,6 @@ if __name__ == '__main__':
         #for i in range
     #for cell in range(2,120):
     with Pool() as pool:
-            result = pool.map(present_cell, range(2,120) )
+            result = pool.map(present_cell, range(50,52) )
 
     
