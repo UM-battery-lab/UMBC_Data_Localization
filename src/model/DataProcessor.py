@@ -44,12 +44,6 @@ class DataProcessor:
         self.last_AHT=0
         self.logger = setup_logger()
 
-    def _build_empty_expansion_data(self, cell_cycle_metrics):
-        cell_data_vdf = pd.DataFrame(columns=['Time [s]','Expansion [-]', 'Expansion ref [-]', 'Temperature [degC]','cycle_indicator'])
-        cell_cycle_metrics['Max cycle expansion [-]'] = np.nan
-        cell_cycle_metrics['Min cycle expansion [-]'] = np.nan
-        cell_cycle_metrics['Reversible cycle expansion [-]'] = np.nan
-        return cell_data_vdf, cell_cycle_metrics
 
     def process_cell(self, records_cycler, records_vdf, cell_cycle_metrics=None, cell_data=None, cell_data_vdf=None, numFiles=1000, cycle_id_lims=CYCLE_ID_LIMS):
         """
@@ -109,7 +103,10 @@ class DataProcessor:
         # Process the expansion data
         if len(records_vdf)==0: 
             self.logger.info("No vdf data for this cell")
-            cell_data_vdf, cell_cycle_metrics = self._build_empty_expansion_data(cell_cycle_metrics)
+            cell_data_vdf = pd.DataFrame(columns=['Time [s]','Expansion [-]', 'Expansion ref [-]', 'Temperature [degC]','cycle_indicator'])
+            cell_cycle_metrics['Max cycle expansion [-]'] = np.nan
+            cell_cycle_metrics['Min cycle expansion [-]'] = np.nan
+            cell_cycle_metrics['Reversible cycle expansion [-]'] = np.nan
         elif cell_data_vdf is not None:
             self.logger.info(f"Process cell_data_vdf")
             # Make list of data files with new data to process
@@ -131,6 +128,7 @@ class DataProcessor:
             records_new_data_vdf = records_vdf.copy()
             cell_data_vdf, cell_cycle_metrics = self._process_cycler_expansion(records_new_data_vdf, cell_cycle_metrics, numFiles = numFiles)    
 
+        self.logger.info(f"Finished processing {len(records_new_data)} new cycler files and {len(records_new_data_vdf)} new vdf files")
         # rearrange columns of cell_cycle_metrics for easy reading with data on left and others on right
         cols = cell_cycle_metrics.columns.to_list()
         move_idx = [c for c in cols if '[' in c] + [c for c in cols if '[' not in c] # Columns with data include '[' in the key
@@ -188,16 +186,21 @@ class DataProcessor:
             The list of test records that have not been processed
         """
         recorded_cycle_times = cell_cycle_metrics['Time [s]']
+        last_recorded_cycle_time = recorded_cycle_times.iloc[-1] if not recorded_cycle_times.empty else 0
         records_new_data = []
         # for each file, check that cell_cycle_metrics has timestamps in this range
         for record in records:
             cycle_end_times = self.dataFilter.filter_cycle_end_times(record)
             last_cycle_time_in_file = cycle_end_times.iloc[-1] if not last_cycle_time else last_cycle_time
+            # if last_cycle_time_in_file is not int, replace it with last_recorded_cycle_time. It could be np.nan
+            if not isinstance(last_cycle_time_in_file, (int, np.integer)):
+                self.logger.warning(f"last_cycle_time_in_file is not int, replace it with last_recorded_cycle_time: {last_recorded_cycle_time}")
+                last_cycle_time_in_file = last_recorded_cycle_time
             record_start_time = self.dateConverter._str_to_timestamp(record['start_time'])
             if len(cycle_end_times) > 1:
                 timestamps_in_range_count = sum(1 for t in recorded_cycle_times if record_start_time <= t <= last_cycle_time_in_file)
                 if timestamps_in_range_count == 0:
-                    records_new_data.append(record)          
+                    records_new_data.append(record)     
         return records_new_data
     
     def _update_dataframe(self, df, df_new, file_start_time, file_end_time, update_AhT=True):
