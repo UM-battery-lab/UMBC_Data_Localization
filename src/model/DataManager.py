@@ -434,6 +434,7 @@ class DataManager(metaclass=SingletonMeta):
         #Save new data to pickle if there was new data
         cell_data_rpt = None
         if update:
+            self.logger.info(f'Updating processed data for cell {cell_name}...')
             cell_data_rpt = self.dataProcessor.summarize_rpt_data(cell_data, cell_data_vdf, cell_cycle_metrics)
             self.dataIO.save_processed_data(cell_name, cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt)
         self.notify(cell_name, cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt, start_time, end_time)
