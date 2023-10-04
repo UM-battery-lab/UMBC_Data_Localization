@@ -50,7 +50,7 @@ class DataManager(metaclass=SingletonMeta):
         Filter the test records and dataframes locally with the specified device id or name or start time or tags
     check_and_repair_consistency()
         Check the consistency between the directory structure and local database, and repair the inconsistency
-    process_cell(cell_name, numFiles = 1000, update_local_db=False)
+    process_cell(cell_name, numFiles = 1000, update_local_db=False, reset=False)
         Process the data for a cell and save the processed cell cycle metrics, cell data and cell data vdf to local disk
     process_project(project_name, numFiles = 1000)
         Process all the cells in a project and save the processed cell cycle metrics, cell data and cell data vdf to local disk
@@ -390,7 +390,7 @@ class DataManager(metaclass=SingletonMeta):
             self.dataDeleter.delete_folders(expired_folders)
         self.logger.info('Consistency check completed.')
 
-    def process_cell(self, cell_name, start_time=None, end_time=None, numFiles = 1000):
+    def process_cell(self, cell_name, start_time=None, end_time=None, numFiles = 1000, reset = False):
         """
         Process the data for a cell and save the processed data to local disk
 
@@ -404,6 +404,8 @@ class DataManager(metaclass=SingletonMeta):
             The start time of the test records to be processed, in the format of 'YYYY-MM-DD_HH-MM-SS'
         end_time: str, optional
             The end time of the test records to be processed, in the format of 'YYYY-MM-DD_HH-MM-SS'
+        reset: bool
+            Whether to reset the processed data
         
         Returns
         -------
@@ -416,7 +418,9 @@ class DataManager(metaclass=SingletonMeta):
         cell_data_rpt: dataframe    
             The dataframe of cell data rpt for the cell
         """
-        cell_cycle_metrics, cell_data, cell_data_vdf, _ = self.load_processed_data(cell_name)
+        cell_cycle_metrics, cell_data, cell_data_vdf = None, None, None
+        if not reset:
+            cell_cycle_metrics, cell_data, cell_data_vdf, _ = self.load_processed_data(cell_name)
     
         records_neware = self.dataFilter.filter_records(tr_name_substring=cell_name, tags=['neware_xls_4000'])
         records_arbin = self.dataFilter.filter_records(tr_name_substring=cell_name, tags=['arbin'])
