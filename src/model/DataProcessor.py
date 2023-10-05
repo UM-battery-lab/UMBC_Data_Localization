@@ -288,11 +288,11 @@ class DataProcessor:
             for i in rpt_idx:
                 rpt_subcycle = pd.DataFrame()
                 #find timestamps for partial cycle
-                t_start = cell_cycle_metrics['Time [s]'].loc[i]
+                t_start = cell_cycle_metrics['Time [s]'].loc[i]-5
                 try: # end of partial cycle = next time listed
-                    t_end = cell_cycle_metrics['Time [s]'].loc[i+1]
+                    t_end = cell_cycle_metrics['Time [s]'].loc[i+1]+5
                 except: # end of partial cycle = end of file
-                    t_end = cell_data['Time [s]'].iloc[-1]
+                    t_end = cell_data['Time [s]'].iloc[-1]-5
 
                 # log summary stats for this partial cycle in dictionary
                 rpt_subcycle['RPT #'] = j
@@ -378,6 +378,7 @@ class DataProcessor:
                 # df_vdf = test2df(test_vdf, test_trace_keys = ['aux_vdf_timestamp_datetime_0','aux_vdf_ldcsensor_none_0', 'aux_vdf_ldcref_none_0', 'aux_vdf_ambienttemperature_celsius_0', 'aux_vdf_temperature_celsius_0'], df_labels =['Time [s]','Expansion [-]', 'Expansion ref [-]', 'Amb Temp [degC]', 'Temperature [degC]'])
                 df_vdf = self._record_to_df(record_vdf, test_trace_keys = ['aux_vdf_timestamp_epoch_0','aux_vdf_ldcsensor_none_0', 'aux_vdf_ldcref_none_0', 'aux_vdf_ambienttemperature_celsius_0'], df_labels =['Time [s]','Expansion [-]', 'Expansion ref [-]','Temperature [degC]'])
                 df_vdf = df_vdf[(df_vdf['Expansion [-]'] >1e1) & (df_vdf['Expansion [-]'] <1e7)] #keep good signals 
+                #add LDC sensor calibration to df_vdf
                 df_vdf['Temperature [degC]'] = np.where((df_vdf['Temperature [degC]'] >= 200) & (df_vdf['Temperature [degC]'] <250), np.nan, df_vdf['Temperature [degC]']) 
                 # df_vdf['Amb Temp [degC]'] = np.where((df_vdf['Amb Temp [degC]'] >= 200) & (df_vdf['Amb Temp [degC]'] <250), np.nan, df_vdf['Amb Temp [degC]']) 
                 frames_vdf.append(df_vdf)
@@ -385,7 +386,7 @@ class DataProcessor:
             except: #Tables are different Length, cannot merge
                 self.logger.error(f"Error processing {record_vdf['tr_name']}")
                 pass
-            time.sleep(0.1) 
+          #  time.sleep(0.1) 
         
         if (len(frames_vdf) == 0):
             self.logger.debug(f"No vdf data found")
@@ -692,7 +693,7 @@ class DataProcessor:
             self.logger.debug(f"test_data: {test_data}")
             frames.append(test_data)
     
-            time.sleep(0.1) 
+         #   time.sleep(0.1) 
         # Combine cycling data into a single df and reset the index
         self.logger.info(f"Combining {len(frames)} dataframes")
         cell_data = pd.concat(frames)
