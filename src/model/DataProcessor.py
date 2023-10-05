@@ -312,7 +312,11 @@ class DataProcessor:
         cols = cell_rpt_data.columns.to_list()
         if cols != []:
             cell_rpt_data = cell_rpt_data[[cols[len(cols)-1]] + cols[0:-1]] 
-
+        # Creating a temporary column 'temp_sort' with the sorting values
+        cell_rpt_data['temp_sort'] = cell_rpt_data['Data'].apply(lambda x: x['Time [s]'].iloc[0] if not x.empty else float('inf'))
+        cell_rpt_data = cell_rpt_data.sort_values(by='temp_sort')
+        cell_rpt_data.drop('temp_sort', axis=1, inplace=True)
+        
         return cell_rpt_data
 
     def _process_cycler_expansion(self, records_vdf, cell_cycle_metrics, numFiles = 1000, t_match_threshold=60):
