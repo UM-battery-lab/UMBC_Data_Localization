@@ -329,7 +329,7 @@ class DataProcessor:
         exp_vdf = cell_data_vdf['Expansion [-]']
         exp_vdf_um = cell_data_vdf['Expansion [um]']
         cycle_timestamps = cell_cycle_metrics['Time [s]'][cell_cycle_metrics.cycle_indicator==True]
-        t_cycle_vdf, cycle_idx_vdf, matched_timestamp_indices = self._find_matching_timestamp(cycle_timestamps, t_vdf, t_match_threshold=10)  
+        t_cycle_vdf, cycle_idx_vdf, matched_timestamp_indices = self._find_matching_timestamp(cycle_timestamps, t_vdf, t_match_threshold=10000)  # is time in ms or s?
 
         # add cycle indicator. These should align with cycles timestamps previously defined by cycler data
         cell_data_vdf['cycle_indicator'] = list(map(lambda x: x in cycle_idx_vdf, range(len(cell_data_vdf))))
@@ -340,7 +340,7 @@ class DataProcessor:
         exp_max, exp_min = self._max_min_cycle_data(exp_vdf, cycle_idx_vdf_minmax)
         exp_rev = np.subtract(exp_max,exp_min)
         exp_max_um, exp_min_um = self._max_min_cycle_data(exp_vdf_um, cycle_idx_vdf_minmax)
-        exp_rev = np.subtract(exp_max_um,exp_min_um)
+        exp_rev_um = np.subtract(exp_max_um,exp_min_um)
 
         # save data to dataframe: initialize with nan and fill in timestamp-matched values
         discharge_cycle_idx = list(np.where(cell_cycle_metrics.cycle_indicator==True)[0])
