@@ -45,7 +45,7 @@ def process_cell_test():
 
     # test process_cell
 
-    cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt = dataManager.process_cell('GMJuly2022_CELL901REF')
+    cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt = dataManager.process_cell('GMJuly2022_CELL081', reset=True)#901REF')
 
     print(cell_data)
     print(cell_data_vdf)
