@@ -288,11 +288,11 @@ class DataProcessor:
             for i in rpt_idx:
                 rpt_subcycle = pd.DataFrame()
                 #find timestamps for partial cycle
-                t_start = cell_cycle_metrics['Time [s]'].loc[i]-5
+                t_start = cell_cycle_metrics['Time [s]'].loc[i]-30
                 try: # end of partial cycle = next time listed
-                    t_end = cell_cycle_metrics['Time [s]'].loc[i+1]+5
+                    t_end = cell_cycle_metrics['Time [s]'].loc[i+1]+30
                 except: # end of partial cycle = end of file
-                    t_end = cell_data['Time [s]'].iloc[-1]-5
+                    t_end = cell_data['Time [s]'].iloc[-1]+30
 
                 # log summary stats for this partial cycle in dictionary
                 rpt_subcycle['RPT #'] = j
@@ -327,8 +327,9 @@ class DataProcessor:
         # Find matching cycle timestamps from cycler data
         t_vdf = cell_data_vdf['Time [s]']
         exp_vdf = cell_data_vdf['Expansion [-]']
+        exp_vdf_um = cell_data_vdf['Expansion [um]']
         cycle_timestamps = cell_cycle_metrics['Time [s]'][cell_cycle_metrics.cycle_indicator==True]
-        t_cycle_vdf, cycle_idx_vdf, matched_timestamp_indices = self._find_matching_timestamp(cycle_timestamps, t_vdf, t_match_threshold=10)  
+        t_cycle_vdf, cycle_idx_vdf, matched_timestamp_indices = self._find_matching_timestamp(cycle_timestamps, t_vdf, t_match_threshold=10000)  # is time in ms or s?
 
         # add cycle indicator. These should align with cycles timestamps previously defined by cycler data
         cell_data_vdf['cycle_indicator'] = list(map(lambda x: x in cycle_idx_vdf, range(len(cell_data_vdf))))
@@ -338,6 +339,8 @@ class DataProcessor:
         cycle_idx_vdf_minmax.append(len(t_vdf)-1) #append end
         exp_max, exp_min = self._max_min_cycle_data(exp_vdf, cycle_idx_vdf_minmax)
         exp_rev = np.subtract(exp_max,exp_min)
+        exp_max_um, exp_min_um = self._max_min_cycle_data(exp_vdf_um, cycle_idx_vdf_minmax)
+        exp_rev_um = np.subtract(exp_max_um,exp_min_um)
 
         # save data to dataframe: initialize with nan and fill in timestamp-matched values
         discharge_cycle_idx = list(np.where(cell_cycle_metrics.cycle_indicator==True)[0])
@@ -345,11 +348,18 @@ class DataProcessor:
         cell_cycle_metrics['Min cycle expansion [-]'] = [np.nan]*len(cell_cycle_metrics)
         cell_cycle_metrics['Max cycle expansion [-]'] = [np.nan]*len(cell_cycle_metrics)
         cell_cycle_metrics['Reversible cycle expansion [-]'] = [np.nan]*len(cell_cycle_metrics)
+        cell_cycle_metrics['Min cycle expansion [um]'] = [np.nan]*len(cell_cycle_metrics)
+        cell_cycle_metrics['Max cycle expansion [um]'] = [np.nan]*len(cell_cycle_metrics)
+        cell_cycle_metrics['Reversible cycle expansion [um]'] = [np.nan]*len(cell_cycle_metrics)
+
         for i,j in enumerate(matched_timestamp_indices):
             cell_cycle_metrics.loc[discharge_cycle_idx[j], 'Time vdf [s]'] = t_cycle_vdf[i]
             cell_cycle_metrics.loc[discharge_cycle_idx[j], 'Min cycle expansion [-]'] = exp_min[i]
             cell_cycle_metrics.loc[discharge_cycle_idx[j], 'Max cycle expansion [-]'] = exp_max[i]
             cell_cycle_metrics.loc[discharge_cycle_idx[j], 'Reversible cycle expansion [-]'] = exp_rev[i]
+            cell_cycle_metrics.loc[discharge_cycle_idx[j], 'Min cycle expansion [um]'] = exp_min_um[i]
+            cell_cycle_metrics.loc[discharge_cycle_idx[j], 'Max cycle expansion [um]'] = exp_max_um[i]
+            cell_cycle_metrics.loc[discharge_cycle_idx[j], 'Reversible cycle expansion [um]'] = exp_rev_um[i]
             
         # also add timestamps for charge cycles
         charge_cycle_idx = list(np.where(cell_cycle_metrics.charge_cycle_indicator==True)[0])
@@ -378,7 +388,13 @@ class DataProcessor:
                 # df_vdf = test2df(test_vdf, test_trace_keys = ['aux_vdf_timestamp_datetime_0','aux_vdf_ldcsensor_none_0', 'aux_vdf_ldcref_none_0', 'aux_vdf_ambienttemperature_celsius_0', 'aux_vdf_temperature_celsius_0'], df_labels =['Time [s]','Expansion [-]', 'Expansion ref [-]', 'Amb Temp [degC]', 'Temperature [degC]'])
                 df_vdf = self._record_to_df(record_vdf, test_trace_keys = ['aux_vdf_timestamp_epoch_0','aux_vdf_ldcsensor_none_0', 'aux_vdf_ldcref_none_0', 'aux_vdf_ambienttemperature_celsius_0'], df_labels =['Time [s]','Expansion [-]', 'Expansion ref [-]','Temperature [degC]'])
                 df_vdf = df_vdf[(df_vdf['Expansion [-]'] >1e1) & (df_vdf['Expansion [-]'] <1e7)] #keep good signals 
+                
                 #add LDC sensor calibration to df_vdf
+                #Use general conversion for now, but can convert to specific calibration by channel number later.
+                X2=1.6473
+                X1=	-27.134	
+                C=138.74
+                df_vdf['Expansion [um]']=1000*(30.6-(X2*(df_vdf['Expansion [-]']/10**6)**2+X1*(df_vdf['Expansion [-]']/10**6)+C))
                 df_vdf['Temperature [degC]'] = np.where((df_vdf['Temperature [degC]'] >= 200) & (df_vdf['Temperature [degC]'] <250), np.nan, df_vdf['Temperature [degC]']) 
                 # df_vdf['Amb Temp [degC]'] = np.where((df_vdf['Amb Temp [degC]'] >= 200) & (df_vdf['Amb Temp [degC]'] <250), np.nan, df_vdf['Amb Temp [degC]']) 
                 frames_vdf.append(df_vdf)
