@@ -8,7 +8,7 @@ else:
 from src.model.DataManager import DataManager
 from src.presenter.Presenter import Presenter 
 from src.viewer.Viewer import Viewer
-
+from matplotlib import pyplot as plt   
 # Integration test
 def createdb_test():
     dataManager = DataManager()
@@ -33,7 +33,7 @@ def consistency_test():
 
 def process_cell_test():
     # test process_cell
-    cell_name='GMJuly2022_CELL047'
+    cell_name='GMJuly2022_CELL015'
     #'UMBL2022FEB_CELL152051'
     #'GMJuly2022_CELL901REF'
     dataManager = DataManager(use_redis=False)
@@ -57,6 +57,7 @@ def process_cell_test():
     print(cell_data)
     print(cell_data_vdf)
     print(cell_cycle_metrics)
+    plt.show()
 
 def read_csv_test():
     dataManager = DataManager()

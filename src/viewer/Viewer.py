@@ -126,8 +126,8 @@ class Viewer():
         fig.autofmt_xdate()
         fig.suptitle("Cell: "+cell)
         fig.tight_layout()
-        self.plt.ion()
-        self.plt.show()
+       # self.plt.ion()
+       # self.plt.show()
         return fig
     
     def plot_cycle_metrics_time(self, cell, cell_data: CellDataDTO, downsample = 100):
@@ -266,8 +266,8 @@ class Viewer():
         fig.autofmt_xdate()
         fig.suptitle("Cell: "+cell)
         fig.tight_layout()
-        self.plt.ion()
-        self.plt.show()
+        #self.plt.ion()
+        #self.plt.show()
         return fig
 
     def plot_cycle_metrics_AhT(self, cell, cell_data: CellDataDTO, downsample = 100):
@@ -382,6 +382,6 @@ class Viewer():
         fig.autofmt_xdate()
         fig.suptitle("Cell: "+cell)
         fig.tight_layout()
-        self.plt.ion()
-        self.plt.show()
+        #self.plt.ion()
+        #self.plt.show()
         return fig
