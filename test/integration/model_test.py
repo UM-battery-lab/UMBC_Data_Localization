@@ -33,12 +33,13 @@ def consistency_test():
 
 def process_cell_test():
     # test process_cell
-    cell_name='GMJuly2022_CELL015'
+    cell_name='GMFEB23S_CELL044'
+    #'GMJuly2022_CELL015'
     #'UMBL2022FEB_CELL152051'
     #'GMJuly2022_CELL901REF'
     dataManager = DataManager(use_redis=False)
     def save_figs(figs, cell_name):
-        dataManager.save_figs(figs, cell_name)
+        dataManager.save_figs(figs, cell_name,keep_open=True)
     presenter = Presenter()
     viewer = Viewer(call_back=save_figs)
     #cell_name = "UMBL2022FEB_CELL152051"
@@ -48,7 +49,7 @@ def process_cell_test():
 
     # test process_cell
     try:
-        cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt = dataManager.process_cell(cell_name, reset=False);#, reset=True)#, start_time='2023-07-01_00-00-00', end_time='2023-07-28_23-59-59')
+        cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt = dataManager.process_cell(cell_name, reset=True);#, reset=True)#, start_time='2023-07-01_00-00-00', end_time='2023-07-28_23-59-59')
     except Exception as e:
         print(e)
 

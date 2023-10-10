@@ -530,7 +530,7 @@ class DataIO:
         csv_string = self.load_csv(filepath_ccm)
         return csv_string
 
-    def save_figs(self, figs, cell_name):
+    def save_figs(self, figs, cell_name,keep_open):
         """
         Save the figures to the processed folder
 
@@ -556,7 +556,8 @@ class DataIO:
         for i, fig in enumerate(figs):
             self.logger.info(f"Saving figure {i} to {filepath_figs}")
             fig.savefig(os.path.join(filepath_figs, f'{cell_name}_fig{i}.png'))
-            plt.close(fig)
+            if(keep_open is False):
+                plt.close(fig)
 
     def _load_pickles(self, file_paths):
         return [self._load_pickle(file_path) for file_path in file_paths]

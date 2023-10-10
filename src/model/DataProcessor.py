@@ -320,7 +320,7 @@ class DataProcessor:
         
         return cell_rpt_data
 
-    def _process_cycler_expansion(self, records_vdf, cell_cycle_metrics, numFiles = 1000, t_match_threshold=60):
+    def _process_cycler_expansion(self, records_vdf, cell_cycle_metrics, numFiles = 1000, t_match_threshold=60000):
         # Combine vdf data into a single df
         cell_data_vdf = self._combine_cycler_expansion(records_vdf, numFiles)
         
@@ -364,7 +364,7 @@ class DataProcessor:
         # also add timestamps for charge cycles
         charge_cycle_idx = list(np.where(cell_cycle_metrics.charge_cycle_indicator==True)[0])
         charge_cycle_timestamps = cell_cycle_metrics['Time [s]'][cell_cycle_metrics.charge_cycle_indicator==True]
-        t_charge_cycle_vdf, charge_cycle_idx_vdf, matched_charge_timestamp_indices = self._find_matching_timestamp(charge_cycle_timestamps, t_vdf, t_match_threshold=10)
+        t_charge_cycle_vdf, charge_cycle_idx_vdf, matched_charge_timestamp_indices = self._find_matching_timestamp(charge_cycle_timestamps, t_vdf, t_match_threshold=10000)
         for i,j in enumerate(matched_charge_timestamp_indices):
             cell_cycle_metrics.loc[charge_cycle_idx[j], 'Time vdf [s]'] = t_charge_cycle_vdf[i]
 
