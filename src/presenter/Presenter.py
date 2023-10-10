@@ -62,7 +62,7 @@ class Presenter():
     def _extract_expansion(self, data) -> ExpansionDTO:
         return ExpansionDTO(
             t_vdf=data['Time [s]'],
-            exp_vdf=data['Expansion [-]'],
+            exp_vdf=data['Expansion [um]'],
             T_vdf=data['Temperature [degC]']
         )
     
@@ -77,9 +77,9 @@ class Presenter():
                 V_max = data['Max cycle voltage [V]'],
                 T_min = data['Min cycle temperature [degC]'],
                 T_max = data['Max cycle temperature [degC]'],
-                exp_min = data['Max cycle expansion [-]'],
-                exp_max = data['Min cycle expansion [-]'],
-                exp_rev = data['Reversible cycle expansion [-]'],
+                exp_min = data['Max cycle expansion [um]'],
+                exp_max = data['Min cycle expansion [um]'],
+                exp_rev = data['Reversible cycle expansion [um]'],
             )     
         return CycleMetricsDTO(
             t_cycle=data['Time [s]'],
