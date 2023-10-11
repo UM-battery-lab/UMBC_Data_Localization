@@ -11,6 +11,10 @@ class DateConverter(metaclass=SingletonMeta):
         t = t/1000
         return datetime.datetime.fromtimestamp(t, tz=self.TZ_INFO)
     
+    def _timestamp_to_str(self, t):
+        dt = self._timestamp_to_datetime(t)
+        return dt.strftime(self.DATE_FORMAT)
+    
     def _str_to_timestamp(self, date_str):
         dt = datetime.datetime.strptime(date_str, self.DATE_FORMAT)
         dt = dt.replace(tzinfo=self.TZ_INFO)

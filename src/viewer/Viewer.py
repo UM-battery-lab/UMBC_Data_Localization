@@ -33,12 +33,12 @@ class Viewer():
         self.logger = setup_logger()
         self.call_back = call_back
     
-    def update(self, cell_name, measured_data_time, cycle_metrics_time, cycle_metrics_AhT):
+    def update(self, cell_name, measured_data_time, cycle_metrics_time, cycle_metrics_AhT, time_name):
         fig_1 = self.plot_process_cell(cell_name, measured_data_time)
         fig_2 = self.plot_cycle_metrics_time(cell_name, cycle_metrics_time)
         fig_3 = self.plot_cycle_metrics_AhT(cell_name, cycle_metrics_AhT)
         if self.call_back:
-            self.call_back([fig_1, fig_2, fig_3], cell_name)
+            self.call_back([fig_1, fig_2, fig_3], cell_name, time_name)
 
 
     def plot_process_cell(self, cell, cell_data: CellDataDTO, downsample = 100):

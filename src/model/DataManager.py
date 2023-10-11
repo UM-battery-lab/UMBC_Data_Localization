@@ -54,7 +54,7 @@ class DataManager(metaclass=SingletonMeta):
         Process the data for a cell and save the processed cell cycle metrics, cell data and cell data vdf to local disk
     process_project(project_name, numFiles = 1000)
         Process all the cells in a project and save the processed cell cycle metrics, cell data and cell data vdf to local disk
-    save_figs(figs, cell_name)
+    save_figs(figs, cell_name, time_name)
         Save the figures to local disk, used by callback function
     load_processed_data(cell_name)
         Get the processed data for a cell
@@ -463,8 +463,10 @@ class DataManager(metaclass=SingletonMeta):
         for cell_name in cells_name:
             _, _, _, _ = self.process_cell(cell_name, numFiles)
 
-    def save_figs(self, figs, cell_name,keep_open=False):
-        self.dataIO.save_figs(figs, cell_name,keep_open)
+
+    def save_figs(self, figs, cell_name, time_name, keep_open=False):
+        self.dataIO.save_figs(figs, cell_name, time_name, keep_open)
+
    
     def load_processed_data(self, cell_name):
         """
