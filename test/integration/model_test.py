@@ -34,8 +34,8 @@ def consistency_test():
 def process_cell_test():
     #dataManager = DataManager()
     dataManager = DataManager(use_redis=False)
-    def save_figs(figs, cell_name):
-        dataManager.save_figs(figs, cell_name)
+    def save_figs(figs, cell_name, time_name):
+        dataManager.save_figs(figs, cell_name, time_name)
     presenter = Presenter()
     viewer = Viewer(call_back=save_figs)
     #cell_name = "UMBL2022FEB_CELL152051"

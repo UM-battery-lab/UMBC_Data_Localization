@@ -39,12 +39,15 @@ class Presenter():
         measured_data_time = self.get_measured_data_time(cell_cycle_metrics, cell_data, cell_data_vdf)
         cycle_metrics_time = self.get_cycle_metrics_time(cell_cycle_metrics, cell_data, cell_data_vdf)
         cycle_metrics_AhT = self.get_cycle_metrics_AhT(cell_cycle_metrics, cell_data, cell_data_vdf)
-        self.notify(cell_name, measured_data_time, cycle_metrics_time, cycle_metrics_AhT)
+        time_name = f"{start_time}To{end_time}" if start_time and end_time else ""
+        self.notify(cell_name, measured_data_time, cycle_metrics_time, cycle_metrics_AhT, time_name)
     
     def _timestamp_to_datetime(self, data, start_time=None, end_time=None):
-        data['Time [s]'] = data['Time [s]'].apply(self.dateConverter._timestamp_to_datetime)
-        start_condition = (data['Time [s]'] >= start_time) if start_time else pd.Series([True] * len(data))
-        end_condition = (data['Time [s]'] <= end_time) if end_time else pd.Series([True] * len(data))
+        start_time = self.dateConverter._str_to_timestamp(start_time) if start_time else None
+        end_time = self.dateConverter._str_to_timestamp(end_time) if end_time else None
+        start_condition = (data['Time [ms]'] >= start_time) if start_time else pd.Series([True] * len(data))
+        end_condition = (data['Time [ms]'] <= end_time) if end_time else pd.Series([True] * len(data))
+        data['Time [ms]'] = data['Time [ms]'].apply(self.dateConverter._timestamp_to_datetime)
         
         mask = start_condition & end_condition
         return data[mask]
@@ -52,7 +55,7 @@ class Presenter():
     
     def _extract_timeseries(self, data) -> TimeSeriesDTO:
         return TimeSeriesDTO(
-            t=data['Time [s]'],
+            t=data['Time [ms]'],
             I=data['Current [A]'],
             V=data['Voltage [V]'],
             T=data['Temperature [degC]'],
@@ -61,7 +64,7 @@ class Presenter():
     
     def _extract_expansion(self, data) -> ExpansionDTO:
         return ExpansionDTO(
-            t_vdf=data['Time [s]'],
+            t_vdf=data['Time [ms]'],
             exp_vdf=data['Expansion [-]'],
             T_vdf=data['Temperature [degC]']
         )
@@ -69,7 +72,7 @@ class Presenter():
     def _extract_cycle_metrics(self, data, is_ccm=False) -> CycleMetricsDTO:
         if is_ccm:
             return CycleMetricsDTO(
-                t_cycle=data['Time [s]'],
+                t_cycle=data['Time [ms]'],
                 Q_c=data['Charge capacity [A.h]'],
                 Q_d=data['Discharge capacity [A.h]'],
                 AhT_cycle=data['Ah throughput [A.h]'],
@@ -82,7 +85,7 @@ class Presenter():
                 exp_rev = data['Reversible cycle expansion [-]'],
             )     
         return CycleMetricsDTO(
-            t_cycle=data['Time [s]'],
+            t_cycle=data['Time [ms]'],
             Q_c=data['Charge capacity [A.h]'],
             Q_d=data['Discharge capacity [A.h]']
         )

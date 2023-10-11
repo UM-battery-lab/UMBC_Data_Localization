@@ -530,7 +530,7 @@ class DataIO:
         csv_string = self.load_csv(filepath_ccm)
         return csv_string
 
-    def save_figs(self, figs, cell_name):
+    def save_figs(self, figs, cell_name, time_name):
         """
         Save the figures to the processed folder
 
@@ -540,6 +540,8 @@ class DataIO:
             The list of figures to be saved
         cell_name: str
             The name of the cell
+        time_name: str
+            The name of the time slot
         
         Returns
         -------
@@ -555,7 +557,7 @@ class DataIO:
         self._create_directory(filepath_figs)
         for i, fig in enumerate(figs):
             self.logger.info(f"Saving figure {i} to {filepath_figs}")
-            fig.savefig(os.path.join(filepath_figs, f'{cell_name}_fig{i}.png'))
+            fig.savefig(os.path.join(filepath_figs, f'{cell_name}_{time_name}_fig{i}.png'))
             plt.close(fig)
 
     def _load_pickles(self, file_paths):
