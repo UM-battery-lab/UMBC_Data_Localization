@@ -65,7 +65,7 @@ class Presenter():
     def _extract_expansion(self, data) -> ExpansionDTO:
         return ExpansionDTO(
             t_vdf=data['Time [ms]'],
-            exp_vdf=data['Expansion [-]'],
+            exp_vdf=data['Expansion [um]'],
             T_vdf=data['Temperature [degC]']
         )
     

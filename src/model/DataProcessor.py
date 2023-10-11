@@ -288,11 +288,11 @@ class DataProcessor:
             for i in rpt_idx:
                 rpt_subcycle = pd.DataFrame()
                 #find timestamps for partial cycle
-                t_start = cell_cycle_metrics['Time [ms]'].loc[i]
+                t_start = cell_cycle_metrics['Time [ms]'].loc[i]-30
                 try: # end of partial cycle = next time listed
-                    t_end = cell_cycle_metrics['Time [ms]'].loc[i+1]
+                    t_end = cell_cycle_metrics['Time [ms]'].loc[i+1]+30
                 except: # end of partial cycle = end of file
-                    t_end = cell_data['Time [ms]'].iloc[-1]
+                    t_end = cell_data['Time [ms]'].iloc[-1]+30
 
                 # log summary stats for this partial cycle in dictionary
                 rpt_subcycle['RPT #'] = j
@@ -327,8 +327,9 @@ class DataProcessor:
         # Find matching cycle timestamps from cycler data
         t_vdf = cell_data_vdf['Time [ms]']
         exp_vdf = cell_data_vdf['Expansion [-]']
+        exp_vdf_um = cell_data_vdf['Expansion [um]']
         cycle_timestamps = cell_cycle_metrics['Time [ms]'][cell_cycle_metrics.cycle_indicator==True]
-        t_cycle_vdf, cycle_idx_vdf, matched_timestamp_indices = self._find_matching_timestamp(cycle_timestamps, t_vdf, t_match_threshold=10)  
+        t_cycle_vdf, cycle_idx_vdf, matched_timestamp_indices = self._find_matching_timestamp(cycle_timestamps, t_vdf, t_match_threshold=10000)  
 
         # add cycle indicator. These should align with cycles timestamps previously defined by cycler data
         cell_data_vdf['cycle_indicator'] = list(map(lambda x: x in cycle_idx_vdf, range(len(cell_data_vdf))))
@@ -354,7 +355,7 @@ class DataProcessor:
         # also add timestamps for charge cycles
         charge_cycle_idx = list(np.where(cell_cycle_metrics.charge_cycle_indicator==True)[0])
         charge_cycle_timestamps = cell_cycle_metrics['Time [ms]'][cell_cycle_metrics.charge_cycle_indicator==True]
-        t_charge_cycle_vdf, charge_cycle_idx_vdf, matched_charge_timestamp_indices = self._find_matching_timestamp(charge_cycle_timestamps, t_vdf, t_match_threshold=10)
+        t_charge_cycle_vdf, charge_cycle_idx_vdf, matched_charge_timestamp_indices = self._find_matching_timestamp(charge_cycle_timestamps, t_vdf, t_match_threshold=10000)
         for i,j in enumerate(matched_charge_timestamp_indices):
             cell_cycle_metrics.loc[charge_cycle_idx[j], 'Time vdf [s]'] = t_charge_cycle_vdf[i]
 
