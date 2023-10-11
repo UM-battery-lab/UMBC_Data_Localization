@@ -463,8 +463,8 @@ class DataManager(metaclass=SingletonMeta):
         for cell_name in cells_name:
             _, _, _, _ = self.process_cell(cell_name, numFiles)
 
-    def save_figs(self, figs, cell_name):
-        self.dataIO.save_figs(figs, cell_name)
+    def save_figs(self, figs, cell_name,keep_open=False):
+        self.dataIO.save_figs(figs, cell_name,keep_open)
    
     def load_processed_data(self, cell_name):
         """
