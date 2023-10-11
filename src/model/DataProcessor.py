@@ -320,7 +320,7 @@ class DataProcessor:
         
         return cell_rpt_data
 
-    def _process_cycler_expansion(self, records_vdf, cell_cycle_metrics, numFiles = 1000, t_match_threshold=60):
+    def _process_cycler_expansion(self, records_vdf, cell_cycle_metrics, numFiles = 1000, t_match_threshold=60000):
         # Combine vdf data into a single df
         cell_data_vdf = self._combine_cycler_expansion(records_vdf, numFiles)
         
@@ -339,6 +339,8 @@ class DataProcessor:
         cycle_idx_vdf_minmax.append(len(t_vdf)-1) #append end
         exp_max, exp_min = self._max_min_cycle_data(exp_vdf, cycle_idx_vdf_minmax)
         exp_rev = np.subtract(exp_max,exp_min)
+        exp_max_um, exp_min_um = self._max_min_cycle_data(exp_vdf_um, cycle_idx_vdf_minmax)
+        exp_rev_um = np.subtract(exp_max_um,exp_min_um)
 
         # save data to dataframe: initialize with nan and fill in timestamp-matched values
         discharge_cycle_idx = list(np.where(cell_cycle_metrics.cycle_indicator==True)[0])
@@ -346,11 +348,18 @@ class DataProcessor:
         cell_cycle_metrics['Min cycle expansion [-]'] = [np.nan]*len(cell_cycle_metrics)
         cell_cycle_metrics['Max cycle expansion [-]'] = [np.nan]*len(cell_cycle_metrics)
         cell_cycle_metrics['Reversible cycle expansion [-]'] = [np.nan]*len(cell_cycle_metrics)
+        cell_cycle_metrics['Min cycle expansion [um]'] = [np.nan]*len(cell_cycle_metrics)
+        cell_cycle_metrics['Max cycle expansion [um]'] = [np.nan]*len(cell_cycle_metrics)
+        cell_cycle_metrics['Reversible cycle expansion [um]'] = [np.nan]*len(cell_cycle_metrics)
+
         for i,j in enumerate(matched_timestamp_indices):
             cell_cycle_metrics.loc[discharge_cycle_idx[j], 'Time vdf [s]'] = t_cycle_vdf[i]
             cell_cycle_metrics.loc[discharge_cycle_idx[j], 'Min cycle expansion [-]'] = exp_min[i]
             cell_cycle_metrics.loc[discharge_cycle_idx[j], 'Max cycle expansion [-]'] = exp_max[i]
             cell_cycle_metrics.loc[discharge_cycle_idx[j], 'Reversible cycle expansion [-]'] = exp_rev[i]
+            cell_cycle_metrics.loc[discharge_cycle_idx[j], 'Min cycle expansion [um]'] = exp_min_um[i]
+            cell_cycle_metrics.loc[discharge_cycle_idx[j], 'Max cycle expansion [um]'] = exp_max_um[i]
+            cell_cycle_metrics.loc[discharge_cycle_idx[j], 'Reversible cycle expansion [um]'] = exp_rev_um[i]
             
         # also add timestamps for charge cycles
         charge_cycle_idx = list(np.where(cell_cycle_metrics.charge_cycle_indicator==True)[0])
@@ -379,6 +388,13 @@ class DataProcessor:
                 # df_vdf = test2df(test_vdf, test_trace_keys = ['aux_vdf_timestamp_datetime_0','aux_vdf_ldcsensor_none_0', 'aux_vdf_ldcref_none_0', 'aux_vdf_ambienttemperature_celsius_0', 'aux_vdf_temperature_celsius_0'], df_labels =['Time [ms]','Expansion [-]', 'Expansion ref [-]', 'Amb Temp [degC]', 'Temperature [degC]'])
                 df_vdf = self._record_to_df(record_vdf, test_trace_keys = ['aux_vdf_timestamp_epoch_0','aux_vdf_ldcsensor_none_0', 'aux_vdf_ldcref_none_0', 'aux_vdf_ambienttemperature_celsius_0'], df_labels =['Time [ms]','Expansion [-]', 'Expansion ref [-]','Temperature [degC]'])
                 df_vdf = df_vdf[(df_vdf['Expansion [-]'] >1e1) & (df_vdf['Expansion [-]'] <1e7)] #keep good signals 
+                
+                #add LDC sensor calibration to df_vdf
+                #Use general conversion for now, but can convert to specific calibration by channel number later.
+                X2=1.6473
+                X1=	-27.134	
+                C=138.74
+                df_vdf['Expansion [um]']=1000*(30.6-(X2*(df_vdf['Expansion [-]']/10**6)**2+X1*(df_vdf['Expansion [-]']/10**6)+C))
                 df_vdf['Temperature [degC]'] = np.where((df_vdf['Temperature [degC]'] >= 200) & (df_vdf['Temperature [degC]'] <250), np.nan, df_vdf['Temperature [degC]']) 
                 # df_vdf['Amb Temp [degC]'] = np.where((df_vdf['Amb Temp [degC]'] >= 200) & (df_vdf['Amb Temp [degC]'] <250), np.nan, df_vdf['Amb Temp [degC]']) 
                 frames_vdf.append(df_vdf)
@@ -386,7 +402,7 @@ class DataProcessor:
             except: #Tables are different Length, cannot merge
                 self.logger.error(f"Error processing {record_vdf['tr_name']}")
                 pass
-            time.sleep(0.1) 
+          #  time.sleep(0.1) 
         
         if (len(frames_vdf) == 0):
             self.logger.debug(f"No vdf data found")
@@ -693,7 +709,7 @@ class DataProcessor:
             self.logger.debug(f"test_data: {test_data}")
             frames.append(test_data)
     
-            time.sleep(0.1) 
+         #   time.sleep(0.1) 
         # Combine cycling data into a single df and reset the index
         self.logger.info(f"Combining {len(frames)} dataframes")
         cell_data = pd.concat(frames)

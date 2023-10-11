@@ -104,7 +104,7 @@ class Viewer():
         if not all(t_vdf.isnull()):
             ax3.plot_date(t_vdf[0::100],exp_vdf[0::100],'-')
             ax3.plot_date(t_vdf[cycle_idx_vdf], exp_vdf[cycle_idx_vdf], "x")
-        ax3.set_ylabel("Expansion [-]")
+        ax3.set_ylabel("Expansion [um]")
         ax3.grid()
 
         # plot AhT 
@@ -126,7 +126,8 @@ class Viewer():
         fig.autofmt_xdate()
         fig.suptitle("Cell: "+cell)
         fig.tight_layout()
-        # self.plt.show()
+       # self.plt.ion()
+       # self.plt.show()
         return fig
     
     def plot_cycle_metrics_time(self, cell, cell_data: CellDataDTO, downsample = 100):
@@ -201,7 +202,7 @@ class Viewer():
             # ax3.plot_date(t_vdf[0::downsample],exp_vdf_ref[0::downsample],'--', c='grey') 
             ax3.plot_date(t_vdf[cycle_idx_vdf], exp_vdf[cycle_idx_vdf], "x")
             # ax3.plot_date(t_vdf[cycle_idx_vdf], exp_vdf[cycle_idx_vdf], "x")
-        ax3.set_ylabel("Expansion [-]")
+        ax3.set_ylabel("Expansion [um]")
         ax3.grid()
 
         # plot AhT 
@@ -253,19 +254,20 @@ class Viewer():
         ax7.plot_date(t_cycle, exp_min)
         ax7.plot_date(t_cycle[capacity_check_in_cycle_idx], exp_max[capacity_check_in_cycle_idx], "*", c = "r") 
         ax7.plot_date(t_cycle[capacity_check_in_cycle_idx], exp_min[capacity_check_in_cycle_idx], "*", c = "r")
-        ax7.set_ylabel("Min/Max Exp [-]")
+        ax7.set_ylabel("Min/Max Exp [um]")
         ax7.grid()
 
         ax15 = axes.flat[11]
         ax15.plot_date(t_cycle, exp_rev)
         ax15.plot_date(t_cycle[capacity_check_in_cycle_idx], exp_rev[capacity_check_in_cycle_idx], "*", c = "r")
-        ax15.set_ylabel("Rev expansion [-]")
+        ax15.set_ylabel("Rev expansion [um]")
         ax15.grid()
 
         fig.autofmt_xdate()
         fig.suptitle("Cell: "+cell)
         fig.tight_layout()
-        # self.plt.show()
+        #self.plt.ion()
+        #self.plt.show()
         return fig
 
     def plot_cycle_metrics_AhT(self, cell, cell_data: CellDataDTO, downsample = 100):
@@ -373,12 +375,13 @@ class Viewer():
         ax11 = axes.flat[11]
         ax11.scatter(AhT_cycle, exp_rev)
         ax11.scatter(AhT[capacity_check_idx], exp_rev[capacity_check_in_cycle_idx], marker = "*", c = "r",zorder=3)
-        ax11.set_ylabel("Rev Exp [-]")
+        ax11.set_ylabel("Rev Exp [um]")
         ax11.set_xlabel('Ah Throughput')
         ax11.grid()
 
         fig.autofmt_xdate()
         fig.suptitle("Cell: "+cell)
         fig.tight_layout()
-        # self.plt.show()
+        #self.plt.ion()
+        #self.plt.show()
         return fig

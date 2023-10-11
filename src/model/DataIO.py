@@ -530,6 +530,7 @@ class DataIO:
         csv_string = self.load_csv(filepath_ccm)
         return csv_string
 
+
     def save_figs(self, figs, cell_name, time_name, keep_open=False):
         """
         Save the figures to the processed folder
