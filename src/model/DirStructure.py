@@ -87,17 +87,20 @@ class DirStructure:
             self.logger.error(f'Error while saving json file: {e}')
 
     def append_record(self, tr, dev_name, project_name):
-        record = {
-            'uuid': tr.uuid,
-            'device_id': tr.device_id,
-            'tr_name': tr.name,  
-            'dev_name': dev_name,
-            'project_name': project_name,
-            'start_time': tr.start_time.strftime(DATE_FORMAT),
-            'last_dp_timestamp': tr.last_dp_timestamp,
-            'tags': tr.tags
-        }
-        self.structure.append(record)   # First, append the new record to the structure
+        try:
+            record = {
+                'uuid': tr.uuid,
+                'device_id': tr.device_id,
+                'tr_name': tr.name,  
+                'dev_name': dev_name,
+                'project_name': project_name,
+                'start_time': tr.start_time.strftime(DATE_FORMAT),
+                'last_dp_timestamp': tr.last_dp_timestamp,
+                'tags': tr.tags
+            }
+            self.structure.append(record)   # First, append the new record to the structure
+        except Exception as e:
+            self.logger.error(f'Error while appending record: {e}')
         try:
             self._save(self.dirStructurePath, self.structure)  # Then, try to save the structure
         except Exception as e:
