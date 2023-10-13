@@ -90,7 +90,8 @@ class DataIO:
             project_name = self.extract_project_name(dev.tags)
             device_folder = os.path.join(self.rootPath, project_name if project_name else '', dev.name)
             if not project_name:
-                self.logger.warning(f"The device {dev.name} does not have a project name. Put it in the device folder directly.")
+                self.logger.warning(f"The device {dev.name} does not have a project name. Put it in the Unknown_Project.")
+                project_name = "Unknown_Project"
             self._create_directory(device_folder)
             devices_id.append(dev.id)
             devices_name.append(dev.name)
@@ -152,7 +153,8 @@ class DataIO:
     def _handle_single_record(self, tr, df, cycle_stat, dev_name, project_name):
         device_folder = os.path.join(self.rootPath, project_name if project_name else '', dev_name)
         if not project_name:
-            self.logger.warning(f"The device {dev_name} does not have a project name. Put it in the device folder directly.")
+            self.logger.warning(f"The device {dev_name} does not have a project name.")
+            project_name = "Unknown_Project"
         # device_folder = os.path.join(self.rootPath, dev_name)
         if device_folder is None:
             self.logger.error(f'Device folder not found for device id {tr.device_id}')
@@ -498,7 +500,7 @@ class DataIO:
         filepath_cell_data = os.path.join(cell_path, 'CD.pkl.gz')
         filepath_cell_data_vdf = os.path.join(cell_path, 'CDvdf.pkl.gz')
         filepath_rpt = os.path.join(cell_path, 'RPT.pkl.gz')
-        filepath_csv = os.path.join(cell_path, 'CCM.csv')
+        filepath_csv = os.path.join(cell_path, f'{cell_name}_CCM.csv')
         # Save dataframes for cycle metrics, cell data, cell data vdf
         self.save_df(cell_cycle_metrics, filepath_ccm)
         self.save_df(cell_data, filepath_cell_data)
