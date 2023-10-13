@@ -431,8 +431,15 @@ class DataManager(metaclass=SingletonMeta):
         records_cycler = self.dataProcessor.sort_records(records_neware + records_arbin + records_biologic)
         records_vdf = self.dataProcessor.sort_records(records_vdf)
 
+        # Get parameters for calibration
+        calibration_parameters = None
+        try:
+            calibration_parameters = self.dataIO.get_calibration_parameters()
+        except Exception as e:
+            self.logger.error(f'Error {e} while getting calibration parameters')
+
         # Process data
-        cell_cycle_metrics, cell_data, cell_data_vdf, update = self.dataProcessor.process_cell(records_cycler, records_vdf, cell_cycle_metrics, cell_data, cell_data_vdf, numFiles)
+        cell_cycle_metrics, cell_data, cell_data_vdf, update = self.dataProcessor.process_cell(records_cycler, records_vdf, cell_cycle_metrics, cell_data, cell_data_vdf, calibration_parameters, numFiles)
         #Save new data to pickle if there was new data
         cell_data_rpt = None
         if update:

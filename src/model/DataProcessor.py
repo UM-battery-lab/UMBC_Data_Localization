@@ -10,6 +10,7 @@ from src.model.DataFilter import DataFilter
 from src.utils.Logger import setup_logger
 from src.utils.DateConverter import DateConverter
 from src.config.df_config import CYCLE_ID_LIMS, DEFAULT_TRACE_KEYS, DEFAULT_DF_LABELS
+from src.config.calibration_config import X1, X2, C
 
 
 class DataProcessor:
@@ -45,7 +46,7 @@ class DataProcessor:
         self.logger = setup_logger()
 
 
-    def process_cell(self, records_cycler, records_vdf, cell_cycle_metrics=None, cell_data=None, cell_data_vdf=None, numFiles=1000, cycle_id_lims=CYCLE_ID_LIMS):
+    def process_cell(self, records_cycler, records_vdf, cell_cycle_metrics=None, cell_data=None, cell_data_vdf=None, calibration_parameters=None, numFiles=1000, cycle_id_lims=CYCLE_ID_LIMS):
         """
         Using the test records to process and update the cell data, cycle metrics, and expansion data
 
@@ -86,7 +87,7 @@ class DataProcessor:
             for record in records_new_data: 
                 self.logger.debug(f"Processing cycler data: {record['tr_name']}")
                 # process test file
-                cell_data_new, cell_cycle_metrics_new = self._process_cycler_data([record], cycle_id_lims=cycle_id_lims, numFiles = numFiles)
+                cell_data_new, cell_cycle_metrics_new = self._procesfs_cycler_data([record], cycle_id_lims=cycle_id_lims, numFiles = numFiles)
                 # load test data to df and get start and end times
                 df_test = self._record_to_df(record, test_trace_keys = ['aux_vdf_timestamp_epoch_0'], df_labels =['Time [ms]'])
                 if df_test is None:
@@ -115,7 +116,7 @@ class DataProcessor:
                 for record in records_new_data_vdf:
                     self.logger.info(f"Processing new vdf data: {record['tr_name']}")
                     # process test file
-                    cell_data_vdf_new, cell_cycle_metrics_new = self._process_cycler_expansion([record], cell_cycle_metrics, numFiles = numFiles)
+                    cell_data_vdf_new, cell_cycle_metrics_new = self._process_cycler_expansion([record], cell_cycle_metrics, calibration_parameters, numFiles = numFiles)
                     # load test data to df and get start and end times
                     df_test = self._record_to_df(record, test_trace_keys = ['h_datapoint_time'], df_labels =['Time [ms]'])
                     file_start_time, file_end_time = df_test['Time [ms]'].iloc[0], df_test['Time [ms]'].iloc[-1] 
@@ -126,7 +127,7 @@ class DataProcessor:
         else: # if pickle file doesn't exist or load_pickle is False, (re)process all expansion data
             self.logger.info(f"Process all vdf data")
             records_new_data_vdf = records_vdf.copy()
-            cell_data_vdf, cell_cycle_metrics = self._process_cycler_expansion(records_new_data_vdf, cell_cycle_metrics, numFiles = numFiles)    
+            cell_data_vdf, cell_cycle_metrics = self._process_cycler_expansion(records_new_data_vdf, cell_cycle_metrics, calibration_parameters, numFiles = numFiles)    
 
         self.logger.info(f"Finished processing {len(records_new_data)} new cycler files and {len(records_new_data_vdf)} new vdf files")
         # rearrange columns of cell_cycle_metrics for easy reading with data on left and others on right
@@ -320,9 +321,9 @@ class DataProcessor:
         
         return cell_rpt_data
 
-    def _process_cycler_expansion(self, records_vdf, cell_cycle_metrics, numFiles = 1000, t_match_threshold=60000):
+    def _process_cycler_expansion(self, records_vdf, cell_cycle_metrics, calibration_parameters, numFiles = 1000, t_match_threshold=60000):
         # Combine vdf data into a single df
-        cell_data_vdf = self._combine_cycler_expansion(records_vdf, numFiles)
+        cell_data_vdf = self._combine_cycler_expansion(records_vdf, calibration_parameters, numFiles)
         
         # Find matching cycle timestamps from cycler data
         t_vdf = cell_data_vdf['Time [ms]']
@@ -371,7 +372,7 @@ class DataProcessor:
         return cell_data_vdf, cell_cycle_metrics
 
 
-    def _combine_cycler_expansion(self, records_vdf, numFiles = 1000):
+    def _combine_cycler_expansion(self, records_vdf, calibration_parameters, numFiles = 1000):
         """
         PROCESS NEWARE VDF DATA
         Reads in data from the last "numFiles" files in the "records_vdf" and concatenates them into a long dataframe. Then looks for corresponding cycle start/end timestamps in vdf time. 
@@ -389,12 +390,13 @@ class DataProcessor:
                 df_vdf = self._record_to_df(record_vdf, test_trace_keys = ['aux_vdf_timestamp_epoch_0','aux_vdf_ldcsensor_none_0', 'aux_vdf_ldcref_none_0', 'aux_vdf_ambienttemperature_celsius_0'], df_labels =['Time [ms]','Expansion [-]', 'Expansion ref [-]','Temperature [degC]'])
                 df_vdf = df_vdf[(df_vdf['Expansion [-]'] >1e1) & (df_vdf['Expansion [-]'] <1e7)] #keep good signals 
                 
-                #add LDC sensor calibration to df_vdf
-                #Use general conversion for now, but can convert to specific calibration by channel number later.
-                X2=1.6473
-                X1=	-27.134	
-                C=138.74
-                df_vdf['Expansion [um]']=1000*(30.6-(X2*(df_vdf['Expansion [-]']/10**6)**2+X1*(df_vdf['Expansion [-]']/10**6)+C))
+                # Add LDC sensor calibration to df_vdf
+                x1, x2, c = X1, X2, C
+                if record_vdf['dev_name'] in calibration_parameters:
+                    parameters = calibration_parameters[record_vdf['dev_name']]
+                    x1, x2, c = parameters['X1'], parameters['X2'], parameters['C']
+
+                df_vdf['Expansion [um]']=1000*(30.6-(x2*(df_vdf['Expansion [-]']/10**6)**2+x1*(df_vdf['Expansion [-]']/10**6)+c))
                 df_vdf['Temperature [degC]'] = np.where((df_vdf['Temperature [degC]'] >= 200) & (df_vdf['Temperature [degC]'] <250), np.nan, df_vdf['Temperature [degC]']) 
                 # df_vdf['Amb Temp [degC]'] = np.where((df_vdf['Amb Temp [degC]'] >= 200) & (df_vdf['Amb Temp [degC]'] <250), np.nan, df_vdf['Amb Temp [degC]']) 
                 frames_vdf.append(df_vdf)
