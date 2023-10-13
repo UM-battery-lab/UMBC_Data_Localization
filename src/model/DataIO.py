@@ -11,6 +11,7 @@ from src.model.DataDeleter import DataDeleter
 from src.config.time_config import DATE_FORMAT
 from src.config.df_config import TIME_COLUMNS
 from src.config.path_config import ROOT_PATH, SANITY_CHECK_CSV_PATH, WRONG_TR_NAME_PATH
+from src.config.calibration_config import X1, X2, C
 from src.utils.Logger import setup_logger
 from src.utils.RedisClient import RedisClient
 
@@ -532,6 +533,33 @@ class DataIO:
         csv_string = self.load_csv(filepath_ccm)
         return csv_string
 
+    def get_calibration_parameters(self):
+        """
+        Get the calibration parameters
+
+        Returns
+        -------
+        dict
+            The dictionary of calibration parameters (device name to X1, X2, C)
+        """
+        self.logger.info(f"Loading calibration parameters from {SANITY_CHECK_CSV_PATH}")
+        calibration_csv = self.read_sanity_check_csv()
+        header = next(calibration_csv)
+        # Get the index of the columns
+        project_index, cell_name_index = header.index('Project'), header.index('Cell Name')
+        x1_index, x2_index, c_index = header.index('X1'), header.index('X2'), header.index('C')
+        calibration_parameters = {}
+        for row in calibration_csv:
+            project_name, cell_name = row[project_index], row[cell_name_index]
+            x1, x2, c = row[x1_index], row[x2_index], row[c_index]
+            if x1 == '':
+                x1 = X1	
+            if x2 == '':
+                x2 = X2
+            if c == '':
+                c = C
+            calibration_parameters[f'{project_name}_{cell_name}'] = {'X1': x1, 'X2': x2, 'C': c}
+        return calibration_parameters
 
     def save_figs(self, figs, cell_name, time_name, keep_open=False):
         """
