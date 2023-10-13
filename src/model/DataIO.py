@@ -498,7 +498,7 @@ class DataIO:
         filepath_cell_data = os.path.join(cell_path, 'CD.pkl.gz')
         filepath_cell_data_vdf = os.path.join(cell_path, 'CDvdf.pkl.gz')
         filepath_rpt = os.path.join(cell_path, 'RPT.pkl.gz')
-        filepath_csv = os.path.join(cell_path, 'CCM.csv')
+        filepath_csv = os.path.join(cell_path, f'{cell_name}_CCM.csv')
         # Save dataframes for cycle metrics, cell data, cell data vdf
         self.save_df(cell_cycle_metrics, filepath_ccm)
         self.save_df(cell_data, filepath_cell_data)
