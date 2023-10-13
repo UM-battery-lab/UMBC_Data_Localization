@@ -311,15 +311,13 @@ class DataManager(metaclass=SingletonMeta):
         devs = self.dataFetcher.fetch_devs()
         devices_id, devices_name, projects_name = self.dataIO.create_dev_dic(devs)
         for dev in devs:
-            if '_' not in dev.name:
-                continue
             if os.path.exists(os.path.join(self.dirStructure.rootPath, dev.name)):
                 self.logger.warning(f'Found device folder {dev.name} not in the corrosponding peoject folder')
                 src_folder = os.path.join(self.dirStructure.rootPath, dev.name)
                 project_name = projects_name[devices_id.index(dev.id)]
                 if project_name is None:
                     self.logger.error(f'No project name found for device {dev.name}')
-                    continue
+                    project_name = 'Unknown_Project'
                 self.logger.info(f'Moving device folder {dev.name} to project folder {project_name}')
                 dst_folder = os.path.join(self.dirStructure.rootPath, project_name, dev.name)
                 self.dataIO.merge_folders(src_folder, dst_folder)
