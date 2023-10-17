@@ -344,8 +344,12 @@ class DataManager(metaclass=SingletonMeta):
                 if tr is None:
                     self.logger.info(f'No test record found for folder {test_folder}')
                     continue
-                dev_name = devices_name[devices_id.index(tr.device_id)]
-                project_name = projects_name[devices_id.index(tr.device_id)]
+                try:
+                    dev_name = devices_name[devices_id.index(tr.device_id)]
+                    project_name = projects_name[devices_id.index(tr.device_id)]
+                except Exception as e:
+                    self.logger.error(f'Error {e} while getting device name or project name for test record {tr.tr_name} by device id {tr.device_id}')
+                    continue
                 if dev_name:
                     self.dirStructure.append_record(tr, dev_name, project_name)
                     self.logger.info(f'Appended record for folder {test_folder}')
