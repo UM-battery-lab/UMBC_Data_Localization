@@ -14,7 +14,9 @@ from src.viewer.Viewer import Viewer
 
 # Integration test
 def present_cell(cell_num):
-    cell_name="GMJuly2022_CELL"+f'{cell_num:03d}'
+    #cell_name="GMJuly2022_CELL"+f'{cell_num:03d}'
+    cell_name="GMFEB23S_CELL"+f'{cell_num:03d}'
+
     dataManager = DataManager(use_redis=False)
     def save_figs(figs, cell_name, time_name):
         dataManager.save_figs(figs, cell_name, time_name)
