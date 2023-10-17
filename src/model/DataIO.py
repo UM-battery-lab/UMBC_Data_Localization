@@ -89,7 +89,7 @@ class DataIO:
         projects_name = []
         for dev in devs:
             project_name = self.extract_project_name(dev.tags)
-            device_folder = os.path.join(self.rootPath, project_name if project_name else '', dev.name)
+            device_folder = os.path.join(self.rootPath, project_name if project_name else "Unknown_Project", dev.name)
             if not project_name:
                 self.logger.warning(f"The device {dev.name} does not have a project name. Put it in the Unknown_Project.")
                 project_name = "Unknown_Project"
@@ -145,11 +145,11 @@ class DataIO:
 
     def extract_project_name(self, tags):
         prefix = "Project Name:"
+        project_name = "Unknown_Project"
         for tag in tags:
             if tag.startswith(prefix):
-                return tag.split(prefix)[1].strip()
-        self.logger.error(f"Project name not found in tags: {tags}")
-        return None
+                project_name = tag.split(prefix)[1].strip()
+        return project_name
     
     def _handle_single_record(self, tr, df, cycle_stat, dev_name, project_name):
         device_folder = os.path.join(self.rootPath, project_name if project_name else '', dev_name)
