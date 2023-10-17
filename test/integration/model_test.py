@@ -34,7 +34,7 @@ def consistency_test():
 def process_cell_test():
     # test process_cell
     cell_name='GMFEB23S_CELL015'
-    #'GMJuly2022_CELL015'
+    cell_name='GMJuly2022_CELL020'
     #'UMBL2022FEB_CELL152051'
     #'GMJuly2022_CELL901REF'
     dataManager = DataManager(use_redis=False)
