@@ -33,7 +33,7 @@ def consistency_test():
 
 def process_cell_test():
     # test process_cell
-    cell_name='GMFEB23S_CELL044'
+    cell_name='GMFEB23S_CELL015'
     #'GMJuly2022_CELL015'
     #'UMBL2022FEB_CELL152051'
     #'GMJuly2022_CELL901REF'
@@ -63,7 +63,7 @@ def process_cell_test():
 def read_csv_test():
     dataManager = DataManager()
     # test read_csv
-    ccm_csv = dataManager.load_ccm_csv("GMJuly2022_CELL050")
+    ccm_csv = dataManager.load_ccm_csv("GMJuly2022_CELL015")
     print(ccm_csv)
     with open("V:\\voltaiq_data\\Processed\\GMJuly2022\\output.csv", "w", encoding="utf-8") as f:
         f.write(ccm_csv)

@@ -401,7 +401,8 @@ class DataProcessor:
                 # df_vdf['Amb Temp [degC]'] = np.where((df_vdf['Amb Temp [degC]'] >= 200) & (df_vdf['Amb Temp [degC]'] <250), np.nan, df_vdf['Amb Temp [degC]']) 
                 frames_vdf.append(df_vdf)
                 self.logger.debug(f"Finished processing with {len(frames_vdf)} data points")
-            except: #Tables are different Length, cannot merge
+            except Exception as e: #Tables are different Length, cannot merge
+                print(e)
                 self.logger.error(f"Error processing {record_vdf['tr_name']}")
                 pass
           #  time.sleep(0.1) 
