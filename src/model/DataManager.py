@@ -348,7 +348,7 @@ class DataManager(metaclass=SingletonMeta):
                     dev_name = devices_name[devices_id.index(tr.device_id)]
                     project_name = projects_name[devices_id.index(tr.device_id)]
                 except Exception as e:
-                    self.logger.error(f'Error {e} while getting device name or project name for test record {tr.tr_name} by device id {tr.device_id}')
+                    self.logger.error(f'Error {e} while getting device name or project name for test record {tr.name} by device id {tr.device_id}')
                     continue
                 if dev_name:
                     self.dirStructure.append_record(tr, dev_name, project_name)
