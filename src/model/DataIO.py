@@ -693,6 +693,6 @@ class DataIO:
         self.logger.info(f"Moving test record from {old_path} to {new_path}")
         try:
             shutil.move(old_path, new_path)
-        except FileNotFoundError:
-            self.logger.error(f"File not found: {old_path}")
-            return None
+        except Exception as e:
+            self.logger.error(f"Error moving test record from {old_path} to {new_path}: {e}")
+    
