@@ -54,7 +54,7 @@ class DataManager(metaclass=SingletonMeta):
         Process the data for a cell and save the processed cell cycle metrics, cell data and cell data vdf to local disk
     process_project(project_name, numFiles = 1000)
         Process all the cells in a project and save the processed cell cycle metrics, cell data and cell data vdf to local disk
-    save_figs(figs, cell_name)
+    save_figs(figs, cell_name, time_name)
         Save the figures to local disk, used by callback function
     load_processed_data(cell_name)
         Get the processed data for a cell
@@ -311,15 +311,13 @@ class DataManager(metaclass=SingletonMeta):
         devs = self.dataFetcher.fetch_devs()
         devices_id, devices_name, projects_name = self.dataIO.create_dev_dic(devs)
         for dev in devs:
-            if '_' not in dev.name:
-                continue
             if os.path.exists(os.path.join(self.dirStructure.rootPath, dev.name)):
                 self.logger.warning(f'Found device folder {dev.name} not in the corrosponding peoject folder')
                 src_folder = os.path.join(self.dirStructure.rootPath, dev.name)
                 project_name = projects_name[devices_id.index(dev.id)]
                 if project_name is None:
                     self.logger.error(f'No project name found for device {dev.name}')
-                    continue
+                    project_name = 'Unknown_Project'
                 self.logger.info(f'Moving device folder {dev.name} to project folder {project_name}')
                 dst_folder = os.path.join(self.dirStructure.rootPath, project_name, dev.name)
                 self.dataIO.merge_folders(src_folder, dst_folder)
@@ -346,8 +344,12 @@ class DataManager(metaclass=SingletonMeta):
                 if tr is None:
                     self.logger.info(f'No test record found for folder {test_folder}')
                     continue
-                dev_name = devices_name[devices_id.index(tr.device_id)]
-                project_name = projects_name[devices_id.index(tr.device_id)]
+                try:
+                    dev_name = devices_name[devices_id.index(tr.device_id)]
+                    project_name = projects_name[devices_id.index(tr.device_id)]
+                except Exception as e:
+                    self.logger.error(f'Error {e} while getting device name or project name for test record {tr.name} by device id {tr.device_id}')
+                    continue
                 if dev_name:
                     self.dirStructure.append_record(tr, dev_name, project_name)
                     self.logger.info(f'Appended record for folder {test_folder}')
@@ -433,8 +435,15 @@ class DataManager(metaclass=SingletonMeta):
         records_cycler = self.dataProcessor.sort_records(records_neware + records_arbin + records_biologic)
         records_vdf = self.dataProcessor.sort_records(records_vdf)
 
+        # Get parameters for calibration
+        calibration_parameters = None
+        try:
+            calibration_parameters = self.dataIO.get_calibration_parameters()
+        except Exception as e:
+            self.logger.error(f'Error {e} while getting calibration parameters')
+
         # Process data
-        cell_cycle_metrics, cell_data, cell_data_vdf, update = self.dataProcessor.process_cell(records_cycler, records_vdf, cell_cycle_metrics, cell_data, cell_data_vdf, numFiles)
+        cell_cycle_metrics, cell_data, cell_data_vdf, update = self.dataProcessor.process_cell(records_cycler, records_vdf, cell_cycle_metrics, cell_data, cell_data_vdf, calibration_parameters, numFiles)
         #Save new data to pickle if there was new data
         cell_data_rpt = None
         if update:
@@ -463,8 +472,10 @@ class DataManager(metaclass=SingletonMeta):
         for cell_name in cells_name:
             _, _, _, _ = self.process_cell(cell_name, numFiles)
 
-    def save_figs(self, figs, cell_name,keep_open=False):
-        self.dataIO.save_figs(figs, cell_name,keep_open)
+
+    def save_figs(self, figs, cell_name, time_name, keep_open=False):
+        self.dataIO.save_figs(figs, cell_name, time_name, keep_open)
+
    
     def load_processed_data(self, cell_name):
         """

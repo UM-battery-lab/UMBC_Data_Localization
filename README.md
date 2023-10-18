@@ -98,8 +98,8 @@ Add your voltaiq studio token in the first line of the .env file
 ### Sample Useage:
 ```python
     dataManager = DataManager(use_redis=True)
-    def save_figs(figs, cell_name):
-        dataManager.save_figs(figs, cell_name)
+    def save_figs(figs, cell_name, time_name):
+        dataManager.save_figs(figs, cell_name, time_name)
     presenter = Presenter()
     viewer = Viewer(call_back=save_figs)
     cell_name = "UMBL2022FEB_CELL152051"
@@ -303,8 +303,8 @@ The Viewer class is a utility designed to visualize data from a local disk perta
 
 Add the call back function when creating the Viewer, the figures will be saved by datamanager:
 ```python
-def save_figs(figs, cell_name):
-    dataManager.save_figs(figs, cell_name)
+def save_figs(figs, cell_name, time_name):
+    dataManager.save_figs(figs, cell_name, time_name)
 viewer = Viewer(call_back=save_figs)
 presenter.attach(viewer)
 ```

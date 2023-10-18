@@ -10,6 +10,7 @@ from src.model.DataFilter import DataFilter
 from src.utils.Logger import setup_logger
 from src.utils.DateConverter import DateConverter
 from src.config.df_config import CYCLE_ID_LIMS, DEFAULT_TRACE_KEYS, DEFAULT_DF_LABELS
+from src.config.calibration_config import X1, X2, C
 
 
 class DataProcessor:
@@ -45,7 +46,7 @@ class DataProcessor:
         self.logger = setup_logger()
 
 
-    def process_cell(self, records_cycler, records_vdf, cell_cycle_metrics=None, cell_data=None, cell_data_vdf=None, numFiles=1000, cycle_id_lims=CYCLE_ID_LIMS):
+    def process_cell(self, records_cycler, records_vdf, cell_cycle_metrics=None, cell_data=None, cell_data_vdf=None, calibration_parameters=None, numFiles=1000, cycle_id_lims=CYCLE_ID_LIMS):
         """
         Using the test records to process and update the cell data, cycle metrics, and expansion data
 
@@ -86,12 +87,12 @@ class DataProcessor:
             for record in records_new_data: 
                 self.logger.debug(f"Processing cycler data: {record['tr_name']}")
                 # process test file
-                cell_data_new, cell_cycle_metrics_new = self._process_cycler_data([record], cycle_id_lims=cycle_id_lims, numFiles = numFiles)
+                cell_data_new, cell_cycle_metrics_new = self._procesfs_cycler_data([record], cycle_id_lims=cycle_id_lims, numFiles = numFiles)
                 # load test data to df and get start and end times
-                df_test = self._record_to_df(record, test_trace_keys = ['aux_vdf_timestamp_epoch_0'], df_labels =['Time [s]'])
+                df_test = self._record_to_df(record, test_trace_keys = ['aux_vdf_timestamp_epoch_0'], df_labels =['Time [ms]'])
                 if df_test is None:
                     continue
-                file_start_time, file_end_time = df_test['Time [s]'].iloc[0], df_test['Time [s]'].iloc[-1] 
+                file_start_time, file_end_time = df_test['Time [ms]'].iloc[0], df_test['Time [ms]'].iloc[-1] 
                 # Update cell_data and cell_cycle_metrics and Ah throughput
                 cell_data = self._update_dataframe(cell_data, cell_data_new, file_start_time, file_end_time)
                 cell_cycle_metrics = self._update_dataframe(cell_cycle_metrics, cell_cycle_metrics_new, file_start_time, file_end_time)
@@ -103,7 +104,7 @@ class DataProcessor:
         # Process the expansion data
         if len(records_vdf)==0: 
             self.logger.info("No vdf data for this cell")
-            cell_data_vdf = pd.DataFrame(columns=['Time [s]','Expansion [-]', 'Expansion ref [-]', 'Temperature [degC]','cycle_indicator'])
+            cell_data_vdf = pd.DataFrame(columns=['Time [ms]','Expansion [-]', 'Expansion ref [-]', 'Temperature [degC]','cycle_indicator'])
             cell_cycle_metrics['Max cycle expansion [-]'] = np.nan
             cell_cycle_metrics['Min cycle expansion [-]'] = np.nan
             cell_cycle_metrics['Reversible cycle expansion [-]'] = np.nan
@@ -115,10 +116,10 @@ class DataProcessor:
                 for record in records_new_data_vdf:
                     self.logger.info(f"Processing new vdf data: {record['tr_name']}")
                     # process test file
-                    cell_data_vdf_new, cell_cycle_metrics_new = self._process_cycler_expansion([record], cell_cycle_metrics, numFiles = numFiles)
+                    cell_data_vdf_new, cell_cycle_metrics_new = self._process_cycler_expansion([record], cell_cycle_metrics, calibration_parameters, numFiles = numFiles)
                     # load test data to df and get start and end times
-                    df_test = self._record_to_df(record, test_trace_keys = ['h_datapoint_time'], df_labels =['Time [s]'])
-                    file_start_time, file_end_time = df_test['Time [s]'].iloc[0], df_test['Time [s]'].iloc[-1] 
+                    df_test = self._record_to_df(record, test_trace_keys = ['h_datapoint_time'], df_labels =['Time [ms]'])
+                    file_start_time, file_end_time = df_test['Time [ms]'].iloc[0], df_test['Time [ms]'].iloc[-1] 
                     # Update cell_data_vdf and cell_cycle_metrics
                     cell_data_vdf = self._update_dataframe(cell_data_vdf, cell_data_vdf_new, file_start_time, file_end_time, update_AhT = False)
                     cell_cycle_metrics = self._update_dataframe(cell_data, cell_cycle_metrics_new, file_start_time, file_end_time, update_AhT = False)
@@ -126,7 +127,7 @@ class DataProcessor:
         else: # if pickle file doesn't exist or load_pickle is False, (re)process all expansion data
             self.logger.info(f"Process all vdf data")
             records_new_data_vdf = records_vdf.copy()
-            cell_data_vdf, cell_cycle_metrics = self._process_cycler_expansion(records_new_data_vdf, cell_cycle_metrics, numFiles = numFiles)    
+            cell_data_vdf, cell_cycle_metrics = self._process_cycler_expansion(records_new_data_vdf, cell_cycle_metrics, calibration_parameters, numFiles = numFiles)    
 
         self.logger.info(f"Finished processing {len(records_new_data)} new cycler files and {len(records_new_data_vdf)} new vdf files")
         # rearrange columns of cell_cycle_metrics for easy reading with data on left and others on right
@@ -185,7 +186,7 @@ class DataProcessor:
         list of TestRecord objects
             The list of test records that have not been processed
         """
-        recorded_cycle_times = cell_cycle_metrics['Time [s]']
+        recorded_cycle_times = cell_cycle_metrics['Time [ms]']
         last_recorded_cycle_time = recorded_cycle_times.iloc[-1] if not recorded_cycle_times.empty else 0
         records_new_data = []
         # for each file, check that cell_cycle_metrics has timestamps in this range
@@ -214,9 +215,9 @@ class DataProcessor:
         df_new: DataFrame
             The dataframe of the new test data
         file_start_time: float
-            The start time of the new test data, get from df['Time [s]'].iloc[0]
+            The start time of the new test data, get from df['Time [ms]'].iloc[0]
         file_end_time: float
-            The end time of the new test data, get from df['Time [s]'].iloc[-1]
+            The end time of the new test data, get from df['Time [ms]'].iloc[-1]
         update_AhT: bool, optional
             Whether to update the Ah throughput
 
@@ -227,15 +228,15 @@ class DataProcessor:
         """
 
         # Find overlapping data
-        file_drop_idx = df[(df['Time [s]'] >= file_start_time) & (df['Time [s]'] <= file_end_time)].index
+        file_drop_idx = df[(df['Time [ms]'] >= file_start_time) & (df['Time [ms]'] <= file_end_time)].index
 
         # Remove overlapping data
         df = df.drop(file_drop_idx)
 
         # Split old dataframe into before and after sections based on new data
         if len(file_drop_idx) > 0:
-            df_before_test = df[df['Time [s]'] < file_start_time]
-            df_after_test = df[df['Time [s]'] > file_end_time]
+            df_before_test = df[df['Time [ms]'] < file_start_time]
+            df_after_test = df[df['Time [ms]'] > file_end_time]
 
             # If Ah throughput update is needed and the field exists in both dataframes
             if update_AhT and 'Ah throughput [A.h]' in df.columns and 'Ah throughput [A.h]' in df_new.columns:
@@ -288,21 +289,21 @@ class DataProcessor:
             for i in rpt_idx:
                 rpt_subcycle = pd.DataFrame()
                 #find timestamps for partial cycle
-                t_start = cell_cycle_metrics['Time [s]'].loc[i]-30
+                t_start = cell_cycle_metrics['Time [ms]'].loc[i]-30
                 try: # end of partial cycle = next time listed
-                    t_end = cell_cycle_metrics['Time [s]'].loc[i+1]+30
+                    t_end = cell_cycle_metrics['Time [ms]'].loc[i+1]+30
                 except: # end of partial cycle = end of file
-                    t_end = cell_data['Time [s]'].iloc[-1]+30
+                    t_end = cell_data['Time [ms]'].iloc[-1]+30
 
                 # log summary stats for this partial cycle in dictionary
                 rpt_subcycle['RPT #'] = j
                 rpt_subcycle = cell_cycle_metrics[cycle_summary_cols].loc[i].to_dict()
 
-                t = cell_data['Time [s]']
-                rpt_subcycle['Data'] = [cell_data[['Time [s]', 'Current [A]', 'Voltage [V]', 'Ah throughput [A.h]', 'Temperature [degC]', 'Step index']][(t>t_start) & (t<t_end)]]
+                t = cell_data['Time [ms]']
+                rpt_subcycle['Data'] = [cell_data[['Time [ms]', 'Current [A]', 'Voltage [V]', 'Ah throughput [A.h]', 'Temperature [degC]', 'Step index']][(t>t_start) & (t<t_end)]]
                 
                 # add vdf data to dictionary
-                t_vdf = cell_data_vdf['Time [s]']
+                t_vdf = cell_data_vdf['Time [ms]']
                 if len(t_vdf)>1: #ignore for constrained cells
                     rpt_subcycle['Data vdf'] = [cell_data_vdf[(t_vdf>t_start) & (t_vdf<t_end)]]
 
@@ -314,22 +315,22 @@ class DataProcessor:
         if cols != []:
             cell_rpt_data = cell_rpt_data[[cols[len(cols)-1]] + cols[0:-1]] 
         # Creating a temporary column 'temp_sort' with the sorting values
-        cell_rpt_data['temp_sort'] = cell_rpt_data['Data'].apply(lambda x: x['Time [s]'].iloc[0] if not x.empty else float('inf'))
+        cell_rpt_data['temp_sort'] = cell_rpt_data['Data'].apply(lambda x: x['Time [ms]'].iloc[0] if not x.empty else float('inf'))
         cell_rpt_data = cell_rpt_data.sort_values(by='temp_sort')
         cell_rpt_data.drop('temp_sort', axis=1, inplace=True)
         
         return cell_rpt_data
 
-    def _process_cycler_expansion(self, records_vdf, cell_cycle_metrics, numFiles = 1000, t_match_threshold=60000):
+    def _process_cycler_expansion(self, records_vdf, cell_cycle_metrics, calibration_parameters, numFiles = 1000, t_match_threshold=60000):
         # Combine vdf data into a single df
-        cell_data_vdf = self._combine_cycler_expansion(records_vdf, numFiles)
+        cell_data_vdf = self._combine_cycler_expansion(records_vdf, calibration_parameters, numFiles)
         
         # Find matching cycle timestamps from cycler data
-        t_vdf = cell_data_vdf['Time [s]']
+        t_vdf = cell_data_vdf['Time [ms]']
         exp_vdf = cell_data_vdf['Expansion [-]']
         exp_vdf_um = cell_data_vdf['Expansion [um]']
-        cycle_timestamps = cell_cycle_metrics['Time [s]'][cell_cycle_metrics.cycle_indicator==True]
-        t_cycle_vdf, cycle_idx_vdf, matched_timestamp_indices = self._find_matching_timestamp(cycle_timestamps, t_vdf, t_match_threshold=10000)  # is time in ms or s?
+        cycle_timestamps = cell_cycle_metrics['Time [ms]'][cell_cycle_metrics.cycle_indicator==True]
+        t_cycle_vdf, cycle_idx_vdf, matched_timestamp_indices = self._find_matching_timestamp(cycle_timestamps, t_vdf, t_match_threshold=10000)  
 
         # add cycle indicator. These should align with cycles timestamps previously defined by cycler data
         cell_data_vdf['cycle_indicator'] = list(map(lambda x: x in cycle_idx_vdf, range(len(cell_data_vdf))))
@@ -363,7 +364,7 @@ class DataProcessor:
             
         # also add timestamps for charge cycles
         charge_cycle_idx = list(np.where(cell_cycle_metrics.charge_cycle_indicator==True)[0])
-        charge_cycle_timestamps = cell_cycle_metrics['Time [s]'][cell_cycle_metrics.charge_cycle_indicator==True]
+        charge_cycle_timestamps = cell_cycle_metrics['Time [ms]'][cell_cycle_metrics.charge_cycle_indicator==True]
         t_charge_cycle_vdf, charge_cycle_idx_vdf, matched_charge_timestamp_indices = self._find_matching_timestamp(charge_cycle_timestamps, t_vdf, t_match_threshold=10000)
         for i,j in enumerate(matched_charge_timestamp_indices):
             cell_cycle_metrics.loc[charge_cycle_idx[j], 'Time vdf [s]'] = t_charge_cycle_vdf[i]
@@ -371,7 +372,7 @@ class DataProcessor:
         return cell_data_vdf, cell_cycle_metrics
 
 
-    def _combine_cycler_expansion(self, records_vdf, numFiles = 1000):
+    def _combine_cycler_expansion(self, records_vdf, calibration_parameters, numFiles = 1000):
         """
         PROCESS NEWARE VDF DATA
         Reads in data from the last "numFiles" files in the "records_vdf" and concatenates them into a long dataframe. Then looks for corresponding cycle start/end timestamps in vdf time. 
@@ -385,16 +386,17 @@ class DataProcessor:
             try:
                 # Read in timeseries data from test and formating into dataframe. Remove rows with expansion value outliers.
                 self.logger.debug(f"Now Processing {record_vdf['tr_name']}")
-                # df_vdf = test2df(test_vdf, test_trace_keys = ['aux_vdf_timestamp_datetime_0','aux_vdf_ldcsensor_none_0', 'aux_vdf_ldcref_none_0', 'aux_vdf_ambienttemperature_celsius_0', 'aux_vdf_temperature_celsius_0'], df_labels =['Time [s]','Expansion [-]', 'Expansion ref [-]', 'Amb Temp [degC]', 'Temperature [degC]'])
-                df_vdf = self._record_to_df(record_vdf, test_trace_keys = ['aux_vdf_timestamp_epoch_0','aux_vdf_ldcsensor_none_0', 'aux_vdf_ldcref_none_0', 'aux_vdf_ambienttemperature_celsius_0'], df_labels =['Time [s]','Expansion [-]', 'Expansion ref [-]','Temperature [degC]'])
+                # df_vdf = test2df(test_vdf, test_trace_keys = ['aux_vdf_timestamp_datetime_0','aux_vdf_ldcsensor_none_0', 'aux_vdf_ldcref_none_0', 'aux_vdf_ambienttemperature_celsius_0', 'aux_vdf_temperature_celsius_0'], df_labels =['Time [ms]','Expansion [-]', 'Expansion ref [-]', 'Amb Temp [degC]', 'Temperature [degC]'])
+                df_vdf = self._record_to_df(record_vdf, test_trace_keys = ['aux_vdf_timestamp_epoch_0','aux_vdf_ldcsensor_none_0', 'aux_vdf_ldcref_none_0', 'aux_vdf_ambienttemperature_celsius_0'], df_labels =['Time [ms]','Expansion [-]', 'Expansion ref [-]','Temperature [degC]'])
                 df_vdf = df_vdf[(df_vdf['Expansion [-]'] >1e1) & (df_vdf['Expansion [-]'] <1e7)] #keep good signals 
                 
-                #add LDC sensor calibration to df_vdf
-                #Use general conversion for now, but can convert to specific calibration by channel number later.
-                X2=1.6473
-                X1=	-27.134	
-                C=138.74
-                df_vdf['Expansion [um]']=1000*(30.6-(X2*(df_vdf['Expansion [-]']/10**6)**2+X1*(df_vdf['Expansion [-]']/10**6)+C))
+                # Add LDC sensor calibration to df_vdf
+                x1, x2, c = X1, X2, C
+                if record_vdf['dev_name'] in calibration_parameters:
+                    parameters = calibration_parameters[record_vdf['dev_name']]
+                    x1, x2, c = parameters['X1'], parameters['X2'], parameters['C']
+
+                df_vdf['Expansion [um]']=1000*(30.6-(x2*(df_vdf['Expansion [-]']/10**6)**2+x1*(df_vdf['Expansion [-]']/10**6)+c))
                 df_vdf['Temperature [degC]'] = np.where((df_vdf['Temperature [degC]'] >= 200) & (df_vdf['Temperature [degC]'] <250), np.nan, df_vdf['Temperature [degC]']) 
                 # df_vdf['Amb Temp [degC]'] = np.where((df_vdf['Amb Temp [degC]'] >= 200) & (df_vdf['Amb Temp [degC]'] <250), np.nan, df_vdf['Amb Temp [degC]']) 
                 frames_vdf.append(df_vdf)
@@ -406,9 +408,9 @@ class DataProcessor:
         
         if (len(frames_vdf) == 0):
             self.logger.debug(f"No vdf data found")
-            return pd.DataFrame(columns=['Time [s]','Expansion [-]', 'Expansion ref [-]', 'Temperature [degC]','cycle_indicator'])
+            return pd.DataFrame(columns=['Time [ms]','Expansion [-]', 'Expansion ref [-]', 'Temperature [degC]','cycle_indicator'])
         # Combine vdf data into a single df and reset the index 
-        cell_data_vdf = pd.concat(frames_vdf).sort_values(by=['Time [s]'])
+        cell_data_vdf = pd.concat(frames_vdf).sort_values(by=['Time [ms]'])
         cell_data_vdf.reset_index(drop=True, inplace=True)
         return cell_data_vdf
 
@@ -439,7 +441,7 @@ class DataProcessor:
         # calculate capacities 
         charge_t_idx = list(cell_data[cell_data.charge_cycle_indicator ==True].index)
         discharge_t_idx = list(cell_data[cell_data.discharge_cycle_indicator ==True].index)
-        Q_c, Q_d = self._calc_capacities(cell_data['Time [s]'], cell_data['Current [A]'], cell_data['Ah throughput [A.h]'], charge_t_idx, discharge_t_idx)
+        Q_c, Q_d = self._calc_capacities(cell_data['Time [ms]'], cell_data['Current [A]'], cell_data['Ah throughput [A.h]'], charge_t_idx, discharge_t_idx)
         
         # Find min/max metrics
         cycle_idx_minmax = list(cell_data[cell_data.cycle_indicator ==True].index)
@@ -583,7 +585,7 @@ class DataProcessor:
             test_data = pd.DataFrame()
             if ('arbin' in record['tags']) or ('biologic' in record['tags']): 
                 test_trace_keys_arbin = ['h_datapoint_time','h_test_time','h_current', 'h_potential', 'c_cumulative_capacity', 'h_step_index']
-                df_labels_arbin = ['Time [s]','Test Time [s]', 'Current [A]', 'Voltage [V]', 'Ah throughput [A.h]', 'Step index']
+                df_labels_arbin = ['Time [ms]','Test Time [ms]', 'Current [A]', 'Voltage [V]', 'Ah throughput [A.h]', 'Step index']
                 test_data = self._record_to_df(record, test_trace_keys_arbin, df_labels_arbin, ms = isRPT)
                 test_data['Temperature [degC]'] = [np.nan]*len(test_data) # make arbin tables with same columns as neware files
                 if ('biologic' in record['tags']):
@@ -600,7 +602,7 @@ class DataProcessor:
             self.logger.info(f"Get {len(test_data)} rows of data from {record['tr_name']}")
             # 2. Reassign to variables
             # assert not test_data.isnull().any().any(), f"Null values found in the data from {record['tr_name']}"
-            t = test_data['Time [s]'].reset_index(drop=True)
+            t = test_data['Time [ms]'].reset_index(drop=True)
             I = test_data['Current [A]'].reset_index(drop=True)
             V = test_data['Voltage [V]'].reset_index(drop=True)
             T = test_data['Temperature [degC]'].reset_index(drop=True)
@@ -688,12 +690,12 @@ class DataProcessor:
             file_cell_cycle_metrics = test_data[(test_data.charge_cycle_indicator==True) | (test_data.discharge_cycle_indicator==True)]
 
             for i in range(0,len(file_cell_cycle_metrics)):
-                t_start = file_cell_cycle_metrics['Time [s]'].iloc[i]
+                t_start = file_cell_cycle_metrics['Time [ms]'].iloc[i]
                 if i == len(file_cell_cycle_metrics)-1: # if last subcycle, end of subcycle = end of file 
-                    t_end = test_data['Time [s]'].iloc[-1]
+                    t_end = test_data['Time [ms]'].iloc[-1]
                 else: # end of subcycle = start of next subcycle
-                    t_end = file_cell_cycle_metrics['Time [s]'].iloc[i+1]
-                t_subcycle = test_data['Time [s]'][(t>t_start) & (t<t_end)]
+                    t_end = file_cell_cycle_metrics['Time [ms]'].iloc[i+1]
+                t_subcycle = test_data['Time [ms]'][(t>t_start) & (t<t_end)]
                 I_subcycle = test_data['Current [A]'][(t>t_start) & (t<t_end)]
                 data_idx = file_cell_cycle_metrics.index.tolist()[i]
                 if file_with_capacity_check:
@@ -732,9 +734,9 @@ class DataProcessor:
         cell_data['cycle_indicator'] = cell_data.charge_cycle_indicator #default cycle indicator on charge
 
         # save cycle metrics to separate dataframe and sort. only keep columns where charge and discharge cycles start. Label the type of protocol
-        cycle_metrics_columns = ['Time [s]','Ah throughput [A.h]', 'Test type','Protocol','discharge_cycle_indicator','cycle_indicator','charge_cycle_indicator','capacity_check_indicator', 'Test name']
+        cycle_metrics_columns = ['Time [ms]','Ah throughput [A.h]', 'Test type','Protocol','discharge_cycle_indicator','cycle_indicator','charge_cycle_indicator','capacity_check_indicator', 'Test name']
         cell_cycle_metrics = cell_data[cycle_metrics_columns][(cell_data.discharge_cycle_indicator==True) | (cell_data.charge_cycle_indicator==True)].copy()
-        # cell_cycle_metrics.sort_values(by=['Time [s]'])
+        # cell_cycle_metrics.sort_values(by=['Time [ms]'])
         cell_cycle_metrics.reset_index(drop=True, inplace=True)
         return cell_data, cell_cycle_metrics
 

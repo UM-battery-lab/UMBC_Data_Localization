@@ -11,6 +11,7 @@ from src.model.DataDeleter import DataDeleter
 from src.config.time_config import DATE_FORMAT
 from src.config.df_config import TIME_COLUMNS
 from src.config.path_config import ROOT_PATH, SANITY_CHECK_CSV_PATH, WRONG_TR_NAME_PATH
+from src.config.calibration_config import X1, X2, C
 from src.utils.Logger import setup_logger
 from src.utils.RedisClient import RedisClient
 
@@ -88,9 +89,10 @@ class DataIO:
         projects_name = []
         for dev in devs:
             project_name = self.extract_project_name(dev.tags)
-            device_folder = os.path.join(self.rootPath, project_name if project_name else '', dev.name)
+            device_folder = os.path.join(self.rootPath, project_name if project_name else "Unknown_Project", dev.name)
             if not project_name:
-                self.logger.warning(f"The device {dev.name} does not have a project name. Put it in the device folder directly.")
+                self.logger.warning(f"The device {dev.name} does not have a project name. Put it in the Unknown_Project.")
+                project_name = "Unknown_Project"
             self._create_directory(device_folder)
             devices_id.append(dev.id)
             devices_name.append(dev.name)
@@ -143,16 +145,17 @@ class DataIO:
 
     def extract_project_name(self, tags):
         prefix = "Project Name:"
+        project_name = "Unknown_Project"
         for tag in tags:
             if tag.startswith(prefix):
-                return tag.split(prefix)[1].strip()
-        self.logger.error(f"Project name not found in tags: {tags}")
-        return None
+                project_name = tag.split(prefix)[1].strip()
+        return project_name
     
     def _handle_single_record(self, tr, df, cycle_stat, dev_name, project_name):
         device_folder = os.path.join(self.rootPath, project_name if project_name else '', dev_name)
         if not project_name:
-            self.logger.warning(f"The device {dev_name} does not have a project name. Put it in the device folder directly.")
+            self.logger.warning(f"The device {dev_name} does not have a project name.")
+            project_name = "Unknown_Project"
         # device_folder = os.path.join(self.rootPath, dev_name)
         if device_folder is None:
             self.logger.error(f'Device folder not found for device id {tr.device_id}')
@@ -498,7 +501,7 @@ class DataIO:
         filepath_cell_data = os.path.join(cell_path, 'CD.pkl.gz')
         filepath_cell_data_vdf = os.path.join(cell_path, 'CDvdf.pkl.gz')
         filepath_rpt = os.path.join(cell_path, 'RPT.pkl.gz')
-        filepath_csv = os.path.join(cell_path, 'CCM.csv')
+        filepath_csv = os.path.join(cell_path, f'{cell_name}_CCM.csv')
         # Save dataframes for cycle metrics, cell data, cell data vdf
         self.save_df(cell_cycle_metrics, filepath_ccm)
         self.save_df(cell_data, filepath_cell_data)
@@ -530,7 +533,35 @@ class DataIO:
         csv_string = self.load_csv(filepath_ccm)
         return csv_string
 
-    def save_figs(self, figs, cell_name,keep_open):
+    def get_calibration_parameters(self):
+        """
+        Get the calibration parameters
+
+        Returns
+        -------
+        dict
+            The dictionary of calibration parameters (device name to X1, X2, C)
+        """
+        self.logger.info(f"Loading calibration parameters from {SANITY_CHECK_CSV_PATH}")
+        calibration_csv = self.read_sanity_check_csv()
+        header = next(calibration_csv)
+        # Get the index of the columns
+        project_index, cell_name_index = header.index('Project'), header.index('Cell Name')
+        x1_index, x2_index, c_index = header.index('X1'), header.index('X2'), header.index('C')
+        calibration_parameters = {}
+        for row in calibration_csv:
+            project_name, cell_name = row[project_index], row[cell_name_index]
+            x1, x2, c = row[x1_index], row[x2_index], row[c_index]
+            if x1 == '':
+                x1 = X1	
+            if x2 == '':
+                x2 = X2
+            if c == '':
+                c = C
+            calibration_parameters[f'{project_name}_{cell_name}'] = {'X1': x1, 'X2': x2, 'C': c}
+        return calibration_parameters
+
+    def save_figs(self, figs, cell_name, time_name, keep_open=False):
         """
         Save the figures to the processed folder
 
@@ -540,6 +571,8 @@ class DataIO:
             The list of figures to be saved
         cell_name: str
             The name of the cell
+        time_name: str
+            The name of the time slot
         
         Returns
         -------
@@ -555,8 +588,8 @@ class DataIO:
         self._create_directory(filepath_figs)
         for i, fig in enumerate(figs):
             self.logger.info(f"Saving figure {i} to {filepath_figs}")
-            fig.savefig(os.path.join(filepath_figs, f'{cell_name}_fig{i}.png'))
-            if(keep_open is False):
+            fig.savefig(os.path.join(filepath_figs, f'{cell_name}_{time_name}_fig{i}.png'))
+            if not keep_open:
                 plt.close(fig)
 
     def _load_pickles(self, file_paths):
@@ -660,6 +693,6 @@ class DataIO:
         self.logger.info(f"Moving test record from {old_path} to {new_path}")
         try:
             shutil.move(old_path, new_path)
-        except FileNotFoundError:
-            self.logger.error(f"File not found: {old_path}")
-            return None
+        except Exception as e:
+            self.logger.error(f"Error moving test record from {old_path} to {new_path}: {e}")
+    

@@ -41,17 +41,19 @@ class DataDeleter:
         -------
         None
         """
+        confirmation_all = input(f"Delete {len(folder_list)} folders? (y/n): ")
         for folder in folder_list:
             try:
                 # Check folder contents
                 current_files = [file.name for file in os.scandir(folder)]
-                if set(current_files) == {"tr.pkl.gz", "df.pkl.gz"}:
+                if set(current_files) == {"tr.pkl.gz", "df.pkl.gz", 'cycle_stats.pkl.gz'}:
                     self.logger.warning(f"Folder {folder} contains valid files. Skipping deletion.")
                 else:
                     self.logger.info(f"Folder {folder} contains invalid files: {current_files}.")
-                    confirmation = input(f"Delete folder {folder}? (y/n): ")
-                    if confirmation != "y":
-                        continue
+                    if confirmation_all != "y":
+                        confirmation = input(f"Delete folder {folder}? (y/n): ")
+                        if confirmation != "y":
+                            continue
                     shutil.rmtree(folder)
                     self.logger.info(f"Deleted folder: {folder}")
             except Exception as e:

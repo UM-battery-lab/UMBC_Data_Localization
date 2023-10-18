@@ -8,6 +8,6 @@ CYCLE_ID_LIMS= {
 }
 DEFAULT_TRACE_KEYS = ['h_datapoint_time', 'h_test_time', 'h_current', 'h_potential', 'c_cumulative_capacity', 
                     'aux_neware_xls_t1_none_0', 'h_step_index']
-DEFAULT_DF_LABELS = ['Time [s]', 'Test Time [s]', 'Current [A]', 'Voltage [V]', 'Ah throughput [A.h]', 
+DEFAULT_DF_LABELS = ['Time [ms]', 'Test Time [ms]', 'Current [A]', 'Voltage [V]', 'Ah throughput [A.h]', 
                     'Temperature [degC]', 'Step index']
 TIME_COLUMNS = ['aux_vdf_timestamp_datetime_0', 'aux_vdf_timestamp_epoch_0', 'h_datapoint_time']

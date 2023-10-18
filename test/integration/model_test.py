@@ -38,8 +38,8 @@ def process_cell_test():
     #'UMBL2022FEB_CELL152051'
     #'GMJuly2022_CELL901REF'
     dataManager = DataManager(use_redis=False)
-    def save_figs(figs, cell_name):
-        dataManager.save_figs(figs, cell_name,keep_open=True)
+    def save_figs(figs, cell_name, time_name):
+        dataManager.save_figs(figs, cell_name, time_name, keep_open=True)
     presenter = Presenter()
     viewer = Viewer(call_back=save_figs)
     #cell_name = "UMBL2022FEB_CELL152051"
