@@ -442,7 +442,8 @@ class DataProcessor:
         charge_t_idx = list(cell_data[cell_data.charge_cycle_indicator ==True].index)
         discharge_t_idx = list(cell_data[cell_data.discharge_cycle_indicator ==True].index)
         Q_c, Q_d = self._calc_capacities(cell_data['Time [ms]'], cell_data['Current [A]'], cell_data['Ah throughput [A.h]'], charge_t_idx, discharge_t_idx)
-        
+        # find average current
+        I_avg_c,I_avg_d = self._avg_cycle_data_x(cell_data['Time [ms]'], cell_data['Current [A]'], charge_t_idx, discharge_t_idx)
         # Find min/max metrics
         cycle_idx_minmax = list(cell_data[cell_data.cycle_indicator ==True].index)
         cycle_idx_minmax.append(len(cell_data)-1)
@@ -455,21 +456,50 @@ class DataProcessor:
         cell_cycle_metrics['Max cycle voltage [V]'] = [np.nan]*len(cell_cycle_metrics)
         cell_cycle_metrics['Min cycle temperature [degC]'] = [np.nan]*len(cell_cycle_metrics) # init capacity columns in cell_cycle_metrics
         cell_cycle_metrics['Max cycle temperature [degC]'] = [np.nan]*len(cell_cycle_metrics)
-        
+        cell_cycle_metrics['Avg Charge cycle current [A]'] = [np.nan]*len(cell_cycle_metrics)
+        cell_cycle_metrics['Avg Dis-Charge cycle current [A]'] = [np.nan]*len(cell_cycle_metrics) 
+       
         # Add to dataframe
         charge_cycle_number = list(cell_cycle_metrics[cell_cycle_metrics.charge_cycle_indicator ==True].index) # aligns with charge start
         discharge_cycle_number = list(cell_cycle_metrics[cell_cycle_metrics.discharge_cycle_indicator ==True].index) # aligns with discharge start
         cycle_number = list(cell_cycle_metrics[cell_cycle_metrics.cycle_indicator ==True].index) # align with charge start
         for i,j in enumerate(charge_cycle_number): 
-            cell_cycle_metrics.loc[j, 'Charge capacity [A.h]'] = Q_c[i] 
+            cell_cycle_metrics.loc[j, 'Charge capacity [A.h]'] = Q_c[i]
+            cell_cycle_metrics.loc[j, 'Avg Charge cycle current [A]'] = I_avg_c[i]  
         for i,j in enumerate(discharge_cycle_number): 
-            cell_cycle_metrics.loc[j, 'Discharge capacity [A.h]'] = Q_d[i] 
+            cell_cycle_metrics.loc[j, 'Discharge capacity [A.h]'] = Q_d[i]
+            cell_cycle_metrics.loc[j, 'Avg Dis-Charge cycle current [A]'] = I_avg_d[i]  
         for i,j in enumerate(cycle_number): 
             cell_cycle_metrics.loc[j, 'Min cycle voltage [V]'] = V_min[i] 
             cell_cycle_metrics.loc[j, 'Max cycle voltage [V]'] = V_max[i] 
             cell_cycle_metrics.loc[j, 'Min cycle temperature [degC]'] = T_min[i] 
             cell_cycle_metrics.loc[j, 'Max cycle temperature [degC]'] = T_max[i] 
         return cell_data, cell_cycle_metrics
+
+    def _avg_cycle_data_x(self,t, data, charge_idx, discharge_idx):
+        # calculate avg data for each cycle (e.g. voltage, temperature, or expansion)
+        # Modified Min/Max by CES
+        cycle_idx = charge_idx + discharge_idx
+        cycle_idx.append(len(t)-1) # add last data point
+        cycle_idx.sort() # should alternate charge and discharge start indices
+
+        y_avg_c  = []
+        y_avg_d  = []
+        # for each cycle...
+        # Calculate capacity 
+        for i in range(len(cycle_idx)-1):
+            # Calculate capacity based on AhT.
+            Dt_total= t[cycle_idx[i+1]]-t[cycle_idx[i]]
+                #Dt_elements=t[(cycle_idx[i]:cycle_idx[i+1])+1]-t[cycle_idx[i]:cycle_idx[i+1]]
+            y_avg =np.trapz(data[cycle_idx[i]:cycle_idx[i+1]],x=t[cycle_idx[i]:cycle_idx[i+1]])/Dt_total #np.sum( Dt_elements*(data[cycle_idx[i]:cycle_idx[i+1]]+data[cycle_idx[i]-1:cycle_idx[i+1]-1])/2)/Dt_total
+      
+            if cycle_idx[i] in charge_idx:
+
+                y_avg_c.append(y_avg) 
+            else:
+                #y_avg = 0
+                y_avg_d.append(y_avg) 
+        return np.array(y_avg_c), np.array(y_avg_d)
         
     def _max_min_cycle_data(self, data, cycle_idx_minmax):
         """
