@@ -60,6 +60,19 @@ def process_cell_test():
     print(cell_cycle_metrics)
     plt.show()
 
+def process_tr_test():
+    tr_name = 'GMJuly2022_CELL025_Test7B_1_P0C_5P0PSI_20230412_R0_CH055'
+    dataManager = DataManager(use_redis=False)
+    presenter = Presenter()
+    viewer = Viewer()
+    dataManager.attach(presenter)
+    presenter.attach(viewer)
+    cell_cycle_metrics, cell_data, cell_data_vdf = dataManager.process_tr(tr_name)
+    print(cell_data)
+    print(cell_data_vdf)
+    print(cell_cycle_metrics)
+    plt.show()
+
 def read_csv_test():
     dataManager = DataManager()
     # test read_csv
@@ -82,7 +95,8 @@ if __name__ == '__main__':
     # createdb_test()
 
     # filter_test()
-    process_cell_test()
+    # process_cell_test()
+    process_tr_test()
     # consistency_test()
 
     # read_csv_test()

@@ -440,11 +440,19 @@ class DataProcessor:
         
         if (len(frames_vdf) == 0):
             self.logger.debug(f"No vdf data found")
-            return pd.DataFrame(columns=['Time [ms]','Expansion [-]', 'Expansion ref [-]', 'Temperature [degC]','cycle_indicator'])
+            cell_data_vdf = self._create_default_cell_data_vdf()
+            return cell_data_vdf
         # Combine vdf data into a single df and reset the index 
         cell_data_vdf = pd.concat(frames_vdf).sort_values(by=['Time [ms]'])
         cell_data_vdf.reset_index(drop=True, inplace=True)
         return cell_data_vdf
+    
+    def _create_default_cell_data(self):
+        return pd.DataFrame(columns=['Time [ms]','Current [A]', 'Voltage [V]', 'Ah throughput [A.h]', 'Temperature [degC]','cycle_indicator', 'discharge_cycle_indicator', 'charge_cycle_indicator', 'capacity_check_indicator'])
+    def _create_default_cell_cycle_metrics(self):
+        return pd.DataFrame(columns=['Time [ms]','Ah throughput [A.h]', 'Test type','Protocol','discharge_cycle_indicator','cycle_indicator','charge_cycle_indicator','capacity_check_indicator', 'Test name'])
+    def _create_default_cell_data_vdf(self):
+        return pd.DataFrame(columns=['Time [ms]','Expansion [-]', 'Expansion ref [-]', 'Temperature [degC]','cycle_indicator'])
 
     def _process_cycler_data(self, records_neware, cycle_id_lims, numFiles=1000):
         """
@@ -746,6 +754,9 @@ class DataProcessor:
          #   time.sleep(0.1) 
         # Combine cycling data into a single df and reset the index
         self.logger.info(f"Combining {len(frames)} dataframes")
+        if len(frames) == 0:
+            cell_data, cell_cycle_metrics = self._create_default_cell_data(), self._create_default_cell_cycle_metrics()
+            return cell_data, cell_cycle_metrics
         cell_data = pd.concat(frames)
         cell_data.reset_index(drop=True, inplace=True)
         # Get cycle indices from combined df originally identified from individual tests (with lims based on test type) 

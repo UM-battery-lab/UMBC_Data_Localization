@@ -50,6 +50,8 @@ class DataManager(metaclass=SingletonMeta):
         Filter the test records and dataframes locally with the specified device id or name or start time or tags
     check_and_repair_consistency()
         Check the consistency between the directory structure and local database, and repair the inconsistency
+    process_tr(tr_name)
+        Process the single test record
     process_cell(cell_name, numFiles = 1000, update_local_db=False, reset=False)
         Process the data for a cell and save the processed cell cycle metrics, cell data and cell data vdf to local disk
     process_project(project_name, numFiles = 1000)
@@ -391,6 +393,46 @@ class DataManager(metaclass=SingletonMeta):
             self.logger.info(f'Expired folders found: {expired_folders}')
             self.dataDeleter.delete_folders(expired_folders)
         self.logger.info('Consistency check completed.')
+
+    def process_tr(self, tr_name):
+        """
+        Process the data for a test record and save the processed data to local disk
+
+        Parameters
+        ----------
+        tr_name: str
+            The name of the test record to be processed
+
+        Returns
+        -------
+        None
+        """
+        cell_cycle_metrics, cell_data, cell_data_vdf = None, None, None
+    
+        records_neware = self.dataFilter.filter_records(tr_name_substring=tr_name, tags=['neware_xls_4000'])
+        records_arbin = self.dataFilter.filter_records(tr_name_substring=tr_name, tags=['arbin'])
+        records_biologic = self.dataFilter.filter_records(tr_name_substring=tr_name, tags=['biologic'])
+        records_vdf = self.dataFilter.filter_records(tr_name_substring=tr_name, tags=['vdf'])     
+        # Sort trs
+        records_neware = self.dataProcessor.sort_records(records_neware)
+        records_arbin = self.dataProcessor.sort_records(records_arbin)
+        records_biologic = self.dataProcessor.sort_records(records_biologic)
+        records_cycler = self.dataProcessor.sort_records(records_neware + records_arbin + records_biologic)
+        records_vdf = self.dataProcessor.sort_records(records_vdf)
+
+        # Get parameters for calibration
+        calibration_parameters = None
+        try:
+            calibration_parameters = self.dataIO.get_calibration_parameters()
+        except Exception as e:
+            self.logger.error(f'Error {e} while getting calibration parameters')
+
+        # Process data
+        cell_cycle_metrics, cell_data, cell_data_vdf, _ = self.dataProcessor.process_cell(records_cycler, records_vdf, cell_cycle_metrics, cell_data, cell_data_vdf, calibration_parameters)
+        #Save new data to pickle if there was new data
+        self.notify(tr_name, cell_cycle_metrics, cell_data, cell_data_vdf, None, None, None)
+        return cell_cycle_metrics, cell_data, cell_data_vdf
+
 
     def process_cell(self, cell_name, start_time=None, end_time=None, numFiles = 1000, reset = False):
         """
