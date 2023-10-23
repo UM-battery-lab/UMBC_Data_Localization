@@ -532,8 +532,8 @@ class DataManager(metaclass=SingletonMeta):
                 # Get the test records for the cell
                 project, cell_number, correct_neware_rack, correct_channel = row[project_index], row[cell_name_index], row[neware_rack_index], row[channel_index]
                 start_date, removal_date = row[start_date_index], row[removal_date_index]
-                cell_number = project + "_CELL" + cell_number.zfill(3)
-                cell_trs = [tr for tr in trs if tr.name.startswith(cell_number)]
+                cell_name = project + "_CELL" + cell_number.zfill(3)
+                cell_trs = [tr for tr in trs if tr.name.startswith(cell_name)]
                 # Check if there is overlapping between the time range of the test records and the time range in the sanity check csv
                 if start_date:
                     start_date = self.dateConverter._str_to_timestamp(self.dateConverter._format_date_str(start_date))

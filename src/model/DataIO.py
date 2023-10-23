@@ -548,17 +548,19 @@ class DataIO:
         # Get the index of the columns
         project_index, cell_name_index = header.index('Project'), header.index('Cell Name')
         x1_index, x2_index, c_index = header.index('X1'), header.index('X2'), header.index('C')
+        start_date_index, removal_date_index = header.index('Start Date (Aging)'), header.index('Removal Date')
+        # Set the default values for X1, X2, C
+        default_X1, default_X2, default_C = X1, X2, C
         calibration_parameters = {}
         for row in calibration_csv:
-            project_name, cell_name = row[project_index], row[cell_name_index]
-            x1, x2, c = row[x1_index], row[x2_index], row[c_index]
-            if x1 == '':
-                x1 = X1	
-            if x2 == '':
-                x2 = X2
-            if c == '':
-                c = C
-            calibration_parameters[f'{project_name}_{cell_name}'] = {'X1': x1, 'X2': x2, 'C': c}
+            project, cell_number, start_date, removal_date = row[project_index], row[cell_name_index], row[start_date_index], row[removal_date_index]
+            x1 = float(row[x1_index]) if row[x1_index] != '' else default_X1
+            x2 = float(row[x2_index]) if row[x2_index] != '' else default_X2
+            c = float(row[c_index]) if row[c_index] != '' else default_C
+            cell_name = project + "_CELL" + cell_number.zfill(3)
+            if cell_name not in calibration_parameters:
+                calibration_parameters[cell_name] = []
+            calibration_parameters[cell_name].append((start_date, removal_date, x1, x2, c))
         return calibration_parameters
 
     def save_figs(self, figs, cell_name, time_name, keep_open=False):

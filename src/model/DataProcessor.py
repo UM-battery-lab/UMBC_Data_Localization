@@ -371,6 +371,42 @@ class DataProcessor:
 
         return cell_data_vdf, cell_cycle_metrics
 
+    def _get_calibration_parameters(self, df_vdf, dev_name, calibration_parameters):
+        """
+        Get the calibration parameters for the device
+
+        Parameters
+        ----------
+        df_vdf: DataFrame
+            The dataframe of the vdf data
+        dev_name: str
+            The device name
+        calibration_parameters: dict
+            The dictionary of the calibration parameters
+        
+        Returns
+        -------
+        df_vdf: DataFrame
+            The dataframe of the vdf data with the calibration parameters
+
+            
+        """
+        df_vdf['x1'] = X1  # Default values
+        df_vdf['x2'] = X2
+        df_vdf['c'] = C
+        
+        if dev_name in calibration_parameters:
+            for start_date, removal_date, x1, x2, c in calibration_parameters[dev_name]:
+                if not start_date:
+                    start_date = "01/01/2000"    
+                if not removal_date:
+                    removal_date = "01/01/2100"
+                start_date = self.dateConverter._str_to_timestamp(self.dateConverter._format_date_str(start_date))
+                removal_date = self.dateConverter._str_to_timestamp(self.dateConverter._format_date_str(removal_date))
+                mask = (df_vdf['Time [ms]'] >= start_date) & (df_vdf['Time [ms]'] <= removal_date)
+                df_vdf.loc[mask, ['x1', 'x2', 'c']] = x1, x2, c
+                
+        return df_vdf
 
     def _combine_cycler_expansion(self, records_vdf, calibration_parameters, numFiles = 1000):
         """
@@ -389,21 +425,17 @@ class DataProcessor:
                 # df_vdf = test2df(test_vdf, test_trace_keys = ['aux_vdf_timestamp_datetime_0','aux_vdf_ldcsensor_none_0', 'aux_vdf_ldcref_none_0', 'aux_vdf_ambienttemperature_celsius_0', 'aux_vdf_temperature_celsius_0'], df_labels =['Time [ms]','Expansion [-]', 'Expansion ref [-]', 'Amb Temp [degC]', 'Temperature [degC]'])
                 df_vdf = self._record_to_df(record_vdf, test_trace_keys = ['aux_vdf_timestamp_epoch_0','aux_vdf_ldcsensor_none_0', 'aux_vdf_ldcref_none_0', 'aux_vdf_ambienttemperature_celsius_0'], df_labels =['Time [ms]','Expansion [-]', 'Expansion ref [-]','Temperature [degC]'])
                 df_vdf = df_vdf[(df_vdf['Expansion [-]'] >1e1) & (df_vdf['Expansion [-]'] <1e7)] #keep good signals 
-                
                 # Add LDC sensor calibration to df_vdf
-                x1, x2, c = X1, X2, C
-                if record_vdf['dev_name'] in calibration_parameters:
-                    parameters = calibration_parameters[record_vdf['dev_name']]
-                    x1, x2, c = parameters['X1'], parameters['X2'], parameters['C']
-
-                df_vdf['Expansion [um]']=1000*(30.6-(x2*(df_vdf['Expansion [-]']/10**6)**2+x1*(df_vdf['Expansion [-]']/10**6)+c))
+                df_vdf = self._get_calibration_parameters(df_vdf, record_vdf['dev_name'], calibration_parameters)
+                self.logger.info(f"Using calibration parameters for the entire dataframe.")
+                df_vdf['Expansion [um]'] = 1000 * (30.6 - (df_vdf['x2'] * (df_vdf['Expansion [-]'] / 10**6)**2 + df_vdf['x1'] * (df_vdf['Expansion [-]'] / 10**6) + df_vdf['c']))
                 df_vdf['Temperature [degC]'] = np.where((df_vdf['Temperature [degC]'] >= 200) & (df_vdf['Temperature [degC]'] <250), np.nan, df_vdf['Temperature [degC]']) 
                 # df_vdf['Amb Temp [degC]'] = np.where((df_vdf['Amb Temp [degC]'] >= 200) & (df_vdf['Amb Temp [degC]'] <250), np.nan, df_vdf['Amb Temp [degC]']) 
                 frames_vdf.append(df_vdf)
                 self.logger.debug(f"Finished processing with {len(frames_vdf)} data points")
-            except: #Tables are different Length, cannot merge
-                self.logger.error(f"Error processing {record_vdf['tr_name']}")
-                pass
+            except Exception as e:
+                self.logger.error(f"Error processing {record_vdf['tr_name']}: {e}")
+                continue
           #  time.sleep(0.1) 
         
         if (len(frames_vdf) == 0):
