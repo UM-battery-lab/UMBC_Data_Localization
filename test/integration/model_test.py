@@ -33,10 +33,10 @@ def consistency_test():
 
 def process_cell_test():
     # test process_cell
-    cell_name='GMFEB23S_CELL044'
+    #cell_name='GMFEB23S_CELL044'
     #'GMJuly2022_CELL015'
     #'UMBL2022FEB_CELL152051'
-    #'GMJuly2022_CELL901REF'
+    cell_name='GMJuly2022_CELL901REF'
     dataManager = DataManager(use_redis=False)
     def save_figs(figs, cell_name, time_name):
         dataManager.save_figs(figs, cell_name, time_name, keep_open=True)
