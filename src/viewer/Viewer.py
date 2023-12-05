@@ -52,10 +52,10 @@ class Viewer():
         V = timeseries.V
         T = timeseries.T
         AhT = timeseries.AhT
-
-        t_vdf = expansion.t_vdf
-        exp_vdf = expansion.exp_vdf
-        T_vdf = expansion.T_vdf
+        # drop egregious outliers from the plot.... for diagnostics.
+        t_vdf = expansion.t_vdf[expansion.exp_vdf>-5000]
+        exp_vdf = expansion.exp_vdf[expansion.exp_vdf>-5000]
+        T_vdf = expansion.T_vdf[expansion.exp_vdf>-5000]
 
         t_cycle = cycle_metrics.t_cycle
         Q_c = cycle_metrics.Q_c
@@ -142,9 +142,10 @@ class Viewer():
         T = timeseries.T
         AhT = timeseries.AhT
 
-        t_vdf = expansion.t_vdf
-        exp_vdf = expansion.exp_vdf
-        T_vdf = expansion.T_vdf
+        t_vdf = expansion.t_vdf[expansion.exp_vdf>-5000]
+
+        exp_vdf = expansion.exp_vdf[expansion.exp_vdf>-5000]
+        T_vdf = expansion.T_vdf[expansion.exp_vdf>-5000]
 
         t_cycle = cycle_metrics.t_cycle
         Q_c = cycle_metrics.Q_c

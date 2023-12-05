@@ -108,6 +108,7 @@ class DataProcessor:
             cell_cycle_metrics['Max cycle expansion [-]'] = np.nan
             cell_cycle_metrics['Min cycle expansion [-]'] = np.nan
             cell_cycle_metrics['Reversible cycle expansion [-]'] = np.nan
+            records_new_data_vdf=cell_data_vdf
         elif cell_data_vdf is not None:
             self.logger.info(f"Process cell_data_vdf")
             # Make list of data files with new data to process
@@ -654,8 +655,8 @@ class DataProcessor:
             # 1a. for arbin and biologic files
             test_data = pd.DataFrame()
             if ('arbin' in record['tags']) or ('biologic' in record['tags']): 
-                test_trace_keys_arbin = ['h_datapoint_time','h_test_time','h_current', 'h_potential', 'c_cumulative_capacity', 'h_step_index']
-                df_labels_arbin = ['Time [ms]','Test Time [ms]', 'Current [A]', 'Voltage [V]', 'Ah throughput [A.h]', 'Step index']
+                test_trace_keys_arbin = ['h_datapoint_time','h_test_time','h_current', 'h_potential', 'c_cumulative_capacity', 'h_step_index','h_cycle']
+                df_labels_arbin = ['Time [ms]','Test Time [ms]', 'Current [A]', 'Voltage [V]', 'Ah throughput [A.h]', 'Step index','Cycle index']
                 test_data = self._record_to_df(record, test_trace_keys_arbin, df_labels_arbin, ms = isRPT)
                 test_data['Temperature [degC]'] = [np.nan]*len(test_data) # make arbin tables with same columns as neware files
                 if ('biologic' in record['tags']):
@@ -677,7 +678,7 @@ class DataProcessor:
             V = test_data['Voltage [V]'].reset_index(drop=True)
             T = test_data['Temperature [degC]'].reset_index(drop=True)
             step_idx = test_data['Step index'].reset_index(drop=True)
-
+            cycle_idx=test_data['Cycle index'].reset_index(drop=True)
             # 3. Calculate AhT 
             if 'neware_xls_4000' in record['tags'] and isFormation:  
                 # 3a. From integrating current.... some formation files had wrong units
