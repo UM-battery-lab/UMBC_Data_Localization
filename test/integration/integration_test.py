@@ -15,6 +15,8 @@ from src.viewer.Viewer import Viewer
 # Integration test
 def present_cell(cell_num):
     cell_name="GMJuly2022_CELL"+f'{cell_num:03d}'
+#    cell_name="GMFEB23S_CELL"+f'{cell_num:03d}'
+
     dataManager = DataManager(use_redis=False)
     def save_figs(figs, cell_name, time_name):
         dataManager.save_figs(figs, cell_name, time_name)
@@ -36,6 +38,5 @@ if __name__ == '__main__':
         #for i in range
     #for cell in range(2,120):
     with Pool() as pool:
-            result = pool.map(present_cell, range(1,120) )
-
+            result = pool.map(present_cell, range(1,122) )
     

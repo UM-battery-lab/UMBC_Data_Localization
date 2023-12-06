@@ -8,12 +8,16 @@ else:
 from src.model.DataManager import DataManager
 from src.presenter.Presenter import Presenter 
 from src.viewer.Viewer import Viewer
-from matplotlib import pyplot as plt   
+from matplotlib import pyplot as plt
+import matplotlib   
+matplotlib.use('QtAgg')
+#matplotlib.use('TkAgg')
+
 # Integration test
 def createdb_test():
     dataManager = DataManager()
     # test create db
-    dataManager.test_createdb()
+    dataManager.test_createdb()#
 
 def filter_test():
     dataManager = DataManager()
@@ -33,10 +37,16 @@ def consistency_test():
 
 def process_cell_test():
     # test process_cell
-    cell_name='GMFEB23S_CELL044'
+    #cell_name='GMFEB23S_CELL044'
     #'GMJuly2022_CELL015'
     #'UMBL2022FEB_CELL152051'
-    #'GMJuly2022_CELL901REF'
+    cell_name='GMJuly2022_CELL901REF'
+    cell_name='GMJuly2022_CELL073'
+    cell_name='GMJuly2022_CELL018'
+    #cell_name='GMJuly2022_CELL012'
+
+    #cell_name='GMFEB23S_CELL067'
+
     dataManager = DataManager(use_redis=False)
     def save_figs(figs, cell_name, time_name):
         dataManager.save_figs(figs, cell_name, time_name, keep_open=True)
@@ -95,9 +105,9 @@ if __name__ == '__main__':
     # createdb_test()
 
     # filter_test()
-    # process_cell_test()
-    process_tr_test()
-    # consistency_test()
+    process_cell_test()
+#    #process_tr_test()
+#    consistency_test()
 
     # read_csv_test()
     #update_cycle_stats_test()
