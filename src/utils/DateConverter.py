@@ -8,8 +8,8 @@ class DateConverter(metaclass=SingletonMeta):
         self.DATE_FORMAT = DATE_FORMAT
 
     def _timestamp_to_datetime(self, t):
-        t = t/1000
-        return datetime.datetime.fromtimestamp(t, tz=self.TZ_INFO)
+      #  t = t/1000.0
+        return datetime.datetime.fromtimestamp(t, tz=self.TZ_INFO,unit="ms")
     
     def _timestamp_to_str(self, t):
         dt = self._timestamp_to_datetime(t)
