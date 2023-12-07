@@ -105,13 +105,18 @@ class DataProcessor:
         # Process the expansion data
         if len(records_vdf)==0: 
             self.logger.info("No vdf data for this cell")
-            cell_data_vdf = pd.DataFrame(columns=['Time [ms]','Expansion [-]', 'Expansion [um]', 'Expansion ref [-]', 'Temperature [degC]','cycle_indicator'])
+           
+            cell_data_vdf = pd.DataFrame(columns=['Time [ms]','Expansion [-]','Expansion [um]', 'Expansion ref [-]', 'Temperature [degC]','cycle_indicator','Expansion STDEV [cnt]','Ref STDEV [cnt]','Drive Current [-]'])
             cell_cycle_metrics['Max cycle expansion [-]'] = np.nan
             cell_cycle_metrics['Min cycle expansion [-]'] = np.nan
             cell_cycle_metrics['Reversible cycle expansion [-]'] = np.nan
             cell_cycle_metrics['Max cycle expansion [um]'] = np.nan
             cell_cycle_metrics['Min cycle expansion [um]'] = np.nan
             cell_cycle_metrics['Reversible cycle expansion [um]'] = np.nan
+            cell_cycle_metrics['Drive current [-]']=np.nan
+            cell_cycle_metrics['Expansion STDDEV [cnt]']=np.nan
+            cell_cycle_metrics['Ref STDDEV [cnt]']=np.nan
+            
             records_new_data_vdf=cell_data_vdf
         elif cell_data_vdf is not None:
             self.logger.info(f"Process cell_data_vdf")
@@ -439,6 +444,10 @@ class DataProcessor:
         cell_cycle_metrics['Min cycle expansion [um]'] = [np.nan]*len(cell_cycle_metrics)
         cell_cycle_metrics['Max cycle expansion [um]'] = [np.nan]*len(cell_cycle_metrics)
         cell_cycle_metrics['Reversible cycle expansion [um]'] = [np.nan]*len(cell_cycle_metrics)
+        cell_cycle_metrics['Drive current [-]']= [np.nan]*len(cell_cycle_metrics)
+        cell_cycle_metrics['Expansion STDDEV [cnt]']= [np.nan]*len(cell_cycle_metrics)
+        cell_cycle_metrics['Ref STDDEV [cnt]']= [np.nan]*len(cell_cycle_metrics)
+
 
         for i,j in enumerate(matched_timestamp_indices):
             cell_cycle_metrics.loc[discharge_cycle_idx[j], 'Time vdf [s]'] = t_cycle_vdf[i]
@@ -448,6 +457,19 @@ class DataProcessor:
             cell_cycle_metrics.loc[discharge_cycle_idx[j], 'Min cycle expansion [um]'] = exp_min_um[i]
             cell_cycle_metrics.loc[discharge_cycle_idx[j], 'Max cycle expansion [um]'] = exp_max_um[i]
             cell_cycle_metrics.loc[discharge_cycle_idx[j], 'Reversible cycle expansion [um]'] = exp_rev_um[i]
+            try:
+                cell_cycle_metrics.loc[discharge_cycle_idx[j], 'Drive current [-]'] = cell_data_vdf['Drive current [-]'][i]
+            except:
+                cell_cycle_metrics.loc[discharge_cycle_idx[j], 'Drive current [-]'] = 0
+            try:    
+                cell_cycle_metrics.loc[discharge_cycle_idx[j], 'Expansion STDDEV [cnt]'] = cell_data_vdf['Expansion STDDEV [cnt]'][i]
+            except:
+                cell_cycle_metrics.loc[discharge_cycle_idx[j], 'Expansion STDDEV [cnt]'] = 0
+
+            try:
+                cell_cycle_metrics.loc[discharge_cycle_idx[j], 'Ref STDDEV [cnt]'] = cell_data_vdf['Ref STDDEV [cnt]'][i]
+            except:
+                cell_cycle_metrics.loc[discharge_cycle_idx[j], 'Ref STDDEV [cnt]'] = 0
             
         # also add timestamps for charge cycles
         charge_cycle_idx = list(np.where(cell_cycle_metrics.charge_cycle_indicator==True)[0])
@@ -510,7 +532,7 @@ class DataProcessor:
                 # Read in timeseries data from test and formating into dataframe. Remove rows with expansion value outliers.
                 self.logger.debug(f"Now Processing {record_vdf['tr_name']}")
                 # df_vdf = test2df(test_vdf, test_trace_keys = ['aux_vdf_timestamp_datetime_0','aux_vdf_ldcsensor_none_0', 'aux_vdf_ldcref_none_0', 'aux_vdf_ambienttemperature_celsius_0', 'aux_vdf_temperature_celsius_0'], df_labels =['Time [ms]','Expansion [-]', 'Expansion ref [-]', 'Amb Temp [degC]', 'Temperature [degC]'])
-                df_vdf = self._record_to_df(record_vdf, test_trace_keys = ['aux_vdf_timestamp_epoch_0','aux_vdf_ldcsensor_none_0', 'aux_vdf_ldcref_none_0', 'aux_vdf_ambienttemperature_celsius_0'], df_labels =['Time [ms]','Expansion [-]', 'Expansion ref [-]','Temperature [degC]'])
+                df_vdf = self._record_to_df(record_vdf, test_trace_keys = ['aux_vdf_timestamp_epoch_0','aux_vdf_ldcsensor_none_0', 'aux_vdf_ldcref_none_0', 'aux_vdf_ambienttemperature_celsius_0','aux_vdf_ldcstd_none_0','aux_vdf_refstd_none_0', 'aux_vdf_drivecurrent_none_0'], df_labels =['Time [ms]','Expansion [-]', 'Expansion ref [-]','Temperature [degC]','Expansion STDEV [cnt]','Ref STDEV [cnt]','Drive Current [-]'])
                 df_vdf = df_vdf[(df_vdf['Expansion [-]'] >1e1) & (df_vdf['Expansion [-]'] <1e7)] #keep good signals 
                 # Add LDC sensor calibration to df_vdf
                 df_vdf = self._get_calibration_parameters(df_vdf, record_vdf['dev_name'], calibration_parameters)
@@ -535,11 +557,11 @@ class DataProcessor:
         return cell_data_vdf
     
     def _create_default_cell_data(self):
-        return pd.DataFrame(columns=['Time [ms]','Current [A]', 'Voltage [V]', 'Ah throughput [A.h]', 'Temperature [degC]','cycle_indicator', 'discharge_cycle_indicator', 'charge_cycle_indicator', 'capacity_check_indicator'])
+        return pd.DataFrame(columns=['Time [ms]','Current [A]', 'Voltage [V]', 'Ah throughput [A.h]', 'Temperature [degC]','cycle_indicator', 'discharge_cycle_indicator', 'charge_cycle_indicator', 'capacity_check_indicator','Drive current [-]','Expansion STDDEV [cnt]','Ref STDDEV [cnt]'])
     def _create_default_cell_cycle_metrics(self):
-        return pd.DataFrame(columns=['Time [ms]','Ah throughput [A.h]', 'Test type','Protocol','discharge_cycle_indicator','cycle_indicator','charge_cycle_indicator','capacity_check_indicator', 'Test name'])
+        return pd.DataFrame(columns=['Time [ms]','Ah throughput [A.h]', 'Test type','Protocol','discharge_cycle_indicator','cycle_indicator','charge_cycle_indicator','capacity_check_indicator', 'Test name','Drive current [-]','Expansion STDDEV [cnt]','Ref STDDEV [cnt]'])
     def _create_default_cell_data_vdf(self):
-        return pd.DataFrame(columns=['Time [ms]','Expansion [-]', 'Expansion ref [-]', 'Temperature [degC]','cycle_indicator'])
+        return pd.DataFrame(columns=['Time [ms]','Expansion [-]', 'Expansion ref [-]', 'Temperature [degC]','cycle_indicator','Expansion STDEV [cnt]','Ref STDEV [cnt]','Drive Current [-]'])
 
     def _process_cycler_data(self, records_neware, cycle_id_lims, numFiles=1000):
         """
