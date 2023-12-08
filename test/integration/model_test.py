@@ -43,7 +43,7 @@ def process_cell_test():
     cell_name='GMJuly2022_CELL901REF'
     cell_name='GMJuly2022_CELL073'
     cell_name='GMJuly2022_CELL018'
-    cell_name='GMJuly2022_CELL012'
+    cell_name='GMJuly2022_CELL104'
 
     #cell_name='GMFEB23S_CELL067'
 

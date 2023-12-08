@@ -267,7 +267,61 @@ class DataProcessor:
         df.reset_index(drop=True, inplace=True)
 
         return df    
+    
+    def get_Rs_SOC(self,t:np.ndarray,I:np.ndarray,V:np.ndarray,Q:np.ndarray,pulse_current:float,max_pulses:int=11) -> np.ndarray:
+        """ Processes HPPC data to get DC Resistance for a given pulse current at different Qs. Assumes that this is a discharge HPPC i.e. the initial Q is 1. 
 
+        Args:
+            t (np.ndarray): Time [s]
+            I (np.ndarray): Current [A] (charge is positive)
+            V (np.ndarray): Voltage [V]
+            pulse_current (float): Magnitude of pulse current [A] (use positive value for charge pulse, negative for discharge pulse)
+            max_pulses (int, optional): Maximum number of pulses possible in the HPPC profile. Defaults to 11.
+
+        Returns:
+            np.ndarray: Array of DC resistance values for the different pulses. 
+        """
+        if pulse_current<0:
+            idxi = np.where((np.diff(I)<-0.1) & (I[1:]>pulse_current-0.1)& (I[1:]<pulse_current+0.1))[0]
+        else:
+            idxi = np.where((np.diff(I)>0.1) & (I[1:]>pulse_current-0.1)& (I[1:]<pulse_current+0.1))[0]
+        idxi = idxi+1
+        if pulse_current>0:
+            idxk = np.where((np.diff(I)<-0.1) & (I[:-1]>pulse_current-0.1)& (I[:-1]<pulse_current+0.1))[0]
+        else:
+            idxk = np.where((np.diff(I)>0.1) & (I[:-1]>pulse_current-0.1)& (I[:-1]<pulse_current+0.1))[0]
+        idxk = idxk
+        # print(idxk)
+        no_pulses = min(max_pulses,len(idxi))
+        pts = 4
+        R_1, R_2, Q_R = [], [], []
+        t_a, V_a, I_a = [], [], []
+        for pno in range(no_pulses):
+            t1 = t[idxi[pno]-1-pts:idxi[pno]-1]
+            V1 = V[idxi[pno]-1-pts:idxi[pno]-1]
+            I1 = I[idxi[pno]-1-pts:idxi[pno]-1]
+            t2 = t[idxi[pno]:idxi[pno]+pts]
+            V2 = V[idxi[pno]:idxi[pno]+pts]
+            I2 = I[idxi[pno]:idxi[pno]+pts]
+            t3 = t[idxk[pno]+1-pts:idxk[pno]+1]
+            V3 = V[idxk[pno]+1-pts:idxk[pno]+1]
+            I3 = I[idxk[pno]+1-pts:idxk[pno]+1]
+            Rp1 = abs((np.average(V2)-np.average(V1))/(np.average(I2)-np.average(I1)))
+            Rp1 = round(Rp1,4)
+            R_1.append(Rp1)
+            Rp2 = abs((np.average(V3)-np.average(V1))/(np.average(I3)-np.average(I1)))
+            Rp2 = round(Rp2,4)
+            R_2.append(Rp2)
+            Q_R.append(np.average(Q[idxi[pno]-1-pts:idxi[pno]-1]))
+            t_a.extend([t1,t2,t3])
+            V_a.extend([V1,V2,V3])
+            I_a.extend([I1,I2,I3])
+
+        R_1 = np.array(R_1)
+        R_2 = np.array(R_2)
+        Q_R = np.array(Q_R)
+        return  Q_R,R_1,R_2,t_a,I_a,V_a
+    
     def summarize_rpt_data(self, cell_data, cell_data_vdf, cell_cycle_metrics):
         """
         Get the summary data for each RPT file
@@ -331,6 +385,9 @@ class DataProcessor:
         cell_rpt_data = cell_rpt_data.sort_values(by='temp_sort')
         cell_rpt_data.drop('temp_sort', axis=1, inplace=True)
         
+
+
+
         return cell_rpt_data
     
     def update_cycle_metrics_hppc(self, rpt_subcycle, cell_cycle_metrics, i):
@@ -883,9 +940,9 @@ class DataProcessor:
                 if file_with_capacity_check:
                     if len(np.where(np.diff(np.sign(I_subcycle)))[0])>10: # hppc: ID by # of types of current sign changes (threshold is arbitrary)
                         test_data.loc[data_idx,'Protocol'] = 'HPPC'
-                    elif (t_end-t_start)/3600 >8 and  np.mean(I_subcycle) > 0: # C/20 charge: longer than 8 hrs and mean(I)>0. Will ID C/10 during formation as C/20...
+                    elif (t_end-t_start)/3600.0 >8 and  np.mean(I_subcycle) > 0: # C/20 charge: longer than 8 hrs and mean(I)>0. Will ID C/10 during formation as C/20...
                         test_data.loc[data_idx,'Protocol'] = 'C/20 charge'
-                    elif (t_end-t_start)/3600 > 8 and  np.mean(I_subcycle) < 0: # C/20 discharge: longer than 8 hrs and mean(I)<0.Will ID C/10 during formation as C/20...
+                    elif (t_end-t_start)/3600.0 > 8 and  np.mean(I_subcycle) < 0: # C/20 discharge: longer than 8 hrs and mean(I)<0.Will ID C/10 during formation as C/20...
                         test_data.loc[data_idx,'Protocol'] = 'C/20 discharge'
             
             # 7. Add to list of dfs where each element is the resulting df from each file.
