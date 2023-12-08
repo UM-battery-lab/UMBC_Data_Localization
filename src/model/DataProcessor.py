@@ -294,7 +294,7 @@ class DataProcessor:
             idxk = np.where((np.diff(I)>0.1) & (I[:-1]>pulse_current-0.1)& (I[:-1]<pulse_current+0.1))[0]
         idxk = idxk
         # print(idxk)
-        no_pulses = min(max_pulses,len(idxi))
+        no_pulses = min(max_pulses,min(len(idxi),len(idxk))) #robustneess hack to drop last data can revisit. Siegeljb 12/8/2023
         pts = 4
         R_1, R_2, Q_R = [], [], []
         # t_a, V_a, I_a = [], [], []
