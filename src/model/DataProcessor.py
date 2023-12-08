@@ -104,10 +104,13 @@ class DataProcessor:
         # Process the expansion data
         if len(records_vdf)==0: 
             self.logger.info("No vdf data for this cell")
-            cell_data_vdf = pd.DataFrame(columns=['Time [ms]','Expansion [-]', 'Expansion ref [-]', 'Temperature [degC]','cycle_indicator'])
+            cell_data_vdf = pd.DataFrame(columns=['Time [ms]','Expansion [-]', 'Expansion [um]', 'Expansion ref [-]', 'Temperature [degC]','cycle_indicator'])
             cell_cycle_metrics['Max cycle expansion [-]'] = np.nan
             cell_cycle_metrics['Min cycle expansion [-]'] = np.nan
             cell_cycle_metrics['Reversible cycle expansion [-]'] = np.nan
+            cell_cycle_metrics['Max cycle expansion [um]'] = np.nan
+            cell_cycle_metrics['Min cycle expansion [um]'] = np.nan
+            cell_cycle_metrics['Reversible cycle expansion [um]'] = np.nan
             records_new_data_vdf=cell_data_vdf
         elif cell_data_vdf is not None:
             self.logger.info(f"Process cell_data_vdf")
