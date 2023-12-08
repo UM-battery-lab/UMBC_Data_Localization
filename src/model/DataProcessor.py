@@ -268,7 +268,7 @@ class DataProcessor:
 
         return df    
     
-    def get_Rs_SOC(self,t:np.ndarray,I:np.ndarray,V:np.ndarray,Q:np.ndarray,pulse_current:float,max_pulses:int=11) -> np.ndarray:
+    def get_Rs_SOC(self,t:np.ndarray,I:np.ndarray,V:np.ndarray,Q:np.ndarray,pulse_currents:float,max_pulses:int=11) -> np.ndarray:
         """ Processes HPPC data to get DC Resistance for a given pulse current at different Qs. Assumes that this is a discharge HPPC i.e. the initial Q is 1. 
 
         Args:
@@ -281,6 +281,8 @@ class DataProcessor:
         Returns:
             np.ndarray: Array of DC resistance values for the different pulses. 
         """
+        pulse_current=pulse_currents[0]
+
         if pulse_current<0:
             idxi = np.where((np.diff(I)<-0.1) & (I[1:]>pulse_current-0.1)& (I[1:]<pulse_current+0.1))[0]
         else:
@@ -295,7 +297,7 @@ class DataProcessor:
         no_pulses = min(max_pulses,len(idxi))
         pts = 4
         R_1, R_2, Q_R = [], [], []
-        t_a, V_a, I_a = [], [], []
+        # t_a, V_a, I_a = [], [], []
         for pno in range(no_pulses):
             t1 = t[idxi[pno]-1-pts:idxi[pno]-1]
             V1 = V[idxi[pno]-1-pts:idxi[pno]-1]
@@ -307,20 +309,39 @@ class DataProcessor:
             V3 = V[idxk[pno]+1-pts:idxk[pno]+1]
             I3 = I[idxk[pno]+1-pts:idxk[pno]+1]
             Rp1 = abs((np.average(V2)-np.average(V1))/(np.average(I2)-np.average(I1)))
-            Rp1 = round(Rp1,4)
+            Rp1 = round(Rp1,6)
             R_1.append(Rp1)
             Rp2 = abs((np.average(V3)-np.average(V1))/(np.average(I3)-np.average(I1)))
-            Rp2 = round(Rp2,4)
+            Rp2 = round(Rp2,6)
             R_2.append(Rp2)
             Q_R.append(np.average(Q[idxi[pno]-1-pts:idxi[pno]-1]))
-            t_a.extend([t1,t2,t3])
-            V_a.extend([V1,V2,V3])
-            I_a.extend([I1,I2,I3])
+            # t_a.extend([t1,t2,t3])
+            # V_a.extend([V1,V2,V3])
+            # I_a.extend([I1,I2,I3])
 
         R_1 = np.array(R_1)
         R_2 = np.array(R_2)
         Q_R = np.array(Q_R)
-        return  Q_R,R_1,R_2,t_a,I_a,V_a
+
+        df = pd.DataFrame(np.nan,index=[0],columns=[
+        "Q_ch1","R_ch1_s","R_ch1_l",
+        "Q_ch2","R_ch2_s","R_ch2_l",
+        "Q_dh1","R_dh1_s","R_dh1_l",
+        "Q_dh2","R_dh2_s","R_dh2_l"]).astype(object)
+        # df["Q_ch1"].iloc[0]=Q_l[0]
+        # df["Q_ch2"].iloc[0]=Q_l[1]
+        # df["Q_dh1"].iloc[0]=Q_l[2]
+        # df["Q_dh2"].iloc[0]=Q_l[3]
+        # df["R_ch1_s"].iloc[0]=R_l1[0]
+        # df["R_ch2_s"].iloc[0]=R_l1[1]
+        # df["R_dh1_s"].iloc[0]=R_l1[2]
+        # df["R_dh2_s"].iloc[0]=R_l1[3]
+        # df["R_ch1_l"].iloc[0]=R_l2[0]
+        # df["R_ch2_l"].iloc[0]=R_l2[1]
+        # df["R_dh1_l"].iloc[0]=R_l2[2]
+        # df["R_dh2_l"].iloc[0]=R_l2[3]
+        #,t_a,I_a,V_a
+        return  df
     
     def summarize_rpt_data(self, cell_data, cell_data_vdf, cell_cycle_metrics):
         """
