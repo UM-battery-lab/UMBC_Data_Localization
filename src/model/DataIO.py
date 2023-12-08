@@ -1,6 +1,7 @@
 import os
 import pickle
 import pandas as pd
+import numpy as np
 import gzip
 import shutil
 import hashlib
@@ -292,9 +293,11 @@ class DataIO:
                 try:
                     keys_short=[]
                     for key in trace_keys:
-                        if key in dict:
+                        if key in df:
                             keys_short.append(key)
-                            
+                        else:
+                            df[key]=[np.nan]*len(df[trace_keys[1]])
+                    #df = df[keys_short]
                     df = df[trace_keys]
                     return df
                 except:
