@@ -1,0 +1,2 @@
+PULSE_CURRENTS = [3, 1.5, -3, -1.5]
+MAX_PULSES = 11

@@ -11,6 +11,7 @@ from src.utils.Logger import setup_logger
 from src.utils.DateConverter import DateConverter
 from src.config.df_config import CYCLE_ID_LIMS, DEFAULT_TRACE_KEYS, DEFAULT_DF_LABELS
 from src.config.calibration_config import X1, X2, C
+from src.config.pulse_config import PULSE_CURRENTS, MAX_PULSES
 
 
 class DataProcessor:
@@ -306,6 +307,8 @@ class DataProcessor:
                 t = cell_data['Time [ms]']
                 rpt_subcycle['Data'] = [cell_data[['Time [ms]', 'Current [A]', 'Voltage [V]', 'Ah throughput [A.h]', 'Temperature [degC]', 'Step index']][(t>t_start) & (t<t_end)]]
                 
+                self.update_cycle_metrics_hppc(rpt_subcycle, cell_cycle_metrics, i)
+
                 # add vdf data to dictionary
                 t_vdf = cell_data_vdf['Time [ms]']
                 if len(t_vdf)>1: #ignore for constrained cells
@@ -324,6 +327,86 @@ class DataProcessor:
         cell_rpt_data.drop('temp_sort', axis=1, inplace=True)
         
         return cell_rpt_data
+    
+    def update_cycle_metrics_hppc(self, rpt_subcycle, cell_cycle_metrics, i):
+        """
+        Update cell cycle metrics based on the RPT subcycle data.
+
+        Parameters:
+        -----------
+        rpt_subcycle: dict
+            The dictionary of the RPT subcycle data
+        cell_cycle_metrics: DataFrame
+            The dataframe of the cell cycle metrics
+
+        Returns:
+        --------
+        None
+        """
+        if rpt_subcycle['Protocol'] == 'HPPC':
+            # Extract necessary data for get_Rs_SOC function
+            time_ms = rpt_subcycle['Data'][0]['Time [ms]'] / 1000.0
+            current_a = rpt_subcycle['Data'][0]['Current [A]']
+            voltage_v = rpt_subcycle['Data'][0]['Voltage [V]']
+            ah_throughput = rpt_subcycle['Data'][0]['Ah throughput [A.h]']
+            # Call the get_Rs_SOC function with PULSE_CURRENTS from config
+            hppc_data = self.get_Rs_SOC(time_ms, current_a, voltage_v, ah_throughput, PULSE_CURRENTS, MAX_PULSES)
+            # Dynamically generate metrics_mapping based on PULSE_CURRENTS
+            for col in ["Q_ch1", "R_ch1_s", "R_ch1_l",
+                        "Q_ch2", "R_ch2_s", "R_ch2_l",
+                        "Q_dh1", "R_dh1_s", "R_dh1_l", 
+                        "Q_dh2", "R_dh2_s", "R_dh2_l"]:
+                if col not in cell_cycle_metrics.columns:
+                    cell_cycle_metrics[col] = np.nan
+                cell_cycle_metrics[col] = cell_cycle_metrics[col].astype(object)
+
+            # Update the cell_cycle_metrics with the new data
+            cell_cycle_metrics.at[i, "Q_ch1"] = hppc_data['Q'][0] if hppc_data['Q'].empty else np.nan
+            cell_cycle_metrics.at[i, "Q_ch2"] = hppc_data['Q'][1] if len(hppc_data['Q']) > 1 else np.nan
+            cell_cycle_metrics.at[i, "Q_dh1"] = hppc_data['Q'][2] if len(hppc_data['Q']) > 2 else np.nan
+            cell_cycle_metrics.at[i, "Q_dh2"] = hppc_data['Q'][3] if len(hppc_data['Q']) > 3 else np.nan
+            cell_cycle_metrics.at[i, "R_ch1_s"] = hppc_data['R_s'][0] if hppc_data['R_s'].empty else np.nan
+            cell_cycle_metrics.at[i, "R_ch1_l"] = hppc_data['R_l'][0] if hppc_data['R_l'].empty else np.nan
+            cell_cycle_metrics.at[i, "R_ch2_s"] = hppc_data['R_s'][1] if len(hppc_data['R_s']) > 1 else np.nan
+            cell_cycle_metrics.at[i, "R_ch2_l"] = hppc_data['R_l'][1] if len(hppc_data['R_l']) > 1 else np.nan
+            cell_cycle_metrics.at[i, "R_dh1_s"] = hppc_data['R_s'][2] if len(hppc_data['R_s']) > 2 else np.nan
+            cell_cycle_metrics.at[i, "R_dh1_l"] = hppc_data['R_l'][2] if len(hppc_data['R_l']) > 2 else np.nan
+            cell_cycle_metrics.at[i, "R_dh2_s"] = hppc_data['R_s'][3] if len(hppc_data['R_s']) > 3 else np.nan
+            cell_cycle_metrics.at[i, "R_dh2_l"] = hppc_data['R_l'][3] if len(hppc_data['R_l']) > 3 else np.nan
+
+    def get_Rs_SOC(self, t, I, V, Q, pulse_currents, max_pulses=11):
+        """ 
+        Processes HPPC data to get DC Resistance for given pulse currents at different Qs. 
+        Assumes that this is a discharge HPPC i.e. the initial Q is 1. 
+        """
+        results = []
+        pts = 4
+        for pulse_current in pulse_currents:
+            if pulse_current<0:
+                idxi = np.where((np.diff(I)<-0.1) & (I[1:]>pulse_current-0.1)& (I[1:]<pulse_current+0.1))[0]
+            else:
+                idxi = np.where((np.diff(I)>0.1) & (I[1:]>pulse_current-0.1)& (I[1:]<pulse_current+0.1))[0]
+            idxi = idxi+1
+            if pulse_current>0:
+                idxk = np.where((np.diff(I)<-0.1) & (I[:-1]>pulse_current-0.1)& (I[:-1]<pulse_current+0.1))[0]
+            else:
+                idxk = np.where((np.diff(I)>0.1) & (I[:-1]>pulse_current-0.1)& (I[:-1]<pulse_current+0.1))[0]
+            idxk = idxk
+            no_pulses = min(max_pulses,min(len(idxi),len(idxk))) #robustneess hack to drop last data can revisit. Siegeljb 12/8/2023
+
+            r1, r2, qr = [], [], []
+            for pno in range(no_pulses):
+                t1, V1, I1 = t[idxi[pno]-1-pts:idxi[pno]-1], V[idxi[pno]-1-pts:idxi[pno]-1], I[idxi[pno]-1-pts:idxi[pno]-1]
+                t2, V2, I2 = t[idxi[pno]:idxi[pno]+pts], V[idxi[pno]:idxi[pno]+pts], I[idxi[pno]:idxi[pno]+pts]
+                t3, V3, I3 = t[idxk[pno]+1-pts:idxk[pno]+1], V[idxk[pno]+1-pts:idxk[pno]+1], I[idxk[pno]+1-pts:idxk[pno]+1]
+                r_p1 = abs((np.average(V2) - np.average(V1)) / (np.average(I2) - np.average(I1)))
+                r_p2 = abs((np.average(V3) - np.average(V1)) / (np.average(I3) - np.average(I1)))
+                q_val = np.average(Q[idxi[pno]-1-pts:idxi[pno]-1])
+                r1.append(round(r_p1, 4))
+                r2.append(round(r_p2, 4))
+                qr.append(q_val)
+            results.append({'pulse_current': pulse_current, 'Q': qr, 'R_s': r1, 'R_l': r2})
+        return pd.DataFrame(results)
 
     def _process_cycler_expansion(self, records_vdf, cell_cycle_metrics, calibration_parameters, numFiles = 1000, t_match_threshold=60000):
         # Combine vdf data into a single df
