@@ -10,7 +10,7 @@ from src.presenter.Presenter import Presenter
 from src.viewer.Viewer import Viewer
 from matplotlib import pyplot as plt
 import matplotlib   
-#matplotlib.use('QtAgg')
+matplotlib.use('QtAgg')
 #matplotlib.use('TkAgg')
 
 # Integration test
@@ -47,7 +47,7 @@ def process_cell_test():
     cell_name='GMJuly2022_CELL004'
     #cell_name='GMFEB23S_CELL067'
     cell_name='GMJuly2022_CELL082'
-    
+
     dataManager = DataManager(use_redis=False)
     def save_figs(figs, cell_name, time_name):
         dataManager.save_figs(figs, cell_name, time_name, keep_open=True)
