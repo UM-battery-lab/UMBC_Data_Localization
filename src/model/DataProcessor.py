@@ -11,7 +11,7 @@ from src.utils.Logger import setup_logger
 from src.utils.DateConverter import DateConverter
 from src.config.df_config import CYCLE_ID_LIMS, DEFAULT_TRACE_KEYS, DEFAULT_DF_LABELS
 from src.config.calibration_config import X1, X2, C
-from src.config.pulse_config import PULSE_CURRENTS, MAX_PULSES
+from src.config.pulse_config import GMJULY2022_PULSE_CURRENTS, GMFEB23_PULSE_CURRENTS, MAX_PULSES, DEFAULT_PULSE_CURRENTS
 
 
 class DataProcessor:
@@ -267,83 +267,8 @@ class DataProcessor:
         df.reset_index(drop=True, inplace=True)
 
         return df    
-    
-    def get_Rs_SOC(self,t:np.ndarray,I:np.ndarray,V:np.ndarray,Q:np.ndarray,pulse_currents:float,max_pulses:int=11) -> np.ndarray:
-        """ Processes HPPC data to get DC Resistance for a given pulse current at different Qs. Assumes that this is a discharge HPPC i.e. the initial Q is 1. 
 
-        Args:
-            t (np.ndarray): Time [s]
-            I (np.ndarray): Current [A] (charge is positive)
-            V (np.ndarray): Voltage [V]
-            pulse_current (float): Magnitude of pulse current [A] (use positive value for charge pulse, negative for discharge pulse)
-            max_pulses (int, optional): Maximum number of pulses possible in the HPPC profile. Defaults to 11.
-
-        Returns:
-            np.ndarray: Array of DC resistance values for the different pulses. 
-        """
-        pulse_current=pulse_currents[0]
-
-        if pulse_current<0:
-            idxi = np.where((np.diff(I)<-0.1) & (I[1:]>pulse_current-0.1)& (I[1:]<pulse_current+0.1))[0]
-        else:
-            idxi = np.where((np.diff(I)>0.1) & (I[1:]>pulse_current-0.1)& (I[1:]<pulse_current+0.1))[0]
-        idxi = idxi+1
-        if pulse_current>0:
-            idxk = np.where((np.diff(I)<-0.1) & (I[:-1]>pulse_current-0.1)& (I[:-1]<pulse_current+0.1))[0]
-        else:
-            idxk = np.where((np.diff(I)>0.1) & (I[:-1]>pulse_current-0.1)& (I[:-1]<pulse_current+0.1))[0]
-        idxk = idxk
-        # print(idxk)
-        no_pulses = min(max_pulses,min(len(idxi),len(idxk))) #robustneess hack to drop last data can revisit. Siegeljb 12/8/2023
-        pts = 4
-        R_1, R_2, Q_R = [], [], []
-        # t_a, V_a, I_a = [], [], []
-        for pno in range(no_pulses):
-            t1 = t[idxi[pno]-1-pts:idxi[pno]-1]
-            V1 = V[idxi[pno]-1-pts:idxi[pno]-1]
-            I1 = I[idxi[pno]-1-pts:idxi[pno]-1]
-            t2 = t[idxi[pno]:idxi[pno]+pts]
-            V2 = V[idxi[pno]:idxi[pno]+pts]
-            I2 = I[idxi[pno]:idxi[pno]+pts]
-            t3 = t[idxk[pno]+1-pts:idxk[pno]+1]
-            V3 = V[idxk[pno]+1-pts:idxk[pno]+1]
-            I3 = I[idxk[pno]+1-pts:idxk[pno]+1]
-            Rp1 = abs((np.average(V2)-np.average(V1))/(np.average(I2)-np.average(I1)))
-            Rp1 = round(Rp1,6)
-            R_1.append(Rp1)
-            Rp2 = abs((np.average(V3)-np.average(V1))/(np.average(I3)-np.average(I1)))
-            Rp2 = round(Rp2,6)
-            R_2.append(Rp2)
-            Q_R.append(np.average(Q[idxi[pno]-1-pts:idxi[pno]-1]))
-            # t_a.extend([t1,t2,t3])
-            # V_a.extend([V1,V2,V3])
-            # I_a.extend([I1,I2,I3])
-
-        R_1 = np.array(R_1)
-        R_2 = np.array(R_2)
-        Q_R = np.array(Q_R)
-
-        df = pd.DataFrame(np.nan,index=[0],columns=[
-        "Q_ch1","R_ch1_s","R_ch1_l",
-        "Q_ch2","R_ch2_s","R_ch2_l",
-        "Q_dh1","R_dh1_s","R_dh1_l",
-        "Q_dh2","R_dh2_s","R_dh2_l"]).astype(object)
-        # df["Q_ch1"].iloc[0]=Q_l[0]
-        # df["Q_ch2"].iloc[0]=Q_l[1]
-        # df["Q_dh1"].iloc[0]=Q_l[2]
-        # df["Q_dh2"].iloc[0]=Q_l[3]
-        # df["R_ch1_s"].iloc[0]=R_l1[0]
-        # df["R_ch2_s"].iloc[0]=R_l1[1]
-        # df["R_dh1_s"].iloc[0]=R_l1[2]
-        # df["R_dh2_s"].iloc[0]=R_l1[3]
-        # df["R_ch1_l"].iloc[0]=R_l2[0]
-        # df["R_ch2_l"].iloc[0]=R_l2[1]
-        # df["R_dh1_l"].iloc[0]=R_l2[2]
-        # df["R_dh2_l"].iloc[0]=R_l2[3]
-        #,t_a,I_a,V_a
-        return  df
-    
-    def summarize_rpt_data(self, cell_data, cell_data_vdf, cell_cycle_metrics):
+    def summarize_rpt_data(self, cell_data, cell_data_vdf, cell_cycle_metrics, project_name):
         """
         Get the summary data for each RPT file
 
@@ -355,8 +280,9 @@ class DataProcessor:
             The dataframe of the cell data vdf
         cell_cycle_metrics: DataFrame
             The dataframe of the cell cycle metrics
+        project_name: str
+            The project name
         
-            
         Returns
         -------
         DataFrame
@@ -365,7 +291,12 @@ class DataProcessor:
         rpt_filenames = list(set(cell_cycle_metrics['Test name'][(cell_cycle_metrics['Test type'] == 'RPT') | (cell_cycle_metrics['Test type'] == '_F')]))
         cycle_summary_cols = [c for c in cell_cycle_metrics.columns.to_list() if '[' in c] + ['Test name', 'Protocol']
         cell_rpt_data = pd.DataFrame() 
-        
+        # Determine the pulse currents based on project name
+        pulse_currents = DEFAULT_PULSE_CURRENTS
+        if project_name == 'GMJuly2022':
+            pulse_currents = GMJULY2022_PULSE_CURRENTS
+        elif project_name == 'GMFeb23':
+            pulse_currents = GMFEB23_PULSE_CURRENTS    
         # for each RPT file (not sure what it'll do if there are multiple RPT files for 1 RPT...)
         for j,rpt_file in enumerate(rpt_filenames):
             rpt_idx = cell_cycle_metrics[cell_cycle_metrics['Test name'] == rpt_file].index
@@ -387,7 +318,7 @@ class DataProcessor:
                 t = cell_data['Time [ms]']
                 rpt_subcycle['Data'] = [cell_data[['Time [ms]', 'Current [A]', 'Voltage [V]', 'Ah throughput [A.h]', 'Temperature [degC]', 'Step index']][(t>t_start) & (t<t_end)]]
                 
-                self.update_cycle_metrics_hppc(rpt_subcycle, cell_cycle_metrics, i)
+                self.update_cycle_metrics_hppc(rpt_subcycle, cell_cycle_metrics, i, pulse_currents)
 
                 # add vdf data to dictionary
                 t_vdf = cell_data_vdf['Time [ms]']
@@ -411,7 +342,7 @@ class DataProcessor:
 
         return cell_rpt_data
     
-    def update_cycle_metrics_hppc(self, rpt_subcycle, cell_cycle_metrics, i):
+    def update_cycle_metrics_hppc(self, rpt_subcycle, cell_cycle_metrics, i, pulse_currents):
         """
         Update cell cycle metrics based on the RPT subcycle data.
 
@@ -421,6 +352,10 @@ class DataProcessor:
             The dictionary of the RPT subcycle data
         cell_cycle_metrics: DataFrame
             The dataframe of the cell cycle metrics
+        i: int
+            The index of the cell cycle metrics
+        pulse_currents: list of float
+            The list of pulse currents
 
         Returns:
         --------
@@ -433,7 +368,7 @@ class DataProcessor:
             voltage_v = rpt_subcycle['Data'][0]['Voltage [V]']
             ah_throughput = rpt_subcycle['Data'][0]['Ah throughput [A.h]']
             # Call the get_Rs_SOC function with PULSE_CURRENTS from config
-            hppc_data = self.get_Rs_SOC(time_ms, current_a, voltage_v, ah_throughput, PULSE_CURRENTS, MAX_PULSES)
+            hppc_data = self.get_Rs_SOC(time_ms, current_a, voltage_v, ah_throughput, pulse_currents, MAX_PULSES)
             # Dynamically generate metrics_mapping based on PULSE_CURRENTS
             for col in ["Q_ch1", "R_ch1_s", "R_ch1_l",
                         "Q_ch2", "R_ch2_s", "R_ch2_l",

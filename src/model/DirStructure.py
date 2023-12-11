@@ -234,4 +234,10 @@ class DirStructure:
         if project_name in proj_to_dev_id_name:
             return [item[1] for item in proj_to_dev_id_name[project_name]]
         return []
+    
+    def cell_to_project(self, cell_name):
+        for record in self.structure:
+            if record['dev_name'] == cell_name:
+                return record['project_name']
+        return None
         
