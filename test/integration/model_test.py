@@ -43,9 +43,10 @@ def process_cell_test():
     cell_name='GMJuly2022_CELL901REF'
     cell_name='GMJuly2022_CELL073'
     cell_name='GMJuly2022_CELL018'
-    #cell_name='GMJuly2022_CELL012'
-
+    cell_name='GMJuly2022_CELL104'
+    cell_name='GMJuly2022_CELL004'
     #cell_name='GMFEB23S_CELL067'
+    cell_name='GMJuly2022_CELL082'
 
     dataManager = DataManager(use_redis=False)
     def save_figs(figs, cell_name, time_name):
@@ -59,10 +60,14 @@ def process_cell_test():
 
     # test process_cell
     try:
-        cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt = dataManager.process_cell(cell_name, reset=True);#, reset=True)#, start_time='2023-07-01_00-00-00', end_time='2023-07-28_23-59-59')
+        cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt = dataManager.process_cell(cell_name, reset=True)#, start_time='2022-10-18_18-08-29', end_time='2022-10-23_18-08-29');#, reset=True)#, start_time='2023-07-01_00-00-00', end_time='2023-07-28_23-59-59')
     except Exception as e:
         print(e)
 
+# t[len(t)-1]
+# 1691409656500.0
+# t[0]
+# 1666131009000.0
     #cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt = dataManager.process_cell('GMJuly2022_CELL901REF', reset=True)#901REF')
 
     print(cell_data)

@@ -94,6 +94,8 @@ class DataFetcher:
             reader = tr.make_time_series_reader()
             if trace_keys is None:
                 trace_keys = tr.trace_keys
+                self.logger.info(f"race Keys: {trace_keys}")
+
             reader.add_trace_keys(*trace_keys)
 
             reader.add_info_keys('i_cycle_num')
