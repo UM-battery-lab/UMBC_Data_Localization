@@ -43,10 +43,11 @@ def process_cell_test():
     cell_name='GMJuly2022_CELL901REF'
     cell_name='GMJuly2022_CELL073'
     cell_name='GMJuly2022_CELL018'
-    cell_name='GMJuly2022_CELL104'
-    cell_name='GMJuly2022_CELL004'
-    #cell_name='GMFEB23S_CELL067'
-    cell_name='GMJuly2022_CELL082'
+    # cell_name='GMJuly2022_CELL104'
+    # cell_name='GMJuly2022_CELL004'
+    # #cell_name='GMFEB23S_CELL067'
+    # cell_name='GMJuly2022_CELL082'
+    cell_name='GMFEB23S_CELL002'
 
     dataManager = DataManager(use_redis=False)
     def save_figs(figs, cell_name, time_name):
