@@ -11,7 +11,7 @@ from src.utils.Logger import setup_logger
 from src.utils.DateConverter import DateConverter
 from src.config.df_config import CYCLE_ID_LIMS, DEFAULT_TRACE_KEYS, DEFAULT_DF_LABELS
 from src.config.calibration_config import X1, X2, C
-from src.config.pulse_config import PULSE_CURRENTS, MAX_PULSES
+from src.config.pulse_config import GMJULY2022_PULSE_CURRENTS, GMFEB23_PULSE_CURRENTS, MAX_PULSES, DEFAULT_PULSE_CURRENTS
 
 
 class DataProcessor:
@@ -263,7 +263,7 @@ class DataProcessor:
 
         return df    
 
-    def summarize_rpt_data(self, cell_data, cell_data_vdf, cell_cycle_metrics):
+    def summarize_rpt_data(self, cell_data, cell_data_vdf, cell_cycle_metrics, project_name):
         """
         Get the summary data for each RPT file
 
@@ -275,8 +275,9 @@ class DataProcessor:
             The dataframe of the cell data vdf
         cell_cycle_metrics: DataFrame
             The dataframe of the cell cycle metrics
+        project_name: str
+            The project name
         
-            
         Returns
         -------
         DataFrame
@@ -285,7 +286,12 @@ class DataProcessor:
         rpt_filenames = list(set(cell_cycle_metrics['Test name'][(cell_cycle_metrics['Test type'] == 'RPT') | (cell_cycle_metrics['Test type'] == '_F')]))
         cycle_summary_cols = [c for c in cell_cycle_metrics.columns.to_list() if '[' in c] + ['Test name', 'Protocol']
         cell_rpt_data = pd.DataFrame() 
-        
+        # Determine the pulse currents based on project name
+        pulse_currents = DEFAULT_PULSE_CURRENTS
+        if project_name == 'GMJuly2022':
+            pulse_currents = GMJULY2022_PULSE_CURRENTS
+        elif project_name == 'GMFeb23':
+            pulse_currents = GMFEB23_PULSE_CURRENTS    
         # for each RPT file (not sure what it'll do if there are multiple RPT files for 1 RPT...)
         for j,rpt_file in enumerate(rpt_filenames):
             rpt_idx = cell_cycle_metrics[cell_cycle_metrics['Test name'] == rpt_file].index
@@ -307,7 +313,7 @@ class DataProcessor:
                 t = cell_data['Time [ms]']
                 rpt_subcycle['Data'] = [cell_data[['Time [ms]', 'Current [A]', 'Voltage [V]', 'Ah throughput [A.h]', 'Temperature [degC]', 'Step index']][(t>t_start) & (t<t_end)]]
                 
-                self.update_cycle_metrics_hppc(rpt_subcycle, cell_cycle_metrics, i)
+                self.update_cycle_metrics_hppc(rpt_subcycle, cell_cycle_metrics, i, pulse_currents)
 
                 # add vdf data to dictionary
                 t_vdf = cell_data_vdf['Time [ms]']
@@ -328,7 +334,7 @@ class DataProcessor:
         
         return cell_rpt_data
     
-    def update_cycle_metrics_hppc(self, rpt_subcycle, cell_cycle_metrics, i):
+    def update_cycle_metrics_hppc(self, rpt_subcycle, cell_cycle_metrics, i, pulse_currents):
         """
         Update cell cycle metrics based on the RPT subcycle data.
 
@@ -338,6 +344,10 @@ class DataProcessor:
             The dictionary of the RPT subcycle data
         cell_cycle_metrics: DataFrame
             The dataframe of the cell cycle metrics
+        i: int
+            The index of the cell cycle metrics
+        pulse_currents: list of float
+            The list of pulse currents
 
         Returns:
         --------
@@ -350,7 +360,7 @@ class DataProcessor:
             voltage_v = rpt_subcycle['Data'][0]['Voltage [V]']
             ah_throughput = rpt_subcycle['Data'][0]['Ah throughput [A.h]']
             # Call the get_Rs_SOC function with PULSE_CURRENTS from config
-            hppc_data = self.get_Rs_SOC(time_ms, current_a, voltage_v, ah_throughput, PULSE_CURRENTS, MAX_PULSES)
+            hppc_data = self.get_Rs_SOC(time_ms, current_a, voltage_v, ah_throughput, pulse_currents, MAX_PULSES)
             # Dynamically generate metrics_mapping based on PULSE_CURRENTS
             for col in ["Q_ch1", "R_ch1_s", "R_ch1_l",
                         "Q_ch2", "R_ch2_s", "R_ch2_l",
