@@ -117,10 +117,6 @@ def duplicate_ccm_test():
     dataManager = DataManager()
     # test duplicate_ccm
     dataManager.duplicate_ccm()
-    
-def onetest():
-    dataManager = DataManager()
-    cell_cycle_metrics, cell_data, cell_data_vdf=dataManager.process_tr('GMJuly2022_CELL018_RPT_3_P25C_5P0PSI_20231004_R0_CH025_20231004101619_36_4_1_2818579523')
 
 def onetest():
     dataManager = DataManager(use_redis=False)
@@ -137,6 +133,7 @@ def onetest():
     
     cell_cycle_metrics, cell_data, cell_data_vdf=dataManager.process_tr('GMJuly2022_CELL104_Test7A_1_P45C_5P0PSI_20230207_R0_CH094_20230207101259_34_2_6_2818580218')
     plt.show()
+
 if __name__ == '__main__':
     # createdb_test()
 
