@@ -107,14 +107,18 @@ def sanity_check_test():
     # test sanity_check
     dataManager.sanity_check()
 
+def onetest():
+    dataManager = DataManager()
+    cell_cycle_metrics, cell_data, cell_data_vdf=dataManager.process_tr('GMJuly2022_CELL018_RPT_3_P25C_5P0PSI_20231004_R0_CH025_20231004101619_36_4_1_2818579523')
+
 if __name__ == '__main__':
     # createdb_test()
 
     # filter_test()
 #     process_cell_test()
 #    #process_tr_test()
-    consistency_test()
-
+ #   consistency_test()
+    onetest()
     # read_csv_test()
     #update_cycle_stats_test()
     # sanity_check_test()
