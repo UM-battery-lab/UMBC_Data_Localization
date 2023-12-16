@@ -267,9 +267,9 @@ class DataProcessor:
         df.reset_index(drop=True, inplace=True)
 
         return df    
-    
-    def summarize_rpt_data(self, cell_data, cell_data_vdf, cell_cycle_metrics, project_name):
 
+      
+    def summarize_rpt_data(self, cell_data, cell_data_vdf, cell_cycle_metrics, project_name):
         """
         Get the summary data for each RPT file
 
