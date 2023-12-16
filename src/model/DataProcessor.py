@@ -268,6 +268,7 @@ class DataProcessor:
 
         return df    
 
+      
     def summarize_rpt_data(self, cell_data, cell_data_vdf, cell_cycle_metrics, project_name):
         """
         Get the summary data for each RPT file
@@ -337,9 +338,6 @@ class DataProcessor:
         cell_rpt_data = cell_rpt_data.sort_values(by='temp_sort')
         cell_rpt_data.drop('temp_sort', axis=1, inplace=True)
         
-
-
-
         return cell_rpt_data
     
     def update_cycle_metrics_hppc(self, rpt_subcycle, cell_cycle_metrics, i, pulse_currents):
