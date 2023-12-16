@@ -111,9 +111,9 @@ if __name__ == '__main__':
     # createdb_test()
 
     # filter_test()
-    process_cell_test()
+#     process_cell_test()
 #    #process_tr_test()
-#    consistency_test()
+    consistency_test()
 
     # read_csv_test()
     #update_cycle_stats_test()
