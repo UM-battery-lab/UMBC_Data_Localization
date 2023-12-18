@@ -48,7 +48,7 @@ def process_cell_test():
     cell_name='GMJuly2022_CELL073'
     #cell_name='GMJuly2022_CELL018'
 
-    #cell_name='GMJuly2022_CELL012'
+    cell_name='GMJuly2022_CELL012'
 
     cell_name='GMFEB23S_CELL066'
 #    cell_name='GMJuly2022_CELL104'
@@ -138,7 +138,10 @@ if __name__ == '__main__':
     # createdb_test()
 
     # filter_test()
-    process_cell_test()
+
+    # process_cell_test()
+
+     process_cell_test()
 #    #process_tr_test()
  #   consistency_test()
 #    onetest()
