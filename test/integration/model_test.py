@@ -43,11 +43,11 @@ def process_cell_test():
     cell_name='GMJuly2022_CELL901REF'
     cell_name='GMJuly2022_CELL073'
     cell_name='GMJuly2022_CELL018'
-    # cell_name='GMJuly2022_CELL104'
-    # cell_name='GMJuly2022_CELL004'
-    # #cell_name='GMFEB23S_CELL067'
-    # cell_name='GMJuly2022_CELL082'
-    cell_name='GMFEB23S_CELL002'
+
+    #cell_name='GMJuly2022_CELL012'
+
+    #cell_name='GMFEB23S_CELL067'
+
 
     dataManager = DataManager(use_redis=False)
     def save_figs(figs, cell_name, time_name):
@@ -59,11 +59,13 @@ def process_cell_test():
     dataManager.attach(presenter)
     presenter.attach(viewer)
 
+    cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt = None, None, None, None
     # test process_cell
-    try:
-        cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt = dataManager.process_cell(cell_name, reset=True)#, start_time='2022-10-18_18-08-29', end_time='2022-10-23_18-08-29');#, reset=True)#, start_time='2023-07-01_00-00-00', end_time='2023-07-28_23-59-59')
-    except Exception as e:
-        print(e)
+
+
+    cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt = dataManager.process_cell(cell_name, reset=True);#, reset=True)#, start_time='2023-07-01_00-00-00', end_time='2023-07-28_23-59-59')
+
+
 
 # t[len(t)-1]
 # 1691409656500.0
@@ -107,14 +109,22 @@ def sanity_check_test():
     # test sanity_check
     dataManager.sanity_check()
 
+def duplicate_ccm_test():
+    dataManager = DataManager()
+    # test duplicate_ccm
+    dataManager.duplicate_ccm()
+
 if __name__ == '__main__':
     # createdb_test()
 
     # filter_test()
-#     process_cell_test()
+
+    # process_cell_test()
+
 #    #process_tr_test()
     consistency_test()
 
     # read_csv_test()
     #update_cycle_stats_test()
     # sanity_check_test()
+    duplicate_ccm_test()

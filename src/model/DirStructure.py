@@ -194,6 +194,12 @@ class DirStructure:
         self.logger.warning(f"No processed test record for {dev_name}")
         return None
     
+    def load_processed_folder(self):
+        return os.path.join(self.rootPath, 'Processed')
+    
+    def load_ccm_folder(self):
+        return os.path.join(self.rootPath, 'CCM')
+    
     def get_tr_path(self, test_folder):
         return os.path.join(test_folder, 'tr.pkl.gz')
     

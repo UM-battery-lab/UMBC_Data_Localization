@@ -620,6 +620,50 @@ class DataManager(metaclass=SingletonMeta):
         # Save the wrong trs to json
         self.dataIO.save_wrong_trs_name(wrong_trs)
 
+    def duplicate_ccm(self):
+        """
+        Duplicate the ccm csv and pkl.gz files into the CCM folder in Processed for all cells
+        """
+        self.logger.info('Starting duplicating ccm csv and pkl.gz files...')
+        processed_folder = self.dirStructure.load_processed_folder()
+        ccm_folder = self.dirStructure.load_ccm_folder()
+        pkl_folder = os.path.join(ccm_folder, 'pkl')
+        csv_folder = os.path.join(ccm_folder, 'csv')
+        # Create the CCM folder if it does not exist
+        os.makedirs(pkl_folder, exist_ok=True)
+        os.makedirs(csv_folder, exist_ok=True)
+
+        # Walk through the Processed folder
+        for subdir, dirs, files in os.walk(processed_folder):
+            for filename in files:
+                # Check if the file is a ccm csv or pkl.gz file
+                if 'CCM' not in filename:
+                    continue
+
+                # Get the file extension
+                file_extension = os.path.splitext(filename)[1].lower()
+
+                # Check if the file extension is '.gz' or '.csv'
+                if file_extension in ['.gz', '.csv']:
+                    # Get the parent directory name for pkl.gz files
+                    if file_extension == '.gz' and filename.endswith('.pkl.gz'):
+                        parent_dir_name = os.path.basename(subdir)
+                        target_filename = f"{parent_dir_name}_{filename}"
+                        target_subfolder = pkl_folder
+                    elif file_extension == '.csv':
+                        target_subfolder = csv_folder
+                        target_filename = filename
+                    else:
+                        continue
+
+                    # Get the target file path
+                    source_file = os.path.join(subdir, filename)
+                    target_file = os.path.join(target_subfolder, target_filename)
+
+                    # Copy the file to the target folder
+                    self.dataIO.copy_file(source_file, target_file)
+        self.logger.info('Duplicating ccm csv and pkl.gz files completed.')
+
     # Below are the methods for testing
     def test_createdb(self):
         """
