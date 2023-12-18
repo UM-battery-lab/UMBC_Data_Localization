@@ -632,7 +632,10 @@ class DataIO:
             if root == self.rootPath:
                 continue
             # # Ignore the Processed data folder
+            # TODO: Do not hardcode the folder name
             if 'voltaiq_data/Processed' in root:
+                continue
+            if 'voltaiq_data/CCM' in root:
                 continue
             # If this folder is not deep enough, we skip it
             depth = len(root.rstrip(os.sep).split(os.sep))
@@ -697,4 +700,25 @@ class DataIO:
             shutil.move(old_path, new_path)
         except Exception as e:
             self.logger.error(f"Error moving test record from {old_path} to {new_path}: {e}")
+
+    def copy_file(self, src, dest):
+        """
+        Copy the file from the source path to the destination path
+
+        Parameters
+        ----------
+        src: str
+            The path of the source file
+        dest: str
+            The path of the destination file
+        
+        Returns
+        -------
+        None
+        """
+        self.logger.info(f"Copying file from {src} to {dest}")
+        try:
+            shutil.copy2(src, dest)
+        except Exception as e:
+            self.logger.error(f"Error copying file from {src} to {dest}: {e}")
     
