@@ -2,7 +2,10 @@ from matplotlib import pyplot as plt
 from src.utils.Logger import setup_logger
 from src.dto.DataTransferObject import CellDataDTO
 from src.utils.ObserverPattern import Observer
-
+from scipy.signal import savgol_filter
+import numpy as np # for arrays
+from src.utils.DateConverter import DateConverter
+from datetime import timedelta
 @Observer
 class Viewer():
     """
@@ -32,7 +35,39 @@ class Viewer():
         self.plt = plt 
         self.logger = setup_logger()
         self.call_back = call_back
+
+    def downsample_data(self,t,i,v,dv=2e-3,di=0.1,dt=100):
+        # mean_dt=np.mean(np.diff(t))
+        # dt_changes=(t % (dt/mean_dt))<=mean_dt
+        dert=np.maximum(0.1,np.diff(t, prepend=0))
+        deriv_V=savgol_filter(v,20,3,deriv=1)/dert # probably need to update this if the sampling rate is too slow.
+        # fig,ax = plt.subplots(2,1)
+        # ax1 = ax.flat[0]
+        # ax1.plot(t,v)
+        # ax2 = ax.flat[1]
+        # ax2.plot(t,deriv_V)
+        # ax2.set_ylim([-.01, .01])
+        # #ax2.plot(t_sim,interp_current,'x')
+        # plt.show()
+
+        dv_changes=np.abs(deriv_V)>dv
+        #dv_changes=(np.abs(np.diff(v, prepend=0)/np.diff(t, prepend=0))>dv) + (np.abs(np.diff(v, append=0)/np.diff(t, append=0))>dv)
+        di_changes=(np.abs(np.diff(i, prepend=0)/dert)>di) + (np.abs(np.diff(i, append=0)/np.maximum(0.1,np.diff(t, append=0)))>di)
+        dt_changes=t<0
+        Tlast=0
+        for ii in range(len(t)):
+            if(t[ii]>=Tlast+dt):
+                Tlast=t[ii]
+                dt_changes[ii]=True
+
+        index=dt_changes + dv_changes + di_changes
+
+        t_ds=t[index]
+        i_ds=i[index]
+        v_ds=v[index]
+        return t_ds,i_ds,v_ds,index
     
+
     def update(self, cell_name, measured_data_time, cycle_metrics_time, cycle_metrics_AhT, time_name):
         fig_1 = self.plot_process_cell(cell_name, measured_data_time)
         fig_2 = self.plot_cycle_metrics_time(cell_name, cycle_metrics_time)
@@ -47,11 +82,18 @@ class Viewer():
         cycle_metrics = cell_data.cycle_metrics
         index_metrics = cell_data.index_metrics
 
+        t_series = cell_data.timeseries.t
+        t_array = t_series.astype('int64').to_numpy()/1.0e9
+
+        tps, Ips, Vps, indexds= self.downsample_data(t_array,timeseries.I.to_numpy(),timeseries.V.to_numpy())
+        tt=timeseries.t[indexds]
         t = timeseries.t
         I = timeseries.I
         V = timeseries.V
         T = timeseries.T
         AhT = timeseries.AhT
+
+        
         # drop egregious outliers from the plot.... for diagnostics.
         t_vdf = expansion.t_vdf[expansion.exp_vdf>-5000]
         exp_vdf = expansion.exp_vdf[expansion.exp_vdf>-5000]
@@ -67,13 +109,16 @@ class Viewer():
         capacity_check_in_cycle_idx = index_metrics.capacity_check_in_cycle_idx
         charge_idx = index_metrics.charge_idx
         
+
+
         self.logger.info("Plotting cell: " + cell)
         # setup plot 
         fig, axes = self.plt.subplots(6,1,figsize=(6,6), sharex=True)
         
         # plot current 
         ax0 = axes.flat[0]
-        ax0.plot_date(t[0::downsample],I[0::downsample],'-')
+        # ax0.plot_date(t[0::downsample],I[0::downsample],'-')
+        ax0.plot_date(tt,Ips,'-')
         # ax0.plot_date(t[0::downsample],step_idx[0::downsample],'-')
         ax0.plot_date(t[cycle_idx], I[cycle_idx], "x")
         ax0.plot_date(t[capacity_check_idx], I[capacity_check_idx], "*", c = "r")
@@ -82,7 +127,7 @@ class Viewer():
 
         # plot voltage 
         ax1 = axes.flat[1]
-        ax1.plot_date(t[0::downsample],V[0::downsample],'-')
+        ax1.plot_date(tt,Vps,'-')
         ax1.plot_date(t[cycle_idx], V[cycle_idx], "x")
         ax1.plot_date(t[charge_idx], V[charge_idx], "o")
         ax1.plot_date(t[capacity_check_idx], V[capacity_check_idx], "*", c = "r")
