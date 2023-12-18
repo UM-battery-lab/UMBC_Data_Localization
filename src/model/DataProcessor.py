@@ -88,7 +88,7 @@ class DataProcessor:
             for record in records_new_data: 
                 self.logger.debug(f"Processing cycler data: {record['tr_name']}")
                 # process test file
-                cell_data_new, cell_cycle_metrics_new = self._procesfs_cycler_data([record], cycle_id_lims=cycle_id_lims, numFiles = numFiles)
+                cell_data_new, cell_cycle_metrics_new = self._process_cycler_data([record], cycle_id_lims=cycle_id_lims, numFiles = numFiles)
                 # load test data to df and get start and end times
                 df_test = self._record_to_df(record, test_trace_keys = ['aux_vdf_timestamp_epoch_0'], df_labels =['Time [ms]'])
                 if df_test is None:
@@ -844,6 +844,8 @@ class DataProcessor:
 
             # 5. Find indices for cycles in file
             if isFormation and 'arbin' in record['tags']: # find peaks in voltage where I==0, ignore min during hppc
+
+
                 peak_prominence = 0.1
                 trough_prominence = 0.1
                 discharge_start_idx_file, _ = find_peaks(medfilt(V[I==0], kernel_size = 101),prominence = peak_prominence)
