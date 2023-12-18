@@ -198,7 +198,7 @@ class DirStructure:
         return os.path.join(self.rootPath, 'Processed')
     
     def load_ccm_folder(self):
-        return os.path.join(self.rootPath, 'CCM')
+        return os.path.join(self.load_processed_folder(), 'CCM')
     
     def get_tr_path(self, test_folder):
         return os.path.join(test_folder, 'tr.pkl.gz')

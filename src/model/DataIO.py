@@ -513,13 +513,19 @@ class DataIO:
         filepath_cell_data_vdf = os.path.join(cell_path, 'CDvdf.pkl.gz')
         filepath_rpt = os.path.join(cell_path, 'RPT.pkl.gz')
         filepath_csv = os.path.join(cell_path, f'{cell_name}_CCM.csv')
+        # Filepaths for duplicate cycle metrics
+        ccm_path = self.dirStructure.load_ccm_folder()
+        filepath_ccm_pkl = os.path.join(ccm_path, 'pkl', f'{cell_name}_CCM.pkl.gz')
+        filepath_ccm_csv = os.path.join(ccm_path, 'csv', f'{cell_name}_CCM.csv')
         # Save dataframes for cycle metrics, cell data, cell data vdf
         self.save_df(cell_cycle_metrics, filepath_ccm)
         self.save_df(cell_data, filepath_cell_data)
         self.save_df(cell_data_vdf, filepath_cell_data_vdf)
         self.save_df(cell_data_rpt, filepath_rpt)
+        self.save_df(cell_cycle_metrics, filepath_ccm_pkl)
         # Save csv for cycle metrics
         self.save_df_to_csv(cell_cycle_metrics, filepath_csv)
+        self.save_df_to_csv(cell_cycle_metrics, filepath_ccm_csv)
 
     def load_ccm_csv(self, cell_name):
         """

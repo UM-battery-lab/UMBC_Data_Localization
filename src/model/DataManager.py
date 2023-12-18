@@ -635,6 +635,11 @@ class DataManager(metaclass=SingletonMeta):
 
         # Walk through the Processed folder
         for subdir, dirs, files in os.walk(processed_folder):
+
+            # Skip the ccm folder
+            if os.path.commonpath([subdir, ccm_folder]) == ccm_folder:
+                continue
+
             for filename in files:
                 # Check if the file is a ccm csv or pkl.gz file
                 if 'CCM' not in filename:
