@@ -17,3 +17,6 @@ venv/
 *.rdb
 
 __pycache__/
+
+UMBLDL/
+UMBLDL.tgz

@@ -1,6 +1,7 @@
 import os
 import pickle
 import pandas as pd
+import numpy as np
 import gzip
 import shutil
 import hashlib
@@ -289,6 +290,18 @@ class DataIO:
                 df = df[trace_keys]
             except KeyError as err:
                 self.logger.error(f'Error occurred while loading dataframe: {err} with trace keys {trace_keys}')
+                try:
+                    keys_short=[]
+                    for key in trace_keys:
+                        if key in df:
+                            keys_short.append(key)
+                        else:
+                            df[key]=[np.nan]*len(df[trace_keys[1]])
+                    #df = df[keys_short]
+                    df = df[trace_keys]
+                    return df
+                except:
+                    return None
                 return None
             except TypeError:
                 self.logger.error(f"DataFrame is None when attempting to filter by trace keys: {trace_keys}")
