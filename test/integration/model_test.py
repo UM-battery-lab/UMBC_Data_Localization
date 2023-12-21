@@ -6,7 +6,7 @@ else:
     sys.path.append(os.path.dirname(os.path.abspath("__file__"))+"/src")
 
 
-os.environ['DISPLAY'] = "localhost:10.0" 
+#os.environ['DISPLAY'] = "localhost:10.0" 
 
 from src.model.DataManager import DataManager
 from src.presenter.Presenter import Presenter 
@@ -50,8 +50,8 @@ def process_cell_test():
 
     #cell_name='GMJuly2022_CELL012'
 
-    cell_name='GMFEB23S_CELL067'
-    cell_name='GMJuly2022_CELL104'
+    cell_name='GMFEB23S_CELL066'
+#    cell_name='GMJuly2022_CELL104'
 
     dataManager = DataManager(use_redis=False)
     def save_figs(figs, cell_name, time_name):
