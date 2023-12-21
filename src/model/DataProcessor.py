@@ -1053,10 +1053,18 @@ class DataProcessor:
         Id=(I.values<-1e-5).astype(int)
         potential_charge_start_idx= np.where(np.diff(Ic)>0.5)[0]
         potential_discharge_start_idx=np.where(np.diff(Id)>0.5)[0]
-        # dt=np.diff(t)
+        dt=np.diff(t)
         #Cumah=Ah_Charge-Ah_Discharge
         Cumah=integrate.cumtrapz(I, t,initial=0)/3600/1000 # ms to hours 
         # calculate the average discharge current and average time until the next charge step
+
+        # check for large gaps in the data, and reset the cumah counter.
+        gap_index=np.argwhere(dt>1e6)# look for gaps greater than 1000 s
+
+        if (gap_index.size >0):
+            if gap_index[0][0]>0:
+                for gap in gap_index[0]:
+                    Cumah[(gap+1):]=Cumah[gap]+Cumah[(gap+1):]-Cumah[gap+1]
 
         class_count = 50
         class_range = Cumah.ptp()
@@ -1084,17 +1092,17 @@ class DataProcessor:
 
         if len(turning_points)>2:
 
-            if(cum_ah_at_turn[1]>class_width/2) : # the first turning point is likely a start of discharge 
+            if(cum_ah_at_turn[1]-class_offset>class_range/2) : # the first turning point is likely a start of discharge 
                 #charge_start_idx=np.array([potential_charge_start_idx[0]])
                 charge_start_idx=np.array([0])
                 if( turning_points[1]>charge_start_idx[0] ): # check that is comes after the first charge
                     discharge_start_idx=np.array([min(potential_discharge_start_idx, key=lambda x:abs(x-turning_points[1]))])
                     last_tp=1
-                elif (turning_points[2]>charge_start_idx[0]-100):
+                elif (turning_points[2]-class_offset>charge_start_idx[0]-100):
                     discharge_start_idx=np.array([min(potential_discharge_start_idx, key=lambda x:abs(x-turning_points[2]))])
                     last_tp=2
 
-            elif(cum_ah_at_turn[2]>class_width/2) : # the second turning point a start of discharge
+            elif(cum_ah_at_turn[2]-class_offset>class_range/2) : # the second turning point a start of discharge
                 charge_start_idx=np.array([potential_charge_start_idx[0]])
                 if (turning_points[2]>charge_start_idx[0]-100):
                     discharge_start_idx=np.array([min(potential_discharge_start_idx, key=lambda x:abs(x-turning_points[2]))])
