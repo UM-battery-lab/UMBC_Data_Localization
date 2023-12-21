@@ -4,6 +4,9 @@ import time
 from scipy import integrate
 from scipy.signal import find_peaks, medfilt
 from itertools import compress
+import ruptures as rpt
+import matplotlib.pyplot as plt
+import rfcnt
 
 from src.model.DirStructure import DirStructure
 from src.model.DataFilter import DataFilter
@@ -777,8 +780,8 @@ class DataProcessor:
             # 1a. for arbin and biologic files
             test_data = pd.DataFrame()
             if ('arbin' in record['tags']) or ('biologic' in record['tags']): 
-                test_trace_keys_arbin = ['h_datapoint_time','h_test_time','h_current', 'h_potential', 'c_cumulative_capacity', 'h_step_index','h_cycle']
-                df_labels_arbin = ['Time [ms]','Test Time [ms]', 'Current [A]', 'Voltage [V]', 'Ah throughput [A.h]', 'Step index','Cycle index']
+                test_trace_keys_arbin = ['h_datapoint_time','h_test_time','h_current', 'h_potential', 'c_cumulative_capacity', 'h_step_index','h_cycle','h_charge_capacity','h_discharge_capacity','h_step_ord',]
+                df_labels_arbin = ['Time [ms]','Test Time [ms]', 'Current [A]', 'Voltage [V]', 'Ah throughput [A.h]', 'Step index','Cycle index', 'Charge Ah throughput [A.h]','Discharge Ah throughput [A.h]','Step ord']
                 test_data = self._record_to_df(record, test_trace_keys_arbin, df_labels_arbin, ms = isRPT)
                 test_data['Temperature [degC]'] = [np.nan]*len(test_data) # make arbin tables with same columns as neware files
                 if ('biologic' in record['tags']):
@@ -801,6 +804,9 @@ class DataProcessor:
             T = test_data['Temperature [degC]'].reset_index(drop=True)
             step_idx = test_data['Step index'].reset_index(drop=True)
             cycle_idx=test_data['Cycle index'].reset_index(drop=True)
+            Ah_Discharge=test_data['Discharge Ah throughput [A.h]'].reset_index(drop=True)
+            Ah_Charge=test_data['Charge Ah throughput [A.h]'].reset_index(drop=True)
+            step_ord=test_data['Step ord'].reset_index(drop=True)
             # 3. Calculate AhT 
             if 'neware_xls_4000' in record['tags'] and isFormation:  
                 # 3a. From integrating current.... some formation files had wrong units
@@ -817,7 +823,7 @@ class DataProcessor:
             AhT = test_data['Ah throughput [A.h]'].reset_index(drop=True)
             last_AhT = AhT.iloc[-1] #update last AhT value for next file
 
-            # check that indices are consistent
+            # check that indices are consistent    #update sidegeljb 12/20/2023  to use new signals (TODO)
             indices_to_check = [t, I, V, AhT, step_idx]
             for i in range(len(indices_to_check)-1):
                 assert indices_to_check[i].index.equals(indices_to_check[i+1].index), f"Indices are not consistent between columns in the data from {record['tr_name']}"
@@ -855,8 +861,17 @@ class DataProcessor:
                 charge_start_idx_file.insert(0, 0)
                 charge_start_idx_file.insert(len(charge_start_idx_file), len(V)-1)
                 charge_start_idx_file, discharge_start_idx_file = self._match_charge_discharge(np.array(charge_start_idx_file), np.array(discharge_start_idx_file))
+
+            # if  'neware_xls_4000' in record['tags']:
+            #     discharge_start_idx_file=np.where(np.diff(cycle_idx).astype(bool))
+
+            # if  'arbin' in record['tags']:
+            #     discharge_start_idx_file=np.where(np.diff(cycle_idx).astype(bool))
+
             else: # find I==0 and filter out irrelevant points
-                charge_start_idx_file, discharge_start_idx_file = self._find_cycle_idx(t, I, V, AhT, step_idx, V_max_cycle = V_max_cycle, V_min_cycle = V_min_cycle, dt_min = dt_min, dAh_min= dAh_min)
+
+                charge_start_idx_file, discharge_start_idx_file = self._find_cycle_idx(t, I, V, AhT,Ah_Discharge,Ah_Charge,step_ord, step_idx, cycle_idx,test_protocol, V_max_cycle = V_max_cycle, V_min_cycle = V_min_cycle, dt_min = dt_min, dAh_min= dAh_min)
+                
                 try: # won't work for half cycles (files with only charge or only discharge)
                     charge_start_idx_file, discharge_start_idx_file = self._match_charge_discharge(charge_start_idx_file, discharge_start_idx_file)
                 except:
@@ -966,7 +981,7 @@ class DataProcessor:
         df = df_raw.set_axis(df_labels, axis=1)
         return df
     
-    def _find_cycle_idx(self, t, I, V, AhT, step_idx, V_max_cycle=3, V_min_cycle=4, dt_min = 600, dAh_min=1):
+    def _find_cycle_idx(self, t, I, V, AhT, Ah_Discharge,Ah_Charge,step_ord,step_idx,cycle_idx, test_protocol,V_max_cycle=3, V_min_cycle=4, dt_min = 600, dAh_min=1):
         """
         Find the cycle charge and discharge indices by calling filter_cycle_idx
 
@@ -998,11 +1013,135 @@ class DataProcessor:
         list of ints
             The list of discharge indices
         """
-        # Find indices of sign changes and there's a change in step index and filter based on dt, dAh, and V
-        current_sign_change_idx = np.where(np.diff(np.sign(I)).astype(bool) & (np.diff(step_idx) !=0))[0]
-        current_sign_change_idx = np.sort(np.append(current_sign_change_idx,[AhT.first_valid_index(),len(t)-1])) # add the start and end for the diff checks
+        #neware cycler increases the index at the start of the discharge. 
+        # discharge_start_idx_file_cycle=np.where(np.diff(cycle_idx).astype(bool))
+        # new_step_idx_file_cycle=np.where(np.diff(step_idx).astype(bool))
+        # reset_step_idx_file_cycle=np.where(np.abs(np.diff(step_idx))>1) # mark points where the step index changes by more than one, could be a sign that a loop was broken.
+        # find indexs with positive current
+
+        # change point detection
+        # model = "l2"  # "l1", "rbf", "linear", "normal", "ar",...
+        # algo = rpt.Window(width=400, model=model).fit(I.values.reshape(-1, 1))
+
+        # model = "l2"  # "l2", "rbf"
+        # algo = rpt.Pelt(model=model, min_size=20000, jump=5000).fit(Ah_Charge.values.reshape(-1, 1)) # may need to tune these numbers...
+        # my_bkps_charge = algo.predict(pen=3)
+
+        # model = "l2"  # "l2", "rbf"
+        # algo = rpt.Pelt(model=model, min_size=20000, jump=5000).fit(Ah_Discharge.values.reshape(-1, 1)) # may need to tune these numbers...
+        # my_bkps_discharge = algo.predict(pen=3)
+#         if(test_protocol == 'RPT'):
+#             model = "l1"  # "l2", "rbf"
+#             #algo = rpt.Pelt(model=model, min_size=20000, jump=5000).fit(I.values.reshape(-1, 1)) # may need to tune these numbers...
+#             algo = rpt.KernelCPD(kernel="linear", min_size=20000).fit(I.values.reshape(-1, 1))
+#             my_bkps = algo.predict(pen=3)
+#         else:
+#             model = "l1"  # "l2", "rbf"
+#             #algo = rpt.Pelt(model=model, min_size=2000, jump=500).fit(I.values.reshape(-1, 1)) # may need to tune these numbers...
+#             algo = rpt.KernelCPD(kernel="linear", min_size=2000).fit(I.values.reshape(-1, 1))
+#             my_bkps = algo.predict(pen=3)
+
+#         fig, ax_arr = rpt.display(I.values.reshape(-1, 1), my_bkps, figsize=(10, 6))
+#         plt.show()
+# #        print(my_bkps_charge)
+#         print(my_bkps)
+        # show results
+
+
+
+        Ic=(I.values>1e-5).astype(int)
+        Id=(I.values<-1e-5).astype(int)
+        potential_charge_start_idx= np.where(np.diff(Ic)>0.5)[0]
+        potential_discharge_start_idx=np.where(np.diff(Id)>0.5)[0]
+        # dt=np.diff(t)
+        #Cumah=Ah_Charge-Ah_Discharge
+        Cumah=integrate.cumtrapz(I, t,initial=0)/3600/1000 # ms to hours 
+        # calculate the average discharge current and average time until the next charge step
+
+        class_count = 50
+        class_range = Cumah.ptp()
+        class_width = class_range / (class_count - 1)
+        class_offset = Cumah.min() - class_width / 2
+
+        res=rfcnt.rfc(
+            Cumah,
+            class_count=class_count,
+            class_offset=class_offset,
+            class_width=class_width,
+            hysteresis=class_width,
+            spread_damage=rfcnt.SDMethod.FULL_P2,           # assign damage for closed cycles to 2nd turning point
+            residual_method=rfcnt.ResidualMethod._NO_FINALIZE,  # don't consider residues and leave internal sequence open
+            wl={"sd": 1e3, "nd": 1e7, "k": 5})
+
+        turning_points=res["tp"][:, 0]-1
+        cum_ah_at_turn=res["tp"][:, 1]
+        #if(test_protocol == 'RPT'):
+            #start with first charge assume its not the HPPC 
+        
+#        find first turning point after the charge start index.
+        last_index=0
+        last_tp=0
+
+        if len(turning_points)>2:
+
+            if(cum_ah_at_turn[1]>class_width/2) : # the first turning point is likely a start of discharge 
+                #charge_start_idx=np.array([potential_charge_start_idx[0]])
+                charge_start_idx=np.array([0])
+                if( turning_points[1]>charge_start_idx[0] ): # check that is comes after the first charge
+                    discharge_start_idx=np.array([min(potential_discharge_start_idx, key=lambda x:abs(x-turning_points[1]))])
+                    last_tp=1
+                elif (turning_points[2]>charge_start_idx[0]-100):
+                    discharge_start_idx=np.array([min(potential_discharge_start_idx, key=lambda x:abs(x-turning_points[2]))])
+                    last_tp=2
+
+            elif(cum_ah_at_turn[2]>class_width/2) : # the second turning point a start of discharge
+                charge_start_idx=np.array([potential_charge_start_idx[0]])
+                if (turning_points[2]>charge_start_idx[0]-100):
+                    discharge_start_idx=np.array([min(potential_discharge_start_idx, key=lambda x:abs(x-turning_points[2]))])
+                    last_tp=2
+
+            # need to add the else case here in case we dont start with a charge cyccle.
+
+            for ii in range(last_tp+1,len(turning_points)-1,2):
+            #for pci in potential_charge_start_idx: #range(len(charge_start_idx))
+                charge_start_idx=np.append(charge_start_idx,min(potential_charge_start_idx, key=lambda x:abs(x-turning_points[ii])))
+                discharge_start_idx=np.append(discharge_start_idx, min(potential_discharge_start_idx, key=lambda x:abs(x-turning_points[ii+1])))
+        else:
+            # no turning points in the data, just take the extents? this will probably breaksomething else...
+            charge_start_idx=np.array([0])
+            discharge_start_idx=np.array([len(t)-1])
+            # find the next discharge
+            #discharge_start_idx=np.array([potential_charge_start_idx[0]])
+        
+
+        #discharge_start_idx=np.array([np.searchsorted(potential_discharge_start_idx,charge_start_idx[0],side='right')])
+        # if my_bkps[-1] >= len(t)-1:
+        #     my_bkps[-1]=len(t)-1
+        #     current_sign_change_idx= np.concatenate(([0],my_bkps))
+        # else:
+        #     current_sign_change_idx= np.concatenate(([0],my_bkps,[len(t)-1]))
+ 
+
+        # charge_start_idx=new_step_idx_file_cycle[0][ I.values[new_step_idx_file_cycle]> 1e-2 ]
+        # discharge_start_idx=new_step_idx_file_cycle[0][ I.values[new_step_idx_file_cycle]< 1e-1 ]
+
+        # if (np.abs(I[0])<1e-2):
+        #     #first step is a rest.
+        #     a=0
+        # elif ( I[0]>=1e-2 ):    
+        #     # first step is a charge
+        #     charge_start_idx.append(0)
+        # else:
+        #     discharge_start_idx.append(0)
+        
+        # # Find indices of sign changes and there's a change in step index and filter based on dt, dAh, and V
+        # #current_sign_change_idx = np.where(np.diff(np.sign(I)).astype(bool) & (np.diff(step_idx) !=0))[0]
+        # current_sign_change_idx = np.where(np.diff(np.sign(I)).astype(bool) & (np.diff(step_idx) !=0))[0]
+        # current_sign_change_idx = np.sort(np.append(current_sign_change_idx,[AhT.first_valid_index(),len(t)-1])) # add the start and end for the diff checks
+
         # Filter to identify cycles based on threshold inputs
-        charge_start_idx, discharge_start_idx = self._filter_cycle_idx(current_sign_change_idx, t, I, V, AhT, V_max_cycle=V_max_cycle, V_min_cycle=V_min_cycle, dt_min = dt_min, dAh_min = dAh_min)
+        #charge_start_idx, discharge_start_idx = self._filter_cycle_idx(current_sign_change_idx, t, I, V, AhT, V_max_cycle=V_max_cycle, V_min_cycle=V_min_cycle, dt_min = dt_min, dAh_min = dAh_min)
+
         return charge_start_idx, discharge_start_idx
 
     def _filter_cycle_idx(self, cycle_idx0, t, I, V, AhT, V_max_cycle=3, V_min_cycle=4, dt_min = 600, dAh_min=1):
@@ -1052,6 +1191,7 @@ class DataProcessor:
         # combine checks 
         charge_start_idx = cycle_idx0[np.where(dt_check & dAh_check & V_min_check)[0]]
         discharge_start_idx = cycle_idx0[np.where(dt_check & dAh_check & V_max_check)[0]]
+
         return charge_start_idx, discharge_start_idx
 
     def _match_charge_discharge(self, charge_start_idx_0, discharge_start_idx_0):

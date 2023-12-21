@@ -5,13 +5,17 @@ if os.name=="nt":
 else:
     sys.path.append(os.path.dirname(os.path.abspath("__file__"))+"/src")
 
+
+os.environ['DISPLAY'] = "localhost:10.0" 
+
 from src.model.DataManager import DataManager
 from src.presenter.Presenter import Presenter 
 from src.viewer.Viewer import Viewer
 from matplotlib import pyplot as plt
 import matplotlib   
-matplotlib.use('QtAgg')
-#matplotlib.use('TkAgg')
+#matplotlib.use('QtAgg')
+matplotlib.use('TkAgg')
+#matplotlib.use('GTK3Agg') 
 
 # Integration test
 def createdb_test():
@@ -115,16 +119,25 @@ def duplicate_ccm_test():
     dataManager.duplicate_ccm()
 
 def onetest():
-    dataManager = DataManager()
-    cell_cycle_metrics, cell_data, cell_data_vdf=dataManager.process_tr('GMJuly2022_CELL018_RPT_3_P25C_5P0PSI_20231004_R0_CH025_20231004101619_36_4_1_2818579523')
-
+    dataManager = DataManager(use_redis=False)
+    presenter = Presenter()
+    viewer = Viewer()
+    dataManager.attach(presenter)
+    presenter.attach(viewer)
+    #cell_cycle_metrics, cell_data, cell_data_vdf=dataManager.process_tr('GMJuly2022_CELL018_RPT_3_P25C_5P0PSI_20231004_R0_CH025_20231004101619_36_4_1_2818579523')
+    cell_cycle_metrics, cell_data, cell_data_vdf=dataManager.process_tr('GMFEB23S_CELL069_RPT_4_P25C_P15P0PSI_20230419_R0-01-026')
+    #    cell_cycle_metrics, cell_data, cell_data_vdf=dataManager.process_tr('GMFEB23S_CELL022_Test8soc2080-Cby3-n100_1_P25C_15P0PSI_20230720_R0-01-027')
+#    GMFEB23S_CELL075_Test8-soc2080-Cby3-n100_1_P25C_15P0PSI_20231022_R0-01-031
+    
+    plt.show()
 if __name__ == '__main__':
     # createdb_test()
 
     # filter_test()
-     process_cell_test()
+    # process_cell_test()
+    process_cell_test()
 #    #process_tr_test()
- #   consistency_test()
+#     consistency_test()
 #    onetest()
     # read_csv_test()
     #update_cycle_stats_test()
