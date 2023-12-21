@@ -1071,57 +1071,61 @@ class DataProcessor:
         class_width = class_range / (class_count - 1)
         class_offset = Cumah.min() - class_width / 2
 
-        res=rfcnt.rfc(
-            Cumah,
-            class_count=class_count,
-            class_offset=class_offset,
-            class_width=class_width,
-            hysteresis=class_width,
-            spread_damage=rfcnt.SDMethod.FULL_P2,           # assign damage for closed cycles to 2nd turning point
-            residual_method=rfcnt.ResidualMethod._NO_FINALIZE,  # don't consider residues and leave internal sequence open
-            wl={"sd": 1e3, "nd": 1e7, "k": 5})
+        try:
+            res=rfcnt.rfc(
+                Cumah,
+                class_count=class_count,
+                class_offset=class_offset,
+                class_width=class_width,
+                hysteresis=class_width,
+                spread_damage=rfcnt.SDMethod.FULL_P2,           # assign damage for closed cycles to 2nd turning point
+                residual_method=rfcnt.ResidualMethod._NO_FINALIZE,  # don't consider residues and leave internal sequence open
+                wl={"sd": 1e3, "nd": 1e7, "k": 5})
 
-        turning_points=res["tp"][:, 0]-1
-        cum_ah_at_turn=res["tp"][:, 1]
-        #if(test_protocol == 'RPT'):
-            #start with first charge assume its not the HPPC 
-        
-#        find first turning point after the charge start index.
-        last_index=0
-        last_tp=0
+            turning_points=res["tp"][:, 0]-1
+            cum_ah_at_turn=res["tp"][:, 1]
+            #if(test_protocol == 'RPT'):
+                #start with first charge assume its not the HPPC 
+            
+    #        find first turning point after the charge start index.
+            last_index=0
+            last_tp=0
 
-        if len(turning_points)>2:
+            if len(turning_points)>2:
 
-            if(cum_ah_at_turn[1]-class_offset>class_range/2) : # the first turning point is likely a start of discharge 
-                #charge_start_idx=np.array([potential_charge_start_idx[0]])
+                if(cum_ah_at_turn[1]-class_offset>class_range/2) : # the first turning point is likely a start of discharge 
+                    #charge_start_idx=np.array([potential_charge_start_idx[0]])
+                    charge_start_idx=np.array([0])
+                    if( turning_points[1]>charge_start_idx[0] ): # check that is comes after the first charge
+                        discharge_start_idx=np.array([min(potential_discharge_start_idx, key=lambda x:abs(x-turning_points[1]))])
+                        last_tp=1
+                    elif (turning_points[2]-class_offset>charge_start_idx[0]-100):
+                        discharge_start_idx=np.array([min(potential_discharge_start_idx, key=lambda x:abs(x-turning_points[2]))])
+                        last_tp=2
+
+                elif(cum_ah_at_turn[2]-class_offset>class_range/2) : # the second turning point a start of discharge
+                    charge_start_idx=np.array([potential_charge_start_idx[0]])
+                    if (turning_points[2]>charge_start_idx[0]-100):
+                        discharge_start_idx=np.array([min(potential_discharge_start_idx, key=lambda x:abs(x-turning_points[2]))])
+                        last_tp=2
+
+                # need to add the else case here in case we dont start with a charge cyccle.
+
+                for ii in range(last_tp+1,len(turning_points)-1,2):
+                #for pci in potential_charge_start_idx: #range(len(charge_start_idx))
+                    charge_start_idx=np.append(charge_start_idx,min(potential_charge_start_idx, key=lambda x:abs(x-turning_points[ii])))
+                    discharge_start_idx=np.append(discharge_start_idx, min(potential_discharge_start_idx, key=lambda x:abs(x-turning_points[ii+1])))
+            else:
+                # no turning points in the data, just take the extents? this will probably breaksomething else...
                 charge_start_idx=np.array([0])
-                if( turning_points[1]>charge_start_idx[0] ): # check that is comes after the first charge
-                    discharge_start_idx=np.array([min(potential_discharge_start_idx, key=lambda x:abs(x-turning_points[1]))])
-                    last_tp=1
-                elif (turning_points[2]-class_offset>charge_start_idx[0]-100):
-                    discharge_start_idx=np.array([min(potential_discharge_start_idx, key=lambda x:abs(x-turning_points[2]))])
-                    last_tp=2
-
-            elif(cum_ah_at_turn[2]-class_offset>class_range/2) : # the second turning point a start of discharge
-                charge_start_idx=np.array([potential_charge_start_idx[0]])
-                if (turning_points[2]>charge_start_idx[0]-100):
-                    discharge_start_idx=np.array([min(potential_discharge_start_idx, key=lambda x:abs(x-turning_points[2]))])
-                    last_tp=2
-
-            # need to add the else case here in case we dont start with a charge cyccle.
-
-            for ii in range(last_tp+1,len(turning_points)-1,2):
-            #for pci in potential_charge_start_idx: #range(len(charge_start_idx))
-                charge_start_idx=np.append(charge_start_idx,min(potential_charge_start_idx, key=lambda x:abs(x-turning_points[ii])))
-                discharge_start_idx=np.append(discharge_start_idx, min(potential_discharge_start_idx, key=lambda x:abs(x-turning_points[ii+1])))
-        else:
-            # no turning points in the data, just take the extents? this will probably breaksomething else...
+                discharge_start_idx=np.array([len(t)-1])
+                # find the next discharge
+                #discharge_start_idx=np.array([potential_charge_start_idx[0]])
+        except Exception as e:
+            print(e)
+            self.logger.info(f"No cycles detected (using the whole test).")    
             charge_start_idx=np.array([0])
             discharge_start_idx=np.array([len(t)-1])
-            # find the next discharge
-            #discharge_start_idx=np.array([potential_charge_start_idx[0]])
-        
-
         #discharge_start_idx=np.array([np.searchsorted(potential_discharge_start_idx,charge_start_idx[0],side='right')])
         # if my_bkps[-1] >= len(t)-1:
         #     my_bkps[-1]=len(t)-1
