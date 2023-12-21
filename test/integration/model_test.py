@@ -50,8 +50,8 @@ def process_cell_test():
 
     #cell_name='GMJuly2022_CELL012'
 
-    cell_name='GMFEB23S_CELL067'
-    cell_name='GMJuly2022_CELL104'
+    cell_name='GMFEB23S_CELL066'
+#    cell_name='GMJuly2022_CELL104'
 
     dataManager = DataManager(use_redis=False)
     def save_figs(figs, cell_name, time_name):
