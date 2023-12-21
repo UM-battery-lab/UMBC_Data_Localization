@@ -48,10 +48,10 @@ def process_cell_test():
     cell_name='GMJuly2022_CELL073'
     #cell_name='GMJuly2022_CELL018'
 
-    cell_name='GMJuly2022_CELL012'
+    #cell_name='GMJuly2022_CELL012'
 
-    cell_name='GMFEB23S_CELL066'
-#    cell_name='GMJuly2022_CELL104'
+    cell_name='GMFEB23S_CELL067'
+    cell_name='GMJuly2022_CELL104'
 
     dataManager = DataManager(use_redis=False)
     def save_figs(figs, cell_name, time_name):
@@ -131,13 +131,7 @@ def onetest():
     #GMJuly2022_CELL104_Test7A_1_P45C_5P0PSI_20230310_R0_CH094
     #cell_cycle_metrics, cell_data, cell_data_vdf=dataManager.process_tr('GMJuly2022_CELL104_Test7A_1_P45C_5P0PSI_20230327_R0_CH094_20230327233233_34_2_6_2818580233')
     
-#    cell_cycle_metrics, cell_data, cell_data_vdf=dataManager.process_tr('GMJuly2022_CELL104_Test7A_1_P45C_5P0PSI_20230207_R0_CH094_20230207101259_34_2_6_2818580218')
-#    plt.show()
-
-    cell_cycle_metrics, cell_data, cell_data_vdf=dataManager.process_tr('GMFEB23S_CELL069_RPT_4_P25C_P15P0PSI_20230419_R0-01-026')
-    #    cell_cycle_metrics, cell_data, cell_data_vdf=dataManager.process_tr('GMFEB23S_CELL022_Test8soc2080-Cby3-n100_1_P25C_15P0PSI_20230720_R0-01-027')
-#    GMFEB23S_CELL075_Test8-soc2080-Cby3-n100_1_P25C_15P0PSI_20231022_R0-01-031
-    
+    cell_cycle_metrics, cell_data, cell_data_vdf=dataManager.process_tr('GMJuly2022_CELL104_Test7A_1_P45C_5P0PSI_20230207_R0_CH094_20230207101259_34_2_6_2818580218')
     plt.show()
 
 if __name__ == '__main__':
@@ -145,7 +139,7 @@ if __name__ == '__main__':
 
     # filter_test()
 
-    # process_cell_test()
+#     process_cell_test()
     process_cell_test()
 #    #process_tr_test()
 #     consistency_test()
