@@ -131,7 +131,13 @@ def onetest():
     #GMJuly2022_CELL104_Test7A_1_P45C_5P0PSI_20230310_R0_CH094
     #cell_cycle_metrics, cell_data, cell_data_vdf=dataManager.process_tr('GMJuly2022_CELL104_Test7A_1_P45C_5P0PSI_20230327_R0_CH094_20230327233233_34_2_6_2818580233')
     
-    cell_cycle_metrics, cell_data, cell_data_vdf=dataManager.process_tr('GMJuly2022_CELL104_Test7A_1_P45C_5P0PSI_20230207_R0_CH094_20230207101259_34_2_6_2818580218')
+#    cell_cycle_metrics, cell_data, cell_data_vdf=dataManager.process_tr('GMJuly2022_CELL104_Test7A_1_P45C_5P0PSI_20230207_R0_CH094_20230207101259_34_2_6_2818580218')
+#    plt.show()
+
+    cell_cycle_metrics, cell_data, cell_data_vdf=dataManager.process_tr('GMFEB23S_CELL069_RPT_4_P25C_P15P0PSI_20230419_R0-01-026')
+    #    cell_cycle_metrics, cell_data, cell_data_vdf=dataManager.process_tr('GMFEB23S_CELL022_Test8soc2080-Cby3-n100_1_P25C_15P0PSI_20230720_R0-01-027')
+#    GMFEB23S_CELL075_Test8-soc2080-Cby3-n100_1_P25C_15P0PSI_20231022_R0-01-031
+    
     plt.show()
 
 if __name__ == '__main__':
@@ -140,10 +146,9 @@ if __name__ == '__main__':
     # filter_test()
 
     # process_cell_test()
-
-     process_cell_test()
+    process_cell_test()
 #    #process_tr_test()
- #   consistency_test()
+#     consistency_test()
 #    onetest()
     # read_csv_test()
     #update_cycle_stats_test()

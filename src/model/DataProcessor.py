@@ -1053,11 +1053,16 @@ class DataProcessor:
         Id=(I.values<-1e-5).astype(int)
         potential_charge_start_idx= np.where(np.diff(Ic)>0.5)[0]
         potential_discharge_start_idx=np.where(np.diff(Id)>0.5)[0]
+<<<<<<< HEAD
         dt=np.diff(t)
+=======
+        # dt=np.diff(t)
+>>>>>>> 1545a0fd (update code to use rainflow counting of cumulative ah for cycle detection)
         #Cumah=Ah_Charge-Ah_Discharge
         Cumah=integrate.cumtrapz(I, t,initial=0)/3600/1000 # ms to hours 
         # calculate the average discharge current and average time until the next charge step
 
+<<<<<<< HEAD
         # check for large gaps in the data, and reset the cumah counter.
         gap_index=np.argwhere(dt>1e6)# look for gaps greater than 1000 s
 
@@ -1066,6 +1071,8 @@ class DataProcessor:
                 for gap in gap_index[0]:
                     Cumah[(gap+1):]=Cumah[gap]+Cumah[(gap+1):]-Cumah[gap+1]
 
+=======
+>>>>>>> 1545a0fd (update code to use rainflow counting of cumulative ah for cycle detection)
         class_count = 50
         class_range = Cumah.ptp()
         class_width = class_range / (class_count - 1)
