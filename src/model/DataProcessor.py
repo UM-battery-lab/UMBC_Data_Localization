@@ -1057,7 +1057,7 @@ class DataProcessor:
         #Cumah=Ah_Charge-Ah_Discharge
         Cumah=integrate.cumtrapz(I, t,initial=0)/3600/1000 # ms to hours 
         # calculate the average discharge current and average time until the next charge step
-
+        Cumah=Cumah-Cumah.min()
         # check for large gaps in the data, and reset the cumah counter.
         gap_index=np.argwhere(dt>1e6)# look for gaps greater than 1000 s
 
@@ -1066,7 +1066,7 @@ class DataProcessor:
                 for gap in gap_index[0]:
                     Cumah[(gap+1):]=Cumah[gap]+Cumah[(gap+1):]-Cumah[gap+1]
 
-        class_count = 50
+        class_count = 10 # basically needs to change by more than 10% of the full range.
         class_range = Cumah.ptp()
         class_width = class_range / (class_count - 1)
         class_offset = Cumah.min() - class_width / 2
@@ -1096,12 +1096,17 @@ class DataProcessor:
             if len(turning_points)>2:
 
 
-
-                if(cum_ah_at_turn[0]-class_offset>class_range/2) : # the first turning point is likely a start of discharge 
+                if(cum_ah_at_turn[1]>cum_ah_at_turn[0]):
+                    #2nd turn point is start of discharge.
+                    charge_start_idx=np.array([min(potential_charge_start_idx, key=lambda x:abs(x-turning_points[0]))])                   
+                    discharge_start_idx=np.array([min(potential_discharge_start_idx, key=lambda x:abs(x-turning_points[1]))])
+                    last_tp=1
+                    
+                elif(cum_ah_at_turn[0]-class_offset>class_range/2) : # the first turning point is likely a start of discharge 
                     #charge_start_idx=np.array([potential_charge_start_idx[0]])
                     # Case of a partial cycle. so set the charge start to the start of the file....
                     charge_start_idx=np.array([0])
-                    if( turning_points[0]>charge_start_idx[0]-100 ): # check that is comes after the first charge
+                    if( turning_points[0]>charge_start_idx[0]-10 ): # check that is comes after the first charge
                         discharge_start_idx=np.array([min(potential_discharge_start_idx, key=lambda x:abs(x-turning_points[0]))])
                         last_tp=0
                     else:
@@ -1109,7 +1114,8 @@ class DataProcessor:
                         last_tp=1
                         self.logger.info(f"choosing next turning point caveat empor.") 
 
-                elif(cum_ah_at_turn[1]-class_offset>class_range/2) : # the second turning point a start of discharge
+                #elif(cum_ah_at_turn[1]-class_offset>class_range/2) : # the second turning point a start of discharge
+                else:
                     charge_start_idx=np.array([potential_charge_start_idx[0]])
                     if (turning_points[1]>charge_start_idx[0]-100):
                         discharge_start_idx=np.array([min(potential_discharge_start_idx, key=lambda x:abs(x-turning_points[1]))])
@@ -1159,11 +1165,16 @@ class DataProcessor:
 
         # Filter to identify cycles based on threshold inputs
         #charge_start_idx, discharge_start_idx = self._filter_cycle_idx(current_sign_change_idx, t, I, V, AhT, V_max_cycle=V_max_cycle, V_min_cycle=V_min_cycle, dt_min = dt_min, dAh_min = dAh_min)
-        fig, ax = plt.subplots()
-        ax.plot(t,Cumah)
-        ax.plot(t[charge_start_idx],Cumah[charge_start_idx],'rx')
-        ax.plot(t[discharge_start_idx],Cumah[discharge_start_idx],'bo')
-        plt.show()
+        # fig, (ax1,ax2,ax3) = plt.subplots(3,1)
+        # ax1.plot(t,Cumah)
+        # ax1.plot(t[charge_start_idx],Cumah[charge_start_idx],'rx')
+        # ax1.plot(t[discharge_start_idx],Cumah[discharge_start_idx],'bo')
+        # ax2.plot(t,Cumah)
+        # ax2.plot(t[turning_points],Cumah[turning_points],'rx')
+        # ax3.plot(t,I)
+        # # ax3.plot(t[charge_start_idx],Cumah[charge_start_idx],'rx')
+        # # ax3.plot(t[discharge_start_idx],Cumah[discharge_start_idx],'bo')
+        # plt.show()
             
 
         return charge_start_idx, discharge_start_idx
