@@ -1082,32 +1082,38 @@ class DataProcessor:
                 residual_method=rfcnt.ResidualMethod._NO_FINALIZE,  # don't consider residues and leave internal sequence open
                 wl={"sd": 1e3, "nd": 1e7, "k": 5})
 
-            turning_points=res["tp"][:, 0]-1
+            turning_points=res["tp"][:, 0].astype(int)-1
             cum_ah_at_turn=res["tp"][:, 1]
             #if(test_protocol == 'RPT'):
                 #start with first charge assume its not the HPPC 
             
+
+
     #        find first turning point after the charge start index.
             last_index=0
             last_tp=0
 
             if len(turning_points)>2:
 
-                if(cum_ah_at_turn[1]-class_offset>class_range/2) : # the first turning point is likely a start of discharge 
+
+
+                if(cum_ah_at_turn[0]-class_offset>class_range/2) : # the first turning point is likely a start of discharge 
                     #charge_start_idx=np.array([potential_charge_start_idx[0]])
+                    # Case of a partial cycle. so set the charge start to the start of the file....
                     charge_start_idx=np.array([0])
-                    if( turning_points[1]>charge_start_idx[0] ): # check that is comes after the first charge
+                    if( turning_points[0]>charge_start_idx[0]-100 ): # check that is comes after the first charge
+                        discharge_start_idx=np.array([min(potential_discharge_start_idx, key=lambda x:abs(x-turning_points[0]))])
+                        last_tp=0
+                    else:
                         discharge_start_idx=np.array([min(potential_discharge_start_idx, key=lambda x:abs(x-turning_points[1]))])
                         last_tp=1
-                    elif (turning_points[2]-class_offset>charge_start_idx[0]-100):
-                        discharge_start_idx=np.array([min(potential_discharge_start_idx, key=lambda x:abs(x-turning_points[2]))])
-                        last_tp=2
+                        self.logger.info(f"choosing next turning point caveat empor.") 
 
-                elif(cum_ah_at_turn[2]-class_offset>class_range/2) : # the second turning point a start of discharge
+                elif(cum_ah_at_turn[1]-class_offset>class_range/2) : # the second turning point a start of discharge
                     charge_start_idx=np.array([potential_charge_start_idx[0]])
-                    if (turning_points[2]>charge_start_idx[0]-100):
-                        discharge_start_idx=np.array([min(potential_discharge_start_idx, key=lambda x:abs(x-turning_points[2]))])
-                        last_tp=2
+                    if (turning_points[1]>charge_start_idx[0]-100):
+                        discharge_start_idx=np.array([min(potential_discharge_start_idx, key=lambda x:abs(x-turning_points[1]))])
+                        last_tp=1
 
                 # need to add the else case here in case we dont start with a charge cyccle.
 
@@ -1153,6 +1159,12 @@ class DataProcessor:
 
         # Filter to identify cycles based on threshold inputs
         #charge_start_idx, discharge_start_idx = self._filter_cycle_idx(current_sign_change_idx, t, I, V, AhT, V_max_cycle=V_max_cycle, V_min_cycle=V_min_cycle, dt_min = dt_min, dAh_min = dAh_min)
+        fig, ax = plt.subplots()
+        ax.plot(t,Cumah)
+        ax.plot(t[charge_start_idx],Cumah[charge_start_idx],'rx')
+        ax.plot(t[discharge_start_idx],Cumah[discharge_start_idx],'bo')
+        plt.show()
+            
 
         return charge_start_idx, discharge_start_idx
 
