@@ -656,9 +656,12 @@ class DataProcessor:
         for i in range(len(cycle_idx)-1):
             # Calculate capacity based on AhT.
             Dt_total= t[cycle_idx[i+1]]-t[cycle_idx[i]]
+            if(Dt_total>0):
                 #Dt_elements=t[(cycle_idx[i]:cycle_idx[i+1])+1]-t[cycle_idx[i]:cycle_idx[i+1]]
-            y_avg =np.trapz(data[cycle_idx[i]:cycle_idx[i+1]],x=t[cycle_idx[i]:cycle_idx[i+1]])/Dt_total #np.sum( Dt_elements*(data[cycle_idx[i]:cycle_idx[i+1]]+data[cycle_idx[i]-1:cycle_idx[i+1]-1])/2)/Dt_total
-      
+                y_avg =np.trapz(data[cycle_idx[i]:cycle_idx[i+1]],x=t[cycle_idx[i]:cycle_idx[i+1]])/Dt_total #np.sum( Dt_elements*(data[cycle_idx[i]:cycle_idx[i+1]]+data[cycle_idx[i]-1:cycle_idx[i+1]-1])/2)/Dt_total
+            else:
+                y_avg=0  
+                
             if cycle_idx[i] in charge_idx:
 
                 y_avg_c.append(y_avg) 
