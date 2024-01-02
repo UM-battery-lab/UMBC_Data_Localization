@@ -47,7 +47,7 @@ class Presenter():
         end_time = self.dateConverter._str_to_timestamp(end_time) if end_time else None
         start_condition = (data['Time [ms]'] >= start_time) if start_time else pd.Series([True] * len(data))
         end_condition = (data['Time [ms]'] <= end_time) if end_time else pd.Series([True] * len(data))
-        data['Time [ms]'] = data['Time [ms]'].apply(self.dateConverter._timestamp_to_datetime)
+        data['Time [ms]'] = data['Time [ms]'].astype(float).apply(self.dateConverter._timestamp_to_datetime)
         
         mask = start_condition & end_condition
         return data[mask]
