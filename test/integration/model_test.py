@@ -53,7 +53,7 @@ def process_cell_test():
     #cell_name='GMFEB23S_CELL066'
  #   cell_name='GMJuly2022_CELL104'
 
-    cell_name='GMFEB23S_CELL033'
+    cell_name='GMFEB23S_CELL031'
    # cell_name='GMFEB23S_CELL072'
 
     dataManager = DataManager(use_redis=False)

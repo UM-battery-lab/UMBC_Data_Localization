@@ -14,7 +14,7 @@ from src.utils.Logger import setup_logger
 from src.utils.DateConverter import DateConverter
 from src.config.df_config import CYCLE_ID_LIMS, DEFAULT_TRACE_KEYS, DEFAULT_DF_LABELS
 from src.config.calibration_config import X1, X2, C
-from src.config.pulse_config import GMJULY2022_PULSE_CURRENTS, GMFEB23_PULSE_CURRENTS, MAX_PULSES, DEFAULT_PULSE_CURRENTS
+from src.config.pulse_config import GMJULY2022_PULSE_CURRENTS, GMFEB23_PULSE_CURRENTS, DEFAULT_PULSE_CURRENTS
 
 
 class DataProcessor:
@@ -299,7 +299,7 @@ class DataProcessor:
         pulse_currents = DEFAULT_PULSE_CURRENTS
         if project_name == 'GMJuly2022':
             pulse_currents = GMJULY2022_PULSE_CURRENTS
-        elif project_name == 'GMFeb23':
+        elif project_name == 'GMFEB23S':
             pulse_currents = GMFEB23_PULSE_CURRENTS    
         # for each RPT file (not sure what it'll do if there are multiple RPT files for 1 RPT...)
         for j,rpt_file in enumerate(rpt_filenames):
@@ -369,9 +369,10 @@ class DataProcessor:
             voltage_v = rpt_subcycle['Data'][0]['Voltage [V]']
             ah_throughput = rpt_subcycle['Data'][0]['Ah throughput [A.h]']
             # Call the get_Rs_SOC function with PULSE_CURRENTS from config
-            hppc_data = self.get_Rs_SOC(time_ms, current_a, voltage_v, ah_throughput, pulse_currents, MAX_PULSES)
+            hppc_data = self.get_Rs_SOC(time_ms, current_a, voltage_v, ah_throughput, pulse_currents)
             # Dynamically generate metrics_mapping based on PULSE_CURRENTS
-            for col in ["Q_ch1", "R_ch1_s", "R_ch1_l",
+            for col in ["Q_dhS", "R_dhS_s", "R_dhS_l",
+                        "Q_ch1", "R_ch1_s", "R_ch1_l",
                         "Q_ch2", "R_ch2_s", "R_ch2_l",
                         "Q_dh1", "R_dh1_s", "R_dh1_l", 
                         "Q_dh2", "R_dh2_s", "R_dh2_l"]:
@@ -393,7 +394,7 @@ class DataProcessor:
             cell_cycle_metrics.at[i, "R_dh2_s"] = hppc_data['R_s'][3] if len(hppc_data['R_s']) > 3 else np.nan
             cell_cycle_metrics.at[i, "R_dh2_l"] = hppc_data['R_l'][3] if len(hppc_data['R_l']) > 3 else np.nan
 
-    def get_Rs_SOC(self, t, I, V, Q, pulse_currents, max_pulses=11):
+    def get_Rs_SOC(self, t, I, V, Q, pulse_currents):
         """ 
         Processes HPPC data to get DC Resistance for given pulse currents at different Qs. 
         Assumes that this is a discharge HPPC i.e. the initial Q is 1. 
@@ -411,20 +412,30 @@ class DataProcessor:
             else:
                 idxk = np.where((np.diff(I)>0.1) & (I[:-1]>pulse_current-0.1)& (I[:-1]<pulse_current+0.1))[0]
             idxk = idxk
-            no_pulses = min(max_pulses,min(len(idxi),len(idxk))) #robustneess hack to drop last data can revisit. Siegeljb 12/8/2023
+            no_pulses = min(len(idxi),len(idxk)) #robustneess hack to drop last data can revisit. Siegeljb 12/8/2023
 
             r1, r2, qr = [], [], []
+            r1S, r2S, qrS = [], [], []
             for pno in range(no_pulses):
                 t1, V1, I1 = t[idxi[pno]-1-pts:idxi[pno]-1], V[idxi[pno]-1-pts:idxi[pno]-1], I[idxi[pno]-1-pts:idxi[pno]-1]
                 t2, V2, I2 = t[idxi[pno]:idxi[pno]+pts], V[idxi[pno]:idxi[pno]+pts], I[idxi[pno]:idxi[pno]+pts]
                 t3, V3, I3 = t[idxk[pno]+1-pts:idxk[pno]+1], V[idxk[pno]+1-pts:idxk[pno]+1], I[idxk[pno]+1-pts:idxk[pno]+1]
                 r_p1 = abs((np.average(V2) - np.average(V1)) / (np.average(I2) - np.average(I1)))
                 r_p2 = abs((np.average(V3) - np.average(V1)) / (np.average(I3) - np.average(I1)))
+                delta_q=np.average(Q[idxi[pno]-1-pts:idxi[pno]-1])-np.average(Q[idxk[pno]+1-pts:idxk[pno]+1])
                 q_val = np.average(Q[idxi[pno]-1-pts:idxi[pno]-1])
-                r1.append(round(r_p1, 4))
-                r2.append(round(r_p2, 4))
-                qr.append(q_val)
+                if(abs(delta_q)>0.1):
+                    r1S.append(round(r_p1, 4))
+                    r2S.append(round(r_p2, 4))
+                    qrS.append(q_val)
+                else:
+                    r1.append(round(r_p1, 4))
+                    r2.append(round(r_p2, 4))
+                    qr.append(q_val)
+
             results.append({'pulse_current': pulse_current, 'Q': qr, 'R_s': r1, 'R_l': r2})
+            results.append({'pulse_current': pulse_current, 'Qs': qrS, 'R_sS': r1S, 'R_lS': r2S})
+
         return pd.DataFrame(results)
 
     def _process_cycler_expansion(self, records_vdf, cell_cycle_metrics, calibration_parameters, numFiles = 1000, t_match_threshold=60000):
@@ -776,6 +787,7 @@ class DataProcessor:
 
         # For each data file...
         for record in records_cycler[0:min(len(records_cycler), numFiles)]:
+
             # 1. Load data from each data file to a dataframe. Update AhT and ignore unplugged thermocouple values. For RPTs, convert t with ms.
             isRPT =  ('RPT').lower() in record['tr_name'].lower() or ('EIS').lower() in record['tr_name'].lower() 
             isFormation = ('_F').lower() in record['tr_name'].lower() and not ('_FORMTAP').lower() in record['tr_name'].lower() 
@@ -786,7 +798,10 @@ class DataProcessor:
                 test_trace_keys_arbin = ['h_datapoint_time','h_test_time','h_current', 'h_potential', 'c_cumulative_capacity', 'h_step_index','h_cycle','h_charge_capacity','h_discharge_capacity','h_step_ord',]
                 df_labels_arbin = ['Time [ms]','Test Time [ms]', 'Current [A]', 'Voltage [V]', 'Ah throughput [A.h]', 'Step index','Cycle index', 'Charge Ah throughput [A.h]','Discharge Ah throughput [A.h]','Step ord']
                 test_data = self._record_to_df(record, test_trace_keys_arbin, df_labels_arbin, ms = isRPT)
-                test_data['Temperature [degC]'] = [np.nan]*len(test_data) # make arbin tables with same columns as neware files
+                if(test_data is None):
+                    self.logger.error(f"test_data is None from {record['tr_name']}")
+                else:
+                    test_data['Temperature [degC]'] = [np.nan]*len(test_data) # make arbin tables with same columns as neware files
                 if ('biologic' in record['tags']):
                     if(max(abs(test_data['Current [A]']))>20): # current data is ma vs A divide by 1000.
                         test_data['Current [A]']=test_data['Current [A]']/1000
