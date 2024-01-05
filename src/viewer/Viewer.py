@@ -148,7 +148,12 @@ class Viewer():
         ax3 = axes.flat[3]
         if not all(t_vdf.isnull()):
             ax3.plot_date(t_vdf[0::100],exp_vdf[0::100],'-')
-            ax3.plot_date(t_vdf[cycle_idx_vdf], exp_vdf[cycle_idx_vdf], "x")
+            if cycle_idx_vdf is not None:
+                try:
+                    ax3.plot_date(t_vdf[cycle_idx_vdf], exp_vdf[cycle_idx_vdf], "x")
+                except Exception as e:
+                    print(e)
+                    print(cycle_idx_vdf)
         ax3.set_ylabel("Expansion [um]")
         ax3.grid()
 

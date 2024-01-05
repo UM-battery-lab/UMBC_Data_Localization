@@ -49,12 +49,19 @@ def process_cell_test():
     #cell_name='GMJuly2022_CELL018'
 
     #cell_name='GMJuly2022_CELL012'
+#    cell_name='GMJuly2022_CELL041'
+#    cell_name='GMJuly2022_CELL016'
     cell_name='GMJuly2022_CELL085'
+    # Hamid cells 16 and 41
     #cell_name='GMFEB23S_CELL066'
  #   cell_name='GMJuly2022_CELL104'
 
-    cell_name='GMFEB23S_CELL031'
+   # cell_name='GMFEB23S_CELL031'
    # cell_name='GMFEB23S_CELL072'
+    cell_name='GMFEB23S_CELL045'
+    cell_name='GMFEB23S_CELL046'
+
+    #cell_name='GMJuly2022_CELL013'
 
     dataManager = DataManager(use_redis=False)
     def save_figs(figs, cell_name, time_name):
@@ -71,6 +78,8 @@ def process_cell_test():
 
 
     cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt = dataManager.process_cell(cell_name, reset=True);#, reset=True)#, start_time='2023-07-01_00-00-00', end_time='2023-07-28_23-59-59')
+#    cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt = dataManager.process_cell(cell_name, reset=True, start_time='2022-09-13_10-00-00', end_time='2022-09-24_10-00-00');#, reset=True)#)
+
 
 
 
@@ -135,7 +144,9 @@ def onetest():
     #cell_cycle_metrics, cell_data, cell_data_vdf=dataManager.process_tr('GMJuly2022_CELL104_Test7A_1_P45C_5P0PSI_20230327_R0_CH094_20230327233233_34_2_6_2818580233')
     
     #cell_cycle_metrics, cell_data, cell_data_vdf=dataManager.process_tr('GMJuly2022_CELL104_Test7A_1_P45C_5P0PSI_20230207_R0_CH094_20230207101259_34_2_6_2818580218')
-    cell_cycle_metrics, cell_data, cell_data_vdf=dataManager.process_tr('GMJuly2022_CELL104_RPT_3_P25C_5P0PSI_20230310_R0_CH094_20230310163917_34_2_6_2818580224')
+    # cell_cycle_metrics, cell_data, cell_data_vdf=dataManager.process_tr('GMJuly2022_CELL104_RPT_3_P25C_5P0PSI_20230310_R0_CH094_20230310163917_34_2_6_2818580224')
+
+    cell_cycle_metrics, cell_data, cell_data_vdf=dataManager.process_tr('GMJuly2022_CELL085_RPT_1_P25C_25P0PSI_20220914_R0_CH030_20220914104354_36_4_6_2818579441')
 
     plt.show()
 
@@ -144,8 +155,8 @@ if __name__ == '__main__':
 
     # filter_test()
 
-#     process_cell_test()
-    process_cell_test()
+     process_cell_test()
+#    process_cell_test()
 #    #process_tr_test()
 #     consistency_test()
 #    onetest()

@@ -337,7 +337,13 @@ class DataProcessor:
         if cols != []:
             cell_rpt_data = cell_rpt_data[[cols[len(cols)-1]] + cols[0:-1]] 
         # Creating a temporary column 'temp_sort' with the sorting values
-        cell_rpt_data['temp_sort'] = cell_rpt_data['Data'].apply(lambda x: x['Time [ms]'].iloc[0] if not x.empty else float('inf'))
+            
+        #cell_rpt_data['temp_sort'] = cell_rpt_data['Data'].apply(lambda x: x['Time [ms]'].iloc[0] if not x.empty else float('inf'))
+        try:
+            cell_rpt_data['temp_sort'] = cell_rpt_data['Data'].apply(lambda x: x['Time [ms]'].iloc[0] if not x.empty else float('inf'))
+        except:
+            self.logger.error(f"Error while creating temp_sort column for {cell_cycle_metrics['Test name']}")
+
         cell_rpt_data = cell_rpt_data.sort_values(by='temp_sort')
         cell_rpt_data.drop('temp_sort', axis=1, inplace=True)
         
@@ -369,75 +375,55 @@ class DataProcessor:
             voltage_v = rpt_subcycle['Data'][0]['Voltage [V]']
             ah_throughput = rpt_subcycle['Data'][0]['Ah throughput [A.h]']
             # Call the get_Rs_SOC function with PULSE_CURRENTS from config
-            hppc_data = self.get_Rs_SOC(time_ms, current_a, voltage_v, ah_throughput, pulse_currents)
+            hppc_data = self.get_Rs_SOC(time_ms, current_a, voltage_v, ah_throughput)
             # Dynamically generate metrics_mapping based on PULSE_CURRENTS
-            for col in ["Q_dhS", "R_dhS_s", "R_dhS_l",
-                        "Q_ch1", "R_ch1_s", "R_ch1_l",
-                        "Q_ch2", "R_ch2_s", "R_ch2_l",
-                        "Q_dh1", "R_dh1_s", "R_dh1_l", 
-                        "Q_dh2", "R_dh2_s", "R_dh2_l"]:
+            for col in ["pulse_Q","Pulse_Dur","Pulse_Amp","Rs","Rlong"]:
                 if col not in cell_cycle_metrics.columns:
                     cell_cycle_metrics[col] = np.nan
                 cell_cycle_metrics[col] = cell_cycle_metrics[col].astype(object)
-
+            if not hppc_data['Q'].empty:
             # Update the cell_cycle_metrics with the new data
-            cell_cycle_metrics.at[i, "Q_ch1"] = hppc_data['Q'][0] if hppc_data['Q'].empty else np.nan
-            cell_cycle_metrics.at[i, "Q_ch2"] = hppc_data['Q'][1] if len(hppc_data['Q']) > 1 else np.nan
-            cell_cycle_metrics.at[i, "Q_dh1"] = hppc_data['Q'][2] if len(hppc_data['Q']) > 2 else np.nan
-            cell_cycle_metrics.at[i, "Q_dh2"] = hppc_data['Q'][3] if len(hppc_data['Q']) > 3 else np.nan
-            cell_cycle_metrics.at[i, "R_ch1_s"] = hppc_data['R_s'][0] if hppc_data['R_s'].empty else np.nan
-            cell_cycle_metrics.at[i, "R_ch1_l"] = hppc_data['R_l'][0] if hppc_data['R_l'].empty else np.nan
-            cell_cycle_metrics.at[i, "R_ch2_s"] = hppc_data['R_s'][1] if len(hppc_data['R_s']) > 1 else np.nan
-            cell_cycle_metrics.at[i, "R_ch2_l"] = hppc_data['R_l'][1] if len(hppc_data['R_l']) > 1 else np.nan
-            cell_cycle_metrics.at[i, "R_dh1_s"] = hppc_data['R_s'][2] if len(hppc_data['R_s']) > 2 else np.nan
-            cell_cycle_metrics.at[i, "R_dh1_l"] = hppc_data['R_l'][2] if len(hppc_data['R_l']) > 2 else np.nan
-            cell_cycle_metrics.at[i, "R_dh2_s"] = hppc_data['R_s'][3] if len(hppc_data['R_s']) > 3 else np.nan
-            cell_cycle_metrics.at[i, "R_dh2_l"] = hppc_data['R_l'][3] if len(hppc_data['R_l']) > 3 else np.nan
+                cell_cycle_metrics.at[i, "pulse_Q"] = hppc_data['Q'].values# if hppc_data['Q'].empty else np.nan
+                cell_cycle_metrics.at[i, "Pulse_Dur"] = hppc_data['pulse_duration'].values#[0] if hppc_data['pulse_duration'].empty  else np.nan
+                cell_cycle_metrics.at[i, "Pulse_Amp"] = hppc_data['pulse_current'].values#[0] if hppc_data['pulse_current'].empty  else np.nan
+                cell_cycle_metrics.at[i, "Rs"] = hppc_data['R_s'].values#[0] if hppc_data['R_s'].empty  else np.nan
+                cell_cycle_metrics.at[i, "Rlong"] = hppc_data['R_l'].values#[0] if hppc_data['R_l'].empty else np.nan
 
-    def get_Rs_SOC(self, t, I, V, Q, pulse_currents):
+
+    def get_Rs_SOC(self, t, I, V, Q):
         """ 
         Processes HPPC data to get DC Resistance for given pulse currents at different Qs. 
-        Assumes that this is a discharge HPPC i.e. the initial Q is 1. 
+        Assumes that this is a discharge HPPC i.e. the initial Q is 0, correspondign to 100% SOC
         """
-        results = []
         pts = 4
-        for pulse_current in pulse_currents:
-            if pulse_current<0:
-                idxi = np.where((np.diff(I)<-0.1) & (I[1:]>pulse_current-0.1)& (I[1:]<pulse_current+0.1))[0]
-            else:
-                idxi = np.where((np.diff(I)>0.1) & (I[1:]>pulse_current-0.1)& (I[1:]<pulse_current+0.1))[0]
-            idxi = idxi+1
-            if pulse_current>0:
-                idxk = np.where((np.diff(I)<-0.1) & (I[:-1]>pulse_current-0.1)& (I[:-1]<pulse_current+0.1))[0]
-            else:
-                idxk = np.where((np.diff(I)>0.1) & (I[:-1]>pulse_current-0.1)& (I[:-1]<pulse_current+0.1))[0]
-            idxk = idxk
-            no_pulses = min(len(idxi),len(idxk)) #robustneess hack to drop last data can revisit. Siegeljb 12/8/2023
+        idxi1 = np.where((np.diff(I)>0.1) & (I[1:]>0.1))[0]
+        idxi2 = np.where((np.diff(I)<-0.1) & (I[1:]<-0.1))[0]
+        idxi = np.concatenate([idxi1,idxi2])
+        idxi = idxi + 1
+        idxk1 = np.where((np.diff(I)<-0.1) & (I[:-1]>0.1))[0]
+        idxk2 = np.where((np.diff(I)>0.1) & (I[:-1]<-0.1))[0]
+        idxk = np.concatenate([idxk1,idxk2])
+        no_pulses = min(len(idxi),len(idxk))
 
-            r1, r2, qr = [], [], []
-            r1S, r2S, qrS = [], [], []
-            for pno in range(no_pulses):
-                t1, V1, I1 = t[idxi[pno]-1-pts:idxi[pno]-1], V[idxi[pno]-1-pts:idxi[pno]-1], I[idxi[pno]-1-pts:idxi[pno]-1]
-                t2, V2, I2 = t[idxi[pno]:idxi[pno]+pts], V[idxi[pno]:idxi[pno]+pts], I[idxi[pno]:idxi[pno]+pts]
-                t3, V3, I3 = t[idxk[pno]+1-pts:idxk[pno]+1], V[idxk[pno]+1-pts:idxk[pno]+1], I[idxk[pno]+1-pts:idxk[pno]+1]
-                r_p1 = abs((np.average(V2) - np.average(V1)) / (np.average(I2) - np.average(I1)))
-                r_p2 = abs((np.average(V3) - np.average(V1)) / (np.average(I3) - np.average(I1)))
-                delta_q=np.average(Q[idxi[pno]-1-pts:idxi[pno]-1])-np.average(Q[idxk[pno]+1-pts:idxk[pno]+1])
-                q_val = np.average(Q[idxi[pno]-1-pts:idxi[pno]-1])
-                if(abs(delta_q)>0.1):
-                    r1S.append(round(r_p1, 4))
-                    r2S.append(round(r_p2, 4))
-                    qrS.append(q_val)
-                else:
-                    r1.append(round(r_p1, 4))
-                    r2.append(round(r_p2, 4))
-                    qr.append(q_val)
-
-            results.append({'pulse_current': pulse_current, 'Q': qr, 'R_s': r1, 'R_l': r2})
-            results.append({'pulse_current': pulse_current, 'Qs': qrS, 'R_sS': r1S, 'R_lS': r2S})
-
-        return pd.DataFrame(results)
-
+        r1, r2, qr, pcur, pdur = [], [], [], [], []
+        for pno in range(no_pulses):
+            t1, V1, I1 = t[idxi[pno]-1-pts:idxi[pno]-1], V[idxi[pno]-1-pts:idxi[pno]-1], I[idxi[pno]-1-pts:idxi[pno]-1]
+            t2, V2, I2 = t[idxi[pno]:idxi[pno]+pts], V[idxi[pno]:idxi[pno]+pts], I[idxi[pno]:idxi[pno]+pts]
+            t3, V3, I3 = t[idxk[pno]+1-pts:idxk[pno]+1], V[idxk[pno]+1-pts:idxk[pno]+1], I[idxk[pno]+1-pts:idxk[pno]+1]
+            if len(t1) < 4 or len(t2) < 4 or len(t3) < 4:
+                continue
+            r_p1 = abs((np.average(V2) - np.average(V1)) / (np.average(I2) - np.average(I1)))
+            r_p2 = abs((np.average(V3) - np.average(V1)) / (np.average(I3) - np.average(I1)))
+            delta_q=np.average(Q[idxk[pno]+1-pts:idxk[pno]+1])-np.average(Q[idxi[pno]-1-pts:idxi[pno]-1])
+            q_val = np.average(Q[idxi[pno]-1-pts:idxi[pno]-1])
+            r1.append(round(r_p1, 4))
+            r2.append(round(r_p2, 4))
+            qr.append(q_val)
+            pcur.append(round(np.average(I2),2))
+            pdur.append(round(np.average(t3)-np.average(t1),2))
+        df =  pd.DataFrame({'pulse_current': pcur, 'pulse_duration': pdur, 'Q': qr, 'R_s': r1, 'R_l': r2})
+        return df
+   
     def _process_cycler_expansion(self, records_vdf, cell_cycle_metrics, calibration_parameters, numFiles = 1000, t_match_threshold=60000):
         # Combine vdf data into a single df
         cell_data_vdf = self._combine_cycler_expansion(records_vdf, calibration_parameters, numFiles)
