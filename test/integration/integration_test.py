@@ -39,11 +39,14 @@ if __name__ == '__main__':
     # for cell in range(31,32): # 75
     #     present_cell(cell)
 
-     with Pool(8) as pool:          
+    # with Pool(16) as pool:
+    pool=Pool(16)          
 #         result = pool.map(present_cell, range(1,142) )
 # #            result = pool.map(present_cell, [26,44,16,52,50,86,54,41,45] )
-        result = pool.map(present_cell, range(50,100) )    
-        pool.close()
-        pool.join()
-        print(result)
-        print('end')
+    # result = pool.map(present_cell, range(1,50) )
+    # result = pool.map(present_cell, range(50,100) ) 
+    result = pool.map(present_cell, range(100,121) )     
+    pool.close()
+    pool.join()
+    print(result)
+    print('end')

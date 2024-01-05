@@ -726,7 +726,8 @@ class DataProcessor:
         # TODO: I is not used, maybe we should use it to calculate the capacity?
         # combine charge and discharge idx into a list. assumes there are the same length, and alternate charge-discharge (or vice versa)
         cycle_idx = charge_idx + discharge_idx
-        cycle_idx.append(len(t)-1) # add last data point
+        if max(cycle_idx)<len(t)-1:
+            cycle_idx.append(len(t)-1) # add last data point
         cycle_idx.sort() # should alternate charge and discharge start indices
         Q_c = []
         Q_d = []
