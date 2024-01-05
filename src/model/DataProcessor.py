@@ -383,11 +383,11 @@ class DataProcessor:
                 cell_cycle_metrics[col] = cell_cycle_metrics[col].astype(object)
             if not hppc_data['Q'].empty:
             # Update the cell_cycle_metrics with the new data
-                cell_cycle_metrics.at[i, "pulse_Q"] = hppc_data['Q'].values# if hppc_data['Q'].empty else np.nan
-                cell_cycle_metrics.at[i, "Pulse_Dur"] = hppc_data['pulse_duration'].values#[0] if hppc_data['pulse_duration'].empty  else np.nan
-                cell_cycle_metrics.at[i, "Pulse_Amp"] = hppc_data['pulse_current'].values#[0] if hppc_data['pulse_current'].empty  else np.nan
-                cell_cycle_metrics.at[i, "Rs"] = hppc_data['R_s'].values#[0] if hppc_data['R_s'].empty  else np.nan
-                cell_cycle_metrics.at[i, "Rlong"] = hppc_data['R_l'].values#[0] if hppc_data['R_l'].empty else np.nan
+                cell_cycle_metrics.at[i, "pulse_Q"] = hppc_data['Q'].tolist()# if hppc_data['Q'].empty else np.nan
+                cell_cycle_metrics.at[i, "Pulse_Dur"] = hppc_data['pulse_duration'].tolist()#[0] if hppc_data['pulse_duration'].empty  else np.nan
+                cell_cycle_metrics.at[i, "Pulse_Amp"] = hppc_data['pulse_current'].tolist()#[0] if hppc_data['pulse_current'].empty  else np.nan
+                cell_cycle_metrics.at[i, "Rs"] = hppc_data['R_s'].tolist()#[0] if hppc_data['R_s'].empty  else np.nan
+                cell_cycle_metrics.at[i, "Rlong"] = hppc_data['R_l'].tolist()#[0] if hppc_data['R_l'].empty else np.nan
 
 
     def get_Rs_SOC(self, t, I, V, Q):
@@ -419,8 +419,8 @@ class DataProcessor:
             r1.append(round(r_p1, 4))
             r2.append(round(r_p2, 4))
             qr.append(q_val)
-            pcur.append(round(np.average(I2),2))
-            pdur.append(round(np.average(t3)-np.average(t1),2))
+            pcur.append(round(np.average(I2),3))
+            pdur.append(round(np.average(t3)-np.average(t1),3))
         df =  pd.DataFrame({'pulse_current': pcur, 'pulse_duration': pdur, 'Q': qr, 'R_s': r1, 'R_l': r2})
         return df
    

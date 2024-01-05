@@ -60,6 +60,7 @@ def process_cell_test():
    # cell_name='GMFEB23S_CELL072'
     cell_name='GMFEB23S_CELL045'
     cell_name='GMFEB23S_CELL046'
+   # cell_name='GMFEB23S_CELL048'
 
     #cell_name='GMJuly2022_CELL013'
 

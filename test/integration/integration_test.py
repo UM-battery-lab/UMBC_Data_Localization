@@ -14,8 +14,8 @@ from src.viewer.Viewer import Viewer
 
 # Integration test
 def present_cell(cell_num):
- #   cell_name="GMJuly2022_CELL"+f'{cell_num:03d}'
-    cell_name="GMFEB23S_CELL"+f'{cell_num:03d}'
+    cell_name="GMJuly2022_CELL"+f'{cell_num:03d}'
+ #   cell_name="GMFEB23S_CELL"+f'{cell_num:03d}'
 
     dataManager = DataManager(use_redis=False)
     def save_figs(figs, cell_name, time_name):
@@ -39,10 +39,10 @@ if __name__ == '__main__':
     # for cell in range(31,32): # 75
     #     present_cell(cell)
 
-     with Pool(12) as pool:          
+     with Pool(8) as pool:          
 #         result = pool.map(present_cell, range(1,142) )
 # #            result = pool.map(present_cell, [26,44,16,52,50,86,54,41,45] )
-        result = pool.map(present_cell, range(1,75) )    
+        result = pool.map(present_cell, range(1,121) )    
         pool.close()
         pool.join()
         print(result)
