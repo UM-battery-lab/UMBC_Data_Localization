@@ -42,7 +42,7 @@ if __name__ == '__main__':
      with Pool(8) as pool:          
 #         result = pool.map(present_cell, range(1,142) )
 # #            result = pool.map(present_cell, [26,44,16,52,50,86,54,41,45] )
-        result = pool.map(present_cell, range(1,121) )    
+        result = pool.map(present_cell, range(50,100) )    
         pool.close()
         pool.join()
         print(result)
