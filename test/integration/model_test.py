@@ -66,7 +66,8 @@ def process_cell_test():
     cell_name='GMJuly2022_CELL029'
     cell_name='GMJuly2022_CELL044'
     cell_name='GMJuly2022_CELL087'
-    cell_names=['GMJuly2022_CELL044','GMJuly2022_CELL011','GMJuly2022_CELL031','GMJuly2022_CELL046']
+    cell_names=['GMJuly2022_CELL011','GMJuly2022_CELL031','GMJuly2022_CELL046']
+    cell_names=['GMJuly2022_CELL031']
 
     for cell_name in cell_names:
         dataManager = DataManager(use_redis=False)
