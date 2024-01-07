@@ -341,11 +341,12 @@ class DataProcessor:
         #cell_rpt_data['temp_sort'] = cell_rpt_data['Data'].apply(lambda x: x['Time [ms]'].iloc[0] if not x.empty else float('inf'))
         try:
             cell_rpt_data['temp_sort'] = cell_rpt_data['Data'].apply(lambda x: x['Time [ms]'].iloc[0] if not x.empty else float('inf'))
-        except:
+            cell_rpt_data = cell_rpt_data.sort_values(by='temp_sort')
+            cell_rpt_data.drop('temp_sort', axis=1, inplace=True)
+
+        except: 
             self.logger.error(f"Error while creating temp_sort column for {cell_cycle_metrics['Test name']}")
 
-        cell_rpt_data = cell_rpt_data.sort_values(by='temp_sort')
-        cell_rpt_data.drop('temp_sort', axis=1, inplace=True)
         
         return cell_rpt_data
     
@@ -726,20 +727,22 @@ class DataProcessor:
         # TODO: I is not used, maybe we should use it to calculate the capacity?
         # combine charge and discharge idx into a list. assumes there are the same length, and alternate charge-discharge (or vice versa)
         cycle_idx = charge_idx + discharge_idx
-        if max(cycle_idx)<len(t)-1:
-            cycle_idx.append(len(t)-1) # add last data point
-        cycle_idx.sort() # should alternate charge and discharge start indices
         Q_c = []
         Q_d = []
-        
-        # Calculate capacity 
-        for i in range(len(cycle_idx)-1):
-            # Calculate capacity based on AhT.
-            Q = AhT[cycle_idx[i+1]]-AhT[cycle_idx[i]]
-            if cycle_idx[i] in charge_idx:
-                Q_c.append(Q) 
-            else:
-                Q_d.append(Q) 
+
+        if len(cycle_idx)>0:
+            if max(cycle_idx)<len(t)-1:
+                cycle_idx.append(len(t)-1) # add last data point
+            cycle_idx.sort() # should alternate charge and discharge start indices
+            
+            # Calculate capacity 
+            for i in range(len(cycle_idx)-1):
+                # Calculate capacity based on AhT.
+                Q = AhT[cycle_idx[i+1]]-AhT[cycle_idx[i]]
+                if cycle_idx[i] in charge_idx:
+                    Q_c.append(Q) 
+                else:
+                    Q_d.append(Q) 
         return np.array(Q_c), np.array(Q_d)
 
     def _combine_cycler_data(self, records_cycler, cycle_id_lims, numFiles=1000, last_AhT = 0):
