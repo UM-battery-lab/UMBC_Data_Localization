@@ -854,7 +854,7 @@ class DataProcessor:
             dt_min = lims['dt_min']
 
             # 5. Find indices for cycles in file
-            if isFormation and 'arbin' in record['tags']: # find peaks in voltage where I==0, ignore min during hppc
+            if False:#isFormation and 'arbin' in record['tags']: # find peaks in voltage where I==0, ignore min during hppc
 
 
                 peak_prominence = 0.1
@@ -880,6 +880,7 @@ class DataProcessor:
                 try: # won't work for half cycles (files with only charge or only discharge)
                     charge_start_idx_file, discharge_start_idx_file = self._match_charge_discharge(charge_start_idx_file, discharge_start_idx_file)
                 except:
+                    self.logger.error(f"Error processing {record['tr_name']}: failed to _match_charge_discharge")
                     pass
 
             # 6. Add aux cycle indicators to df. Column of True if start of a cycle, otherwise False. Set default cycle indicator = charge start 
@@ -1134,15 +1135,15 @@ class DataProcessor:
                     discharge_start_idx=np.append(discharge_start_idx, min(potential_discharge_start_idx, key=lambda x:abs(x-turning_points[ii+1])))
             else:
                 # no turning points in the data, just take the extents? this will probably breaksomething else...
-                charge_start_idx=np.array([0])
-                discharge_start_idx=np.array([len(t)-1])
+                charge_start_idx=[]#np.array([0])
+                discharge_start_idx=[]#np.array([len(t)-1])
                 # find the next discharge
                 #discharge_start_idx=np.array([potential_charge_start_idx[0]])
         except Exception as e:
             print(e)
             self.logger.info(f"No cycles detected (using the whole test).")    
-            charge_start_idx=np.array([0])
-            discharge_start_idx=np.array([len(t)-1])
+            charge_start_idx=[]#np.array([0])
+            discharge_start_idx=[]#np.array([len(t)-1])
         #discharge_start_idx=np.array([np.searchsorted(potential_discharge_start_idx,charge_start_idx[0],side='right')])
         # if my_bkps[-1] >= len(t)-1:
         #     my_bkps[-1]=len(t)-1

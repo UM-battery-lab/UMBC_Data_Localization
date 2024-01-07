@@ -64,7 +64,7 @@ def process_cell_test():
 
     cell_name='GMJuly2022_CELL015'
     cell_name='GMJuly2022_CELL029'
-
+    # cell_name='GMJuly2022_CELL044'
     dataManager = DataManager(use_redis=False)
     def save_figs(figs, cell_name, time_name):
         dataManager.save_figs(figs, cell_name, time_name, keep_open=True)
