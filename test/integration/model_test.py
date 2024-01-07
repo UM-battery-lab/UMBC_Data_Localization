@@ -16,6 +16,8 @@ import matplotlib
 #matplotlib.use('QtAgg')
 matplotlib.use('TkAgg')
 #matplotlib.use('GTK3Agg') 
+# Importing gc module
+import gc
 
 # Integration test
 def createdb_test():
@@ -67,7 +69,8 @@ def process_cell_test():
     cell_name='GMJuly2022_CELL044'
     cell_name='GMJuly2022_CELL087'
     cell_names=['GMJuly2022_CELL011','GMJuly2022_CELL031','GMJuly2022_CELL046']
-    cell_names=['GMJuly2022_CELL031']
+    # cell_names=['GMJuly2022_CELL031']
+    # cell_names=['GMJuly2022_CELL046']
 
     for cell_name in cell_names:
         dataManager = DataManager(use_redis=False)
@@ -86,7 +89,18 @@ def process_cell_test():
 
         cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt = dataManager.process_cell(cell_name, reset=True);#, reset=True)#, start_time='2023-07-01_00-00-00', end_time='2023-07-28_23-59-59')
     #    cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt = dataManager.process_cell(cell_name, reset=True, start_time='2022-09-13_10-00-00', end_time='2022-09-24_10-00-00');#, reset=True)#)
+        
 
+ 
+        # Returns the number of
+        # objects it has collected
+        # and deallocated
+        collected = gc.collect()
+        
+        # Prints Garbage collector 
+        # as 0 object
+        print("Garbage collector: collected",
+                "%d objects." % collected)
 
 
 
@@ -99,7 +113,7 @@ def process_cell_test():
         # print(cell_data)
         # print(cell_data_vdf)
         # print(cell_cycle_metrics)
-        plt.show()
+        # plt.show()
 
 def process_tr_test():
     tr_name = 'GMJuly2022_CELL025_Test7B_1_P0C_5P0PSI_20230412_R0_CH055'
