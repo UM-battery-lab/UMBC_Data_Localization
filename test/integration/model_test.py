@@ -65,24 +65,26 @@ def process_cell_test():
     cell_name='GMJuly2022_CELL015'
     cell_name='GMJuly2022_CELL029'
     cell_name='GMJuly2022_CELL044'
-    cell_name='GMJuly2022_CELL063'
- 
-    dataManager = DataManager(use_redis=False)
-    def save_figs(figs, cell_name, time_name):
-        dataManager.save_figs(figs, cell_name, time_name, keep_open=True)
-    presenter = Presenter()
-    viewer = Viewer(call_back=save_figs)
-    #cell_name = "UMBL2022FEB_CELL152051"
+    cell_name='GMJuly2022_CELL087'
+    cell_names=['GMJuly2022_CELL044','GMJuly2022_CELL011','GMJuly2022_CELL031','GMJuly2022_CELL046']
 
-    dataManager.attach(presenter)
-    presenter.attach(viewer)
+    for cell_name in cell_names:
+        dataManager = DataManager(use_redis=False)
+        def save_figs(figs, cell_name, time_name):
+            dataManager.save_figs(figs, cell_name, time_name, keep_open=True)
+        presenter = Presenter()
+        viewer = Viewer(call_back=save_figs)
+        #cell_name = "UMBL2022FEB_CELL152051"
 
-    cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt = None, None, None, None
-    # test process_cell
+        dataManager.attach(presenter)
+        presenter.attach(viewer)
+
+        cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt = None, None, None, None
+        # test process_cell
 
 
-    cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt = dataManager.process_cell(cell_name, reset=True);#, reset=True)#, start_time='2023-07-01_00-00-00', end_time='2023-07-28_23-59-59')
-#    cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt = dataManager.process_cell(cell_name, reset=True, start_time='2022-09-13_10-00-00', end_time='2022-09-24_10-00-00');#, reset=True)#)
+        cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt = dataManager.process_cell(cell_name, reset=True);#, reset=True)#, start_time='2023-07-01_00-00-00', end_time='2023-07-28_23-59-59')
+    #    cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt = dataManager.process_cell(cell_name, reset=True, start_time='2022-09-13_10-00-00', end_time='2022-09-24_10-00-00');#, reset=True)#)
 
 
 
@@ -93,10 +95,10 @@ def process_cell_test():
 # 1666131009000.0
     #cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt = dataManager.process_cell('GMJuly2022_CELL901REF', reset=True)#901REF')
 
-    print(cell_data)
-    print(cell_data_vdf)
-    print(cell_cycle_metrics)
-    plt.show()
+        # print(cell_data)
+        # print(cell_data_vdf)
+        # print(cell_cycle_metrics)
+        plt.show()
 
 def process_tr_test():
     tr_name = 'GMJuly2022_CELL025_Test7B_1_P0C_5P0PSI_20230412_R0_CH055'

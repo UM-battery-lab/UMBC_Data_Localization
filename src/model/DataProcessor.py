@@ -14,7 +14,7 @@ from src.utils.Logger import setup_logger
 from src.utils.DateConverter import DateConverter
 from src.config.df_config import CYCLE_ID_LIMS, DEFAULT_TRACE_KEYS, DEFAULT_DF_LABELS
 from src.config.calibration_config import X1, X2, C
-from src.config.pulse_config import GMJULY2022_PULSE_CURRENTS, GMFEB23_PULSE_CURRENTS, DEFAULT_PULSE_CURRENTS
+from src.config.pulse_config import GMJULY2022_PULSE_CURRENTS, GMFEB23_PULSE_CURRENTS, DEFAULT_PULSE_CURRENTS, Qmax
 
 
 class DataProcessor:
@@ -739,6 +739,9 @@ class DataProcessor:
             for i in range(len(cycle_idx)-1):
                 # Calculate capacity based on AhT.
                 Q = AhT[cycle_idx[i+1]]-AhT[cycle_idx[i]]
+                if(Q>Qmax):
+                    Q=np.nan
+                    self.logger.warning(f"Invalid Capacity for cycle {i}")
                 if cycle_idx[i] in charge_idx:
                     Q_c.append(Q) 
                 else:
