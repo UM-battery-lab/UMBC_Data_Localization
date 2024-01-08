@@ -16,6 +16,8 @@ import matplotlib
 #matplotlib.use('QtAgg')
 matplotlib.use('TkAgg')
 #matplotlib.use('GTK3Agg') 
+# Importing gc module
+import gc
 
 # Integration test
 def createdb_test():
@@ -49,25 +51,59 @@ def process_cell_test():
     #cell_name='GMJuly2022_CELL018'
 
     #cell_name='GMJuly2022_CELL012'
+#    cell_name='GMJuly2022_CELL041'
+#    cell_name='GMJuly2022_CELL016'
     cell_name='GMJuly2022_CELL085'
+    # Hamid cells 16 and 41
     #cell_name='GMFEB23S_CELL066'
  #   cell_name='GMJuly2022_CELL104'
-    cell_name='GMFEB23S_CELL005'
-    dataManager = DataManager(use_redis=False)
-    def save_figs(figs, cell_name, time_name):
-        dataManager.save_figs(figs, cell_name, time_name, keep_open=True)
-    presenter = Presenter()
-    viewer = Viewer(call_back=save_figs)
-    #cell_name = "UMBL2022FEB_CELL152051"
 
-    dataManager.attach(presenter)
-    presenter.attach(viewer)
+   # cell_name='GMFEB23S_CELL031'
+   # cell_name='GMFEB23S_CELL072'
+    cell_name='GMFEB23S_CELL045'
+    cell_name='GMFEB23S_CELL046'
+   # cell_name='GMFEB23S_CELL048'
 
-    cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt = None, None, None, None
-    # test process_cell
+    cell_name='GMJuly2022_CELL015'
+    cell_name='GMJuly2022_CELL029'
+    cell_name='GMJuly2022_CELL044'
+    cell_name='GMJuly2022_CELL087'
+    cell_names=['GMJuly2022_CELL011','GMJuly2022_CELL031','GMJuly2022_CELL046']
+    cell_names=['GMFEB23S_CELL046','GMFEB23S_CELL048','GMFEB23S_CELL034','GMFEB23S_CELL036','GMFEB23S_CELL038','GMFEB23S_CELL040','GMFEB23S_CELL042','GMFEB23S_CELL044','GMFEB23S_CELL050']
+    # cell_names=['GMJuly2022_CELL031']
+    # cell_names=['GMJuly2022_CELL046']
+    cell_names=['GMJuly2022_CELL099']
+    cell_names=['GMJuly2022_CELL085','GMJuly2022_CELL088','GMJuly2022_CELL044','GMJuly2022_CELL046']
+    
+    for cell_name in cell_names:
+        dataManager = DataManager(use_redis=False)
+        def save_figs(figs, cell_name, time_name):
+            dataManager.save_figs(figs, cell_name, time_name, keep_open=True)
+        presenter = Presenter()
+        viewer = Viewer(call_back=save_figs)
+        #cell_name = "UMBL2022FEB_CELL152051"
+
+        dataManager.attach(presenter)
+        presenter.attach(viewer)
+
+        cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt = None, None, None, None
+        # test process_cell
 
 
-    cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt = dataManager.process_cell(cell_name, reset=True);#, reset=True)#, start_time='2023-07-01_00-00-00', end_time='2023-07-28_23-59-59')
+        cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt = dataManager.process_cell(cell_name, reset=True);#, reset=True)#, start_time='2023-07-01_00-00-00', end_time='2023-07-28_23-59-59')
+    #    cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt = dataManager.process_cell(cell_name, reset=True, start_time='2022-09-13_10-00-00', end_time='2022-09-24_10-00-00');#, reset=True)#)
+        
+
+ 
+        # Returns the number of
+        # objects it has collected
+        # and deallocated
+        collected = gc.collect()
+        
+        # Prints Garbage collector 
+        # as 0 object
+        print("Garbage collector: collected",
+                "%d objects." % collected)
 
 
 
@@ -77,10 +113,10 @@ def process_cell_test():
 # 1666131009000.0
     #cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt = dataManager.process_cell('GMJuly2022_CELL901REF', reset=True)#901REF')
 
-    print(cell_data)
-    print(cell_data_vdf)
-    print(cell_cycle_metrics)
-    plt.show()
+        # print(cell_data)
+        # print(cell_data_vdf)
+        # print(cell_cycle_metrics)
+        # plt.show()
 
 def process_tr_test():
     tr_name = 'GMJuly2022_CELL025_Test7B_1_P0C_5P0PSI_20230412_R0_CH055'
@@ -132,7 +168,9 @@ def onetest():
     #cell_cycle_metrics, cell_data, cell_data_vdf=dataManager.process_tr('GMJuly2022_CELL104_Test7A_1_P45C_5P0PSI_20230327_R0_CH094_20230327233233_34_2_6_2818580233')
     
     #cell_cycle_metrics, cell_data, cell_data_vdf=dataManager.process_tr('GMJuly2022_CELL104_Test7A_1_P45C_5P0PSI_20230207_R0_CH094_20230207101259_34_2_6_2818580218')
-    cell_cycle_metrics, cell_data, cell_data_vdf=dataManager.process_tr('GMJuly2022_CELL104_RPT_3_P25C_5P0PSI_20230310_R0_CH094_20230310163917_34_2_6_2818580224')
+    # cell_cycle_metrics, cell_data, cell_data_vdf=dataManager.process_tr('GMJuly2022_CELL104_RPT_3_P25C_5P0PSI_20230310_R0_CH094_20230310163917_34_2_6_2818580224')
+
+    cell_cycle_metrics, cell_data, cell_data_vdf=dataManager.process_tr('GMJuly2022_CELL085_RPT_1_P25C_25P0PSI_20220914_R0_CH030_20220914104354_36_4_6_2818579441')
 
     plt.show()
 
@@ -141,12 +179,12 @@ if __name__ == '__main__':
 
     # filter_test()
 
-#     process_cell_test()
-    process_cell_test()
+     process_cell_test()
+    #process_cell_test()
 #    #process_tr_test()
-#     consistency_test()
+#    consistency_test()
 #    onetest()
     # read_csv_test()
     #update_cycle_stats_test()
-    # sanity_check_test()
+ #   sanity_check_test()
 #    duplicate_ccm_test()

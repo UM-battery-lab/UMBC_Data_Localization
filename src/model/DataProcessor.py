@@ -14,7 +14,7 @@ from src.utils.Logger import setup_logger
 from src.utils.DateConverter import DateConverter
 from src.config.df_config import CYCLE_ID_LIMS, DEFAULT_TRACE_KEYS, DEFAULT_DF_LABELS
 from src.config.calibration_config import X1, X2, C
-from src.config.pulse_config import GMJULY2022_PULSE_CURRENTS, GMFEB23_PULSE_CURRENTS, MAX_PULSES, DEFAULT_PULSE_CURRENTS
+from src.config.pulse_config import GMJULY2022_PULSE_CURRENTS, GMFEB23_PULSE_CURRENTS, DEFAULT_PULSE_CURRENTS, Qmax
 
 
 class DataProcessor:
@@ -292,14 +292,14 @@ class DataProcessor:
         DataFrame
             The dataframe of the summary data for each RPT file
         """
-        rpt_filenames = list(set(cell_cycle_metrics['Test name'][(cell_cycle_metrics['Test type'] == 'RPT') | (cell_cycle_metrics['Test type'] == '_F')]))
+        rpt_filenames = list(set(cell_cycle_metrics['Test name'][(cell_cycle_metrics['Test type'] == 'RPT') | (cell_cycle_metrics['Test type'] == '_F')| (cell_cycle_metrics['Test type'] == '_Cy100')| (cell_cycle_metrics['Test type'] == '_Cby100')]))
         cycle_summary_cols = [c for c in cell_cycle_metrics.columns.to_list() if '[' in c] + ['Test name', 'Protocol']
         cell_rpt_data = pd.DataFrame() 
         # Determine the pulse currents based on project name
         pulse_currents = DEFAULT_PULSE_CURRENTS
         if project_name == 'GMJuly2022':
             pulse_currents = GMJULY2022_PULSE_CURRENTS
-        elif project_name == 'GMFeb23':
+        elif project_name == 'GMFEB23S':
             pulse_currents = GMFEB23_PULSE_CURRENTS    
         # for each RPT file (not sure what it'll do if there are multiple RPT files for 1 RPT...)
         for j,rpt_file in enumerate(rpt_filenames):
@@ -337,9 +337,16 @@ class DataProcessor:
         if cols != []:
             cell_rpt_data = cell_rpt_data[[cols[len(cols)-1]] + cols[0:-1]] 
         # Creating a temporary column 'temp_sort' with the sorting values
-        cell_rpt_data['temp_sort'] = cell_rpt_data['Data'].apply(lambda x: x['Time [ms]'].iloc[0] if not x.empty else float('inf'))
-        cell_rpt_data = cell_rpt_data.sort_values(by='temp_sort')
-        cell_rpt_data.drop('temp_sort', axis=1, inplace=True)
+            
+        #cell_rpt_data['temp_sort'] = cell_rpt_data['Data'].apply(lambda x: x['Time [ms]'].iloc[0] if not x.empty else float('inf'))
+        try:
+            cell_rpt_data['temp_sort'] = cell_rpt_data['Data'].apply(lambda x: x['Time [ms]'].iloc[0] if not x.empty else float('inf'))
+            cell_rpt_data = cell_rpt_data.sort_values(by='temp_sort')
+            cell_rpt_data.drop('temp_sort', axis=1, inplace=True)
+
+        except: 
+            self.logger.error(f"Error while creating temp_sort column for {cell_cycle_metrics['Test name']}")
+
         
         return cell_rpt_data
     
@@ -369,64 +376,55 @@ class DataProcessor:
             voltage_v = rpt_subcycle['Data'][0]['Voltage [V]']
             ah_throughput = rpt_subcycle['Data'][0]['Ah throughput [A.h]']
             # Call the get_Rs_SOC function with PULSE_CURRENTS from config
-            hppc_data = self.get_Rs_SOC(time_ms, current_a, voltage_v, ah_throughput, pulse_currents, MAX_PULSES)
+            hppc_data = self.get_Rs_SOC(time_ms, current_a, voltage_v, ah_throughput)
             # Dynamically generate metrics_mapping based on PULSE_CURRENTS
-            for col in ["Q_ch1", "R_ch1_s", "R_ch1_l",
-                        "Q_ch2", "R_ch2_s", "R_ch2_l",
-                        "Q_dh1", "R_dh1_s", "R_dh1_l", 
-                        "Q_dh2", "R_dh2_s", "R_dh2_l"]:
+            for col in ["pulse_Q","Pulse_Dur","Pulse_Amp","Rs","Rlong"]:
                 if col not in cell_cycle_metrics.columns:
                     cell_cycle_metrics[col] = np.nan
                 cell_cycle_metrics[col] = cell_cycle_metrics[col].astype(object)
-
+            if not hppc_data['Q'].empty:
             # Update the cell_cycle_metrics with the new data
-            cell_cycle_metrics.at[i, "Q_ch1"] = hppc_data['Q'][0] if hppc_data['Q'].empty else np.nan
-            cell_cycle_metrics.at[i, "Q_ch2"] = hppc_data['Q'][1] if len(hppc_data['Q']) > 1 else np.nan
-            cell_cycle_metrics.at[i, "Q_dh1"] = hppc_data['Q'][2] if len(hppc_data['Q']) > 2 else np.nan
-            cell_cycle_metrics.at[i, "Q_dh2"] = hppc_data['Q'][3] if len(hppc_data['Q']) > 3 else np.nan
-            cell_cycle_metrics.at[i, "R_ch1_s"] = hppc_data['R_s'][0] if hppc_data['R_s'].empty else np.nan
-            cell_cycle_metrics.at[i, "R_ch1_l"] = hppc_data['R_l'][0] if hppc_data['R_l'].empty else np.nan
-            cell_cycle_metrics.at[i, "R_ch2_s"] = hppc_data['R_s'][1] if len(hppc_data['R_s']) > 1 else np.nan
-            cell_cycle_metrics.at[i, "R_ch2_l"] = hppc_data['R_l'][1] if len(hppc_data['R_l']) > 1 else np.nan
-            cell_cycle_metrics.at[i, "R_dh1_s"] = hppc_data['R_s'][2] if len(hppc_data['R_s']) > 2 else np.nan
-            cell_cycle_metrics.at[i, "R_dh1_l"] = hppc_data['R_l'][2] if len(hppc_data['R_l']) > 2 else np.nan
-            cell_cycle_metrics.at[i, "R_dh2_s"] = hppc_data['R_s'][3] if len(hppc_data['R_s']) > 3 else np.nan
-            cell_cycle_metrics.at[i, "R_dh2_l"] = hppc_data['R_l'][3] if len(hppc_data['R_l']) > 3 else np.nan
+                cell_cycle_metrics.at[i, "pulse_Q"] = hppc_data['Q'].tolist()# if hppc_data['Q'].empty else np.nan
+                cell_cycle_metrics.at[i, "Pulse_Dur"] = hppc_data['pulse_duration'].tolist()#[0] if hppc_data['pulse_duration'].empty  else np.nan
+                cell_cycle_metrics.at[i, "Pulse_Amp"] = hppc_data['pulse_current'].tolist()#[0] if hppc_data['pulse_current'].empty  else np.nan
+                cell_cycle_metrics.at[i, "Rs"] = hppc_data['R_s'].tolist()#[0] if hppc_data['R_s'].empty  else np.nan
+                cell_cycle_metrics.at[i, "Rlong"] = hppc_data['R_l'].tolist()#[0] if hppc_data['R_l'].empty else np.nan
 
-    def get_Rs_SOC(self, t, I, V, Q, pulse_currents, max_pulses=11):
+
+    def get_Rs_SOC(self, t, I, V, Q):
         """ 
         Processes HPPC data to get DC Resistance for given pulse currents at different Qs. 
-        Assumes that this is a discharge HPPC i.e. the initial Q is 1. 
+        Assumes that this is a discharge HPPC i.e. the initial Q is 0, correspondign to 100% SOC
         """
-        results = []
         pts = 4
-        for pulse_current in pulse_currents:
-            if pulse_current<0:
-                idxi = np.where((np.diff(I)<-0.1) & (I[1:]>pulse_current-0.1)& (I[1:]<pulse_current+0.1))[0]
-            else:
-                idxi = np.where((np.diff(I)>0.1) & (I[1:]>pulse_current-0.1)& (I[1:]<pulse_current+0.1))[0]
-            idxi = idxi+1
-            if pulse_current>0:
-                idxk = np.where((np.diff(I)<-0.1) & (I[:-1]>pulse_current-0.1)& (I[:-1]<pulse_current+0.1))[0]
-            else:
-                idxk = np.where((np.diff(I)>0.1) & (I[:-1]>pulse_current-0.1)& (I[:-1]<pulse_current+0.1))[0]
-            idxk = idxk
-            no_pulses = min(max_pulses,min(len(idxi),len(idxk))) #robustneess hack to drop last data can revisit. Siegeljb 12/8/2023
+        idxi1 = np.where((np.diff(I)>0.1) & (I[1:]>0.1))[0]
+        idxi2 = np.where((np.diff(I)<-0.1) & (I[1:]<-0.1))[0]
+        idxi = np.concatenate([idxi1,idxi2])
+        idxi = idxi + 1
+        idxk1 = np.where((np.diff(I)<-0.1) & (I[:-1]>0.1))[0]
+        idxk2 = np.where((np.diff(I)>0.1) & (I[:-1]<-0.1))[0]
+        idxk = np.concatenate([idxk1,idxk2])
+        no_pulses = min(len(idxi),len(idxk))
 
-            r1, r2, qr = [], [], []
-            for pno in range(no_pulses):
-                t1, V1, I1 = t[idxi[pno]-1-pts:idxi[pno]-1], V[idxi[pno]-1-pts:idxi[pno]-1], I[idxi[pno]-1-pts:idxi[pno]-1]
-                t2, V2, I2 = t[idxi[pno]:idxi[pno]+pts], V[idxi[pno]:idxi[pno]+pts], I[idxi[pno]:idxi[pno]+pts]
-                t3, V3, I3 = t[idxk[pno]+1-pts:idxk[pno]+1], V[idxk[pno]+1-pts:idxk[pno]+1], I[idxk[pno]+1-pts:idxk[pno]+1]
-                r_p1 = abs((np.average(V2) - np.average(V1)) / (np.average(I2) - np.average(I1)))
-                r_p2 = abs((np.average(V3) - np.average(V1)) / (np.average(I3) - np.average(I1)))
-                q_val = np.average(Q[idxi[pno]-1-pts:idxi[pno]-1])
-                r1.append(round(r_p1, 4))
-                r2.append(round(r_p2, 4))
-                qr.append(q_val)
-            results.append({'pulse_current': pulse_current, 'Q': qr, 'R_s': r1, 'R_l': r2})
-        return pd.DataFrame(results)
-
+        r1, r2, qr, pcur, pdur = [], [], [], [], []
+        for pno in range(no_pulses):
+            t1, V1, I1 = t[idxi[pno]-1-pts:idxi[pno]-1], V[idxi[pno]-1-pts:idxi[pno]-1], I[idxi[pno]-1-pts:idxi[pno]-1]
+            t2, V2, I2 = t[idxi[pno]:idxi[pno]+pts], V[idxi[pno]:idxi[pno]+pts], I[idxi[pno]:idxi[pno]+pts]
+            t3, V3, I3 = t[idxk[pno]+1-pts:idxk[pno]+1], V[idxk[pno]+1-pts:idxk[pno]+1], I[idxk[pno]+1-pts:idxk[pno]+1]
+            if len(t1) < 4 or len(t2) < 4 or len(t3) < 4:
+                continue
+            r_p1 = abs((np.average(V2) - np.average(V1)) / (np.average(I2) - np.average(I1)))
+            r_p2 = abs((np.average(V3) - np.average(V1)) / (np.average(I3) - np.average(I1)))
+            delta_q=np.average(Q[idxk[pno]+1-pts:idxk[pno]+1])-np.average(Q[idxi[pno]-1-pts:idxi[pno]-1])
+            q_val = np.average(Q[idxi[pno]-1-pts:idxi[pno]-1])
+            r1.append(round(r_p1, 4))
+            r2.append(round(r_p2, 4))
+            qr.append(q_val)
+            pcur.append(round(np.average(I2),3))
+            pdur.append(round(np.average(t3)-np.average(t1),3))
+        df =  pd.DataFrame({'pulse_current': pcur, 'pulse_duration': pdur, 'Q': qr, 'R_s': r1, 'R_l': r2})
+        return df
+   
     def _process_cycler_expansion(self, records_vdf, cell_cycle_metrics, calibration_parameters, numFiles = 1000, t_match_threshold=60000):
         # Combine vdf data into a single df
         cell_data_vdf = self._combine_cycler_expansion(records_vdf, calibration_parameters, numFiles)
@@ -729,19 +727,25 @@ class DataProcessor:
         # TODO: I is not used, maybe we should use it to calculate the capacity?
         # combine charge and discharge idx into a list. assumes there are the same length, and alternate charge-discharge (or vice versa)
         cycle_idx = charge_idx + discharge_idx
-        cycle_idx.append(len(t)-1) # add last data point
-        cycle_idx.sort() # should alternate charge and discharge start indices
         Q_c = []
         Q_d = []
-        
-        # Calculate capacity 
-        for i in range(len(cycle_idx)-1):
-            # Calculate capacity based on AhT.
-            Q = AhT[cycle_idx[i+1]]-AhT[cycle_idx[i]]
-            if cycle_idx[i] in charge_idx:
-                Q_c.append(Q) 
-            else:
-                Q_d.append(Q) 
+
+        if len(cycle_idx)>0:
+            if max(cycle_idx)<len(t)-1:
+                cycle_idx.append(len(t)-1) # add last data point
+            cycle_idx.sort() # should alternate charge and discharge start indices
+            
+            # Calculate capacity 
+            for i in range(len(cycle_idx)-1):
+                # Calculate capacity based on AhT.
+                Q = AhT[cycle_idx[i+1]]-AhT[cycle_idx[i]]
+                if(Q>Qmax):
+                    Q=np.nan
+                    self.logger.warning(f"Invalid Capacity for cycle {i}")
+                if cycle_idx[i] in charge_idx:
+                    Q_c.append(Q) 
+                else:
+                    Q_d.append(Q) 
         return np.array(Q_c), np.array(Q_d)
 
     def _combine_cycler_data(self, records_cycler, cycle_id_lims, numFiles=1000, last_AhT = 0):
@@ -776,6 +780,7 @@ class DataProcessor:
 
         # For each data file...
         for record in records_cycler[0:min(len(records_cycler), numFiles)]:
+
             # 1. Load data from each data file to a dataframe. Update AhT and ignore unplugged thermocouple values. For RPTs, convert t with ms.
             isRPT =  ('RPT').lower() in record['tr_name'].lower() or ('EIS').lower() in record['tr_name'].lower() 
             isFormation = ('_F').lower() in record['tr_name'].lower() and not ('_FORMTAP').lower() in record['tr_name'].lower() 
@@ -786,7 +791,10 @@ class DataProcessor:
                 test_trace_keys_arbin = ['h_datapoint_time','h_test_time','h_current', 'h_potential', 'c_cumulative_capacity', 'h_step_index','h_cycle','h_charge_capacity','h_discharge_capacity','h_step_ord',]
                 df_labels_arbin = ['Time [ms]','Test Time [ms]', 'Current [A]', 'Voltage [V]', 'Ah throughput [A.h]', 'Step index','Cycle index', 'Charge Ah throughput [A.h]','Discharge Ah throughput [A.h]','Step ord']
                 test_data = self._record_to_df(record, test_trace_keys_arbin, df_labels_arbin, ms = isRPT)
-                test_data['Temperature [degC]'] = [np.nan]*len(test_data) # make arbin tables with same columns as neware files
+                if(test_data is None):
+                    self.logger.error(f"test_data is None from {record['tr_name']}")
+                else:
+                    test_data['Temperature [degC]'] = [np.nan]*len(test_data) # make arbin tables with same columns as neware files
                 if ('biologic' in record['tags']):
                     if(max(abs(test_data['Current [A]']))>20): # current data is ma vs A divide by 1000.
                         test_data['Current [A]']=test_data['Current [A]']/1000
@@ -794,7 +802,11 @@ class DataProcessor:
             # 1b. for neware files
             elif 'neware_xls_4000' in record['tags']: 
                 test_data = self._record_to_df(record, ms = isRPT)
-                test_data['Temperature [degC]'] = np.where((test_data['Temperature [degC]'] >= 200) & (test_data['Temperature [degC]'] <250), np.nan, test_data['Temperature [degC]']) 
+                if test_data['Temperature [degC]'] is not None:
+                    test_data['Temperature [degC]'] = np.where((test_data['Temperature [degC]'] >= 200) & (test_data['Temperature [degC]'] <250), np.nan, test_data['Temperature [degC]']) 
+                else:
+                    self.logger.info(f"Missing Temperature [degC] data from {record['tr_name']}")
+
             else:
                 raise ValueError(f"Unsupported test tag found in {record['tags']}")
             test_data.reset_index(drop=True, inplace=True)
@@ -852,7 +864,7 @@ class DataProcessor:
             dt_min = lims['dt_min']
 
             # 5. Find indices for cycles in file
-            if isFormation and 'arbin' in record['tags']: # find peaks in voltage where I==0, ignore min during hppc
+            if False:#isFormation and 'arbin' in record['tags']: # find peaks in voltage where I==0, ignore min during hppc
 
 
                 peak_prominence = 0.1
@@ -878,6 +890,7 @@ class DataProcessor:
                 try: # won't work for half cycles (files with only charge or only discharge)
                     charge_start_idx_file, discharge_start_idx_file = self._match_charge_discharge(charge_start_idx_file, discharge_start_idx_file)
                 except:
+                    self.logger.error(f"Error processing {record['tr_name']}: failed to _match_charge_discharge")
                     pass
 
             # 6. Add aux cycle indicators to df. Column of True if start of a cycle, otherwise False. Set default cycle indicator = charge start 
@@ -914,9 +927,9 @@ class DataProcessor:
                 if file_with_capacity_check:
                     if len(np.where(np.diff(np.sign(I_subcycle)))[0])>10: # hppc: ID by # of types of current sign changes (threshold is arbitrary)
                         test_data.loc[data_idx,'Protocol'] = 'HPPC'
-                    elif (t_end-t_start)/3600.0 >8 and  np.mean(I_subcycle) > 0: # C/20 charge: longer than 8 hrs and mean(I)>0. Will ID C/10 during formation as C/20...
+                    elif (t_end-t_start)/3600.0 >8 and  np.mean(I_subcycle) > 0 and  np.mean(I_subcycle) < Qmax / 18: # C/20 charge: longer than 8 hrs and mean(I)>0. Will ID C/10 during formation as C/20...
                         test_data.loc[data_idx,'Protocol'] = 'C/20 charge'
-                    elif (t_end-t_start)/3600.0 > 8 and  np.mean(I_subcycle) < 0: # C/20 discharge: longer than 8 hrs and mean(I)<0.Will ID C/10 during formation as C/20...
+                    elif (t_end-t_start)/3600.0 > 8 and  np.mean(I_subcycle) < 0 and  np.mean(I_subcycle) > - Qmax / 18 : # C/20 discharge: longer than 8 hrs and mean(I)<0.Will ID C/10 during formation as C/20...
                         test_data.loc[data_idx,'Protocol'] = 'C/20 discharge'
             
             # 7. Add to list of dfs where each element is the resulting df from each file.
@@ -1132,15 +1145,15 @@ class DataProcessor:
                     discharge_start_idx=np.append(discharge_start_idx, min(potential_discharge_start_idx, key=lambda x:abs(x-turning_points[ii+1])))
             else:
                 # no turning points in the data, just take the extents? this will probably breaksomething else...
-                charge_start_idx=np.array([0])
-                discharge_start_idx=np.array([len(t)-1])
+                charge_start_idx=[]#np.array([0])
+                discharge_start_idx=[]#np.array([len(t)-1])
                 # find the next discharge
                 #discharge_start_idx=np.array([potential_charge_start_idx[0]])
         except Exception as e:
             print(e)
             self.logger.info(f"No cycles detected (using the whole test).")    
-            charge_start_idx=np.array([0])
-            discharge_start_idx=np.array([len(t)-1])
+            charge_start_idx=[]#np.array([0])
+            discharge_start_idx=[]#np.array([len(t)-1])
         #discharge_start_idx=np.array([np.searchsorted(potential_discharge_start_idx,charge_start_idx[0],side='right')])
         # if my_bkps[-1] >= len(t)-1:
         #     my_bkps[-1]=len(t)-1

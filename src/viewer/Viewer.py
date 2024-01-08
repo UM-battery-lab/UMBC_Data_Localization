@@ -39,28 +39,33 @@ class Viewer():
     def downsample_data(self,t,i,v,dv=2e-3,di=0.1,dt=100):
         # mean_dt=np.mean(np.diff(t))
         # dt_changes=(t % (dt/mean_dt))<=mean_dt
-        dert=np.maximum(0.1,np.diff(t, prepend=0))
-        deriv_V=savgol_filter(v,20,3,deriv=1)/dert # probably need to update this if the sampling rate is too slow.
-        # fig,ax = plt.subplots(2,1)
-        # ax1 = ax.flat[0]
-        # ax1.plot(t,v)
-        # ax2 = ax.flat[1]
-        # ax2.plot(t,deriv_V)
-        # ax2.set_ylim([-.01, .01])
-        # #ax2.plot(t_sim,interp_current,'x')
-        # plt.show()
+        if (len(t)>1000):
+            dert=np.maximum(0.1,np.diff(t, prepend=0))
+            deriv_V=savgol_filter(v,20,3,deriv=1)/dert # probably need to update this if the sampling rate is too slow.
+            # fig,ax = plt.subplots(2,1)
+            # ax1 = ax.flat[0]
+            # ax1.plot(t,v)
+            # ax2 = ax.flat[1]
+            # ax2.plot(t,deriv_V)
+            # ax2.set_ylim([-.01, .01])
+            # #ax2.plot(t_sim,interp_current,'x')
+            # plt.show()
 
-        dv_changes=np.abs(deriv_V)>dv
-        #dv_changes=(np.abs(np.diff(v, prepend=0)/np.diff(t, prepend=0))>dv) + (np.abs(np.diff(v, append=0)/np.diff(t, append=0))>dv)
-        di_changes=(np.abs(np.diff(i, prepend=0)/dert)>di) + (np.abs(np.diff(i, append=0)/np.maximum(0.1,np.diff(t, append=0)))>di)
-        dt_changes=t<0
-        Tlast=0
-        for ii in range(len(t)):
-            if(t[ii]>=Tlast+dt):
-                Tlast=t[ii]
-                dt_changes[ii]=True
+            dv_changes=np.abs(deriv_V)>dv
+            #dv_changes=(np.abs(np.diff(v, prepend=0)/np.diff(t, prepend=0))>dv) + (np.abs(np.diff(v, append=0)/np.diff(t, append=0))>dv)
+            di_changes=(np.abs(np.diff(i, prepend=0)/dert)>di) + (np.abs(np.diff(i, append=0)/np.maximum(0.1,np.diff(t, append=0)))>di)
+            dt_changes=t<0
+            Tlast=0
+            for ii in range(len(t)):
+                if(t[ii]>=Tlast+dt):
+                    Tlast=t[ii]
+                    dt_changes[ii]=True
 
-        index=dt_changes + dv_changes + di_changes
+            index=dt_changes + dv_changes + di_changes
+
+ 
+        else:
+            index=range(len(t))
 
         t_ds=t[index]
         i_ds=i[index]
@@ -148,7 +153,12 @@ class Viewer():
         ax3 = axes.flat[3]
         if not all(t_vdf.isnull()):
             ax3.plot_date(t_vdf[0::100],exp_vdf[0::100],'-')
-            ax3.plot_date(t_vdf[cycle_idx_vdf], exp_vdf[cycle_idx_vdf], "x")
+            if cycle_idx_vdf is not None:
+                try:
+                    ax3.plot_date(t_vdf[cycle_idx_vdf], exp_vdf[cycle_idx_vdf], "x")
+                except Exception as e:
+                    print(e)
+                    print(cycle_idx_vdf)
         ax3.set_ylabel("Expansion [um]")
         ax3.grid()
 
