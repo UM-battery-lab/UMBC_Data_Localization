@@ -292,7 +292,7 @@ class DataProcessor:
         DataFrame
             The dataframe of the summary data for each RPT file
         """
-        rpt_filenames = list(set(cell_cycle_metrics['Test name'][(cell_cycle_metrics['Test type'] == 'RPT') | (cell_cycle_metrics['Test type'] == '_F')]))
+        rpt_filenames = list(set(cell_cycle_metrics['Test name'][(cell_cycle_metrics['Test type'] == 'RPT') | (cell_cycle_metrics['Test type'] == '_F')| (cell_cycle_metrics['Test type'] == '_Cy100')| (cell_cycle_metrics['Test type'] == '_Cby100')]))
         cycle_summary_cols = [c for c in cell_cycle_metrics.columns.to_list() if '[' in c] + ['Test name', 'Protocol']
         cell_rpt_data = pd.DataFrame() 
         # Determine the pulse currents based on project name
@@ -802,7 +802,11 @@ class DataProcessor:
             # 1b. for neware files
             elif 'neware_xls_4000' in record['tags']: 
                 test_data = self._record_to_df(record, ms = isRPT)
-                test_data['Temperature [degC]'] = np.where((test_data['Temperature [degC]'] >= 200) & (test_data['Temperature [degC]'] <250), np.nan, test_data['Temperature [degC]']) 
+                if test_data['Temperature [degC]'] is not None:
+                    test_data['Temperature [degC]'] = np.where((test_data['Temperature [degC]'] >= 200) & (test_data['Temperature [degC]'] <250), np.nan, test_data['Temperature [degC]']) 
+                else:
+                    self.logger.info(f"Missing Temperature [degC] data from {record['tr_name']}")
+
             else:
                 raise ValueError(f"Unsupported test tag found in {record['tags']}")
             test_data.reset_index(drop=True, inplace=True)
@@ -923,9 +927,9 @@ class DataProcessor:
                 if file_with_capacity_check:
                     if len(np.where(np.diff(np.sign(I_subcycle)))[0])>10: # hppc: ID by # of types of current sign changes (threshold is arbitrary)
                         test_data.loc[data_idx,'Protocol'] = 'HPPC'
-                    elif (t_end-t_start)/3600.0 >8 and  np.mean(I_subcycle) > 0: # C/20 charge: longer than 8 hrs and mean(I)>0. Will ID C/10 during formation as C/20...
+                    elif (t_end-t_start)/3600.0 >8 and  np.mean(I_subcycle) > 0 and  np.mean(I_subcycle) < Qmax / 18: # C/20 charge: longer than 8 hrs and mean(I)>0. Will ID C/10 during formation as C/20...
                         test_data.loc[data_idx,'Protocol'] = 'C/20 charge'
-                    elif (t_end-t_start)/3600.0 > 8 and  np.mean(I_subcycle) < 0: # C/20 discharge: longer than 8 hrs and mean(I)<0.Will ID C/10 during formation as C/20...
+                    elif (t_end-t_start)/3600.0 > 8 and  np.mean(I_subcycle) < 0 and  np.mean(I_subcycle) > - Qmax / 18 : # C/20 discharge: longer than 8 hrs and mean(I)<0.Will ID C/10 during formation as C/20...
                         test_data.loc[data_idx,'Protocol'] = 'C/20 discharge'
             
             # 7. Add to list of dfs where each element is the resulting df from each file.

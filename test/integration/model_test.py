@@ -72,7 +72,9 @@ def process_cell_test():
     cell_names=['GMFEB23S_CELL046','GMFEB23S_CELL048','GMFEB23S_CELL034','GMFEB23S_CELL036','GMFEB23S_CELL038','GMFEB23S_CELL040','GMFEB23S_CELL042','GMFEB23S_CELL044','GMFEB23S_CELL050']
     # cell_names=['GMJuly2022_CELL031']
     # cell_names=['GMJuly2022_CELL046']
-
+    cell_names=['GMJuly2022_CELL099']
+    cell_names=['GMJuly2022_CELL085','GMJuly2022_CELL088','GMJuly2022_CELL044','GMJuly2022_CELL046']
+    
     for cell_name in cell_names:
         dataManager = DataManager(use_redis=False)
         def save_figs(figs, cell_name, time_name):
@@ -177,12 +179,12 @@ if __name__ == '__main__':
 
     # filter_test()
 
-#     process_cell_test()
-    process_cell_test()
+     process_cell_test()
+    #process_cell_test()
 #    #process_tr_test()
 #    consistency_test()
 #    onetest()
     # read_csv_test()
     #update_cycle_stats_test()
-    # sanity_check_test()
+ #   sanity_check_test()
 #    duplicate_ccm_test()
