@@ -1,8 +1,9 @@
 import pandas as pd 
 import numpy as np
 import time
-from scipy import integrate
-from scipy.signal import find_peaks, medfilt
+from scipy import integrate, interpolate
+from scipy.signal import find_peaks, medfilt, savgol_filter
+from scipy.optimize import Bounds, NonlinearConstraint, minimize
 from itertools import compress
 import ruptures as rpt
 import matplotlib.pyplot as plt
@@ -14,6 +15,7 @@ from src.utils.Logger import setup_logger
 from src.utils.DateConverter import DateConverter
 from src.config.df_config import CYCLE_ID_LIMS, DEFAULT_TRACE_KEYS, DEFAULT_DF_LABELS
 from src.config.calibration_config import X1, X2, C
+from src.config.esoh_config import W1, W2, W3, UN_VAR1, UN_VAR2, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10
 from src.config.pulse_config import GMJULY2022_PULSE_CURRENTS, GMFEB23_PULSE_CURRENTS, DEFAULT_PULSE_CURRENTS, Qmax
 
 
@@ -300,11 +302,13 @@ class DataProcessor:
         if project_name == 'GMJuly2022':
             pulse_currents = GMJULY2022_PULSE_CURRENTS
         elif project_name == 'GMFEB23S':
-            pulse_currents = GMFEB23_PULSE_CURRENTS    
+            pulse_currents = GMFEB23_PULSE_CURRENTS
         # for each RPT file (not sure what it'll do if there are multiple RPT files for 1 RPT...)
         for j,rpt_file in enumerate(rpt_filenames):
             rpt_idx = cell_cycle_metrics[cell_cycle_metrics['Test name'] == rpt_file].index
 
+            ch_rpt = pd.DataFrame()
+            esoh_record_line = -1
             # for each section of the RPT...
             for i in rpt_idx:
                 rpt_subcycle = pd.DataFrame()
@@ -323,7 +327,16 @@ class DataProcessor:
                 rpt_subcycle['Data'] = [cell_data[['Time [ms]', 'Current [A]', 'Voltage [V]', 'Ah throughput [A.h]', 'Temperature [degC]', 'Step index']][(t>t_start) & (t<t_end)]]
                 
                 self.update_cycle_metrics_hppc(rpt_subcycle, cell_cycle_metrics, i, pulse_currents)
-
+                index_code = self.update_cycle_metrics_esoh(rpt_subcycle, cell_cycle_metrics, i, ch_rpt, esoh_record_line)
+                if index_code >= 0:
+                    # Update the charge subcycle line and data
+                    ch_rpt = rpt_subcycle
+                    esoh_record_line = i
+                elif index_code == -1:
+                    # Reset the charge subcycle line and data
+                    ch_rpt = pd.DataFrame()
+                    esoh_record_line = -1
+            
                 # add vdf data to dictionary
                 t_vdf = cell_data_vdf['Time [ms]']
                 if len(t_vdf)>1: #ignore for constrained cells
@@ -350,6 +363,296 @@ class DataProcessor:
         
         return cell_rpt_data
     
+    def update_cycle_metrics_esoh(self, rpt_subcycle, cell_cycle_metrics, index, ch_subcycle, record_line_index):
+        """
+        Method used for eSOH calculation
+
+        Parameters
+        ----------
+        rpt_subcycle: DataFrame
+            The dataframe of the subcycle
+        cell_cycle_metrics: DataFrame
+            The dataframe of the cell cycle metrics
+        index: int
+            The index of the current subcycle
+        ch_subcycle: DataFrame
+            The dataframe of the charge subcycle
+        record_line_index: int
+            The index for the record line
+        """
+        # Skip the Formation data
+        if '_F_' in cell_cycle_metrics.loc[index, 'Test name']:
+            return -2
+        if rpt_subcycle['Protocol'] == 'C/20 charge':
+            ch_subcycle = rpt_subcycle
+            # This ch subcycle line will be the record line for the eSOH data
+            return index
+        
+        if record_line_index > 0 and rpt_subcycle['Protocol'] == 'HPPC':
+            td = (cell_cycle_metrics["Time [ms]"].iloc[index] - cell_cycle_metrics["Time [ms]"].iloc[record_line_index])/1e3/3600
+            if td < 10:
+                return -1
+        
+        if rpt_subcycle['Protocol'] == 'C/20 discharge':
+            dh_subcycle = rpt_subcycle
+            try:
+                self.logger.info(f"Processing eSOH for {rpt_subcycle['Test name']}")
+                q_data, v_data, dVdQ_data, q_full = self._load_V_data(ch_subcycle, dh_subcycle)
+                theta, cap, err_v, err_dVdQ, p1_err, p2_err, p12_err = self.esoh_est(q_data, v_data, dVdQ_data, q_full, w1=W1, w2=W2, w3=W3, dVdQ_bool=False)
+                if err_v > 20:
+                    self.logger.warning(f"Error in V estimation is too high: {err_v}. For {rpt_subcycle['Test name']}")
+                    theta = np.NaN
+
+            except Exception as e:
+                theta, cap, err_v, err_dVdQ, p1_err, p2_err, p12_err = np.NaN, np.NaN, np.NaN, np.NaN, np.NaN, np.NaN, np.NaN
+                self.logger.error(f"Error while processing eSOH for {rpt_subcycle['Test name']}: {e}")
+
+            # Update the cell_cycle_metrics with eSOH data
+            cell_cycle_metrics.at[record_line_index, 'C'] = cap
+            cell_cycle_metrics.at[record_line_index, 'Cn'] = theta[0]
+            cell_cycle_metrics.at[record_line_index, 'X0'] = theta[1]
+            cell_cycle_metrics.at[record_line_index, 'X100'] = theta[2]
+            cell_cycle_metrics.at[record_line_index, 'Cp'] = theta[3]
+            cell_cycle_metrics.at[record_line_index, 'y0'] = theta[4]
+            cell_cycle_metrics.at[record_line_index, 'y100'] = theta[5]
+            cell_cycle_metrics.at[record_line_index, 'RMSE_V'] = err_v
+            cell_cycle_metrics.at[record_line_index, 'RMSE_dVdQ'] = err_dVdQ
+            cell_cycle_metrics.at[record_line_index, 'p1_err'] = p1_err
+            cell_cycle_metrics.at[record_line_index, 'p2_err'] = p2_err
+            cell_cycle_metrics.at[record_line_index, 'p12_err'] = p12_err
+            return -1
+        return -2
+    
+    def _load_V_data(self, ch_rpt, dh_rpt, d_int=0.01):
+        """
+        Method used for eSOH calculation
+        """
+        d_ch = ch_rpt["Data"][0]
+        d_dh = dh_rpt["Data"][0]
+        d_dh = d_dh.reset_index(drop=True)
+        d_ch = d_ch.reset_index(drop=True)
+        d_dh["Time [ms]"] = d_dh["Time [ms]"]-d_dh["Time [ms]"].iloc[0]
+        d_ch["Time [ms]"] = d_ch["Time [ms]"]-d_ch["Time [ms]"].iloc[0]
+        d_ch=d_ch[d_ch["Time [ms]"]<=1e8]
+        d_dh=d_dh[d_dh["Time [ms]"]<=1e8]
+        d_ch1=d_ch[(d_ch["Current [A]"]>0)]
+        d_dh1=d_dh[(d_dh["Current [A]"]<0)]
+        d_ch=d_ch[(d_ch["Current [A]"]>0.174) & (d_ch["Current [A]"]<0.18)]
+        d_dh=d_dh[(d_dh["Current [A]"]<-0.174) & (d_dh["Current [A]"]>-0.18)]
+        q_cv = max(d_ch1["Ah throughput [A.h]"])-max(d_ch["Ah throughput [A.h]"])
+        # Filter data points with only V>2.7 V and V< 4.2V
+        d_ch=d_ch[(d_ch["Voltage [V]"]>=2.7) & (d_ch["Voltage [V]"]<=4.2)]
+        d_dh=d_dh[(d_dh["Voltage [V]"]>=2.7) & (d_dh["Voltage [V]"]<=4.2)]
+        d_ch["Ah throughput [A.h]"] = d_ch["Ah throughput [A.h]"]-d_ch["Ah throughput [A.h]"].iloc[0]
+        d_dh["Ah throughput [A.h]"] = d_dh["Ah throughput [A.h]"]-d_dh["Ah throughput [A.h]"].iloc[0]
+
+        t_d = d_dh["Time [ms]"].to_numpy()
+        t_d = t_d - t_d[0]
+        t_d = t_d/1e3 
+        I_d = d_dh["Current [A]"].to_numpy()
+        V_d = d_dh["Voltage [V]"].to_numpy()
+        Ah_d = d_dh["Ah throughput [A.h]"].to_numpy()
+        Q_d = integrate.cumtrapz(abs(I_d), t_d/3600)
+        Q_d = np.append(Q_d,Q_d[-1])
+        t_c = d_ch["Time [ms]"].to_numpy()
+        t_c = t_c - t_c[0]
+        t_c = t_c/1e3
+        I_c = d_ch["Current [A]"].to_numpy()
+        V_c = d_ch["Voltage [V]"].to_numpy()
+        Ah_c = d_ch["Ah throughput [A.h]"].to_numpy()
+        Q_c = integrate.cumtrapz(abs(I_c), t_c/3600)
+        Q_c = np.append(Q_c,Q_c[-1])
+        ## Normalizing from SOC=100
+        Ah_c = Ah_c[-1]-Ah_c + q_cv
+        Q_c = Q_c[-1]-Q_c + q_cv
+        # Interpolate for Averaging
+        Q_d,idx_d = np.unique(Q_d,return_index=True)
+        V_d = V_d[idx_d]
+        Q_c,idx_c = np.unique(Q_c,return_index=True)
+        V_c = V_c[idx_c]
+
+        dt = np.average(np.diff(t_d))
+        dt = round(dt,1)
+
+        window = int(3000/dt + 1)
+        Qf_d,Vf_d,dVdQ_d = self._filter_qv_data(Q_d,V_d,window_length=window,polyorder=3)
+        Qf_c,Vf_c,dVdQ_c = self._filter_qv_data(Q_c,V_c,window_length=window,polyorder=3)
+
+        Qf_d,idx_d = np.unique(Qf_d,return_index=True)
+        Vf_d = Vf_d[idx_d]
+        Qf_c,idx_c = np.unique(Qf_c,return_index=True)
+        Vf_c = Vf_c[idx_c]
+        int_V_d = interpolate.CubicSpline(Qf_d,Vf_d,extrapolate=True)
+        int_dVdQ_d = interpolate.CubicSpline(Qf_d,dVdQ_d,extrapolate=True)
+        int_V_c = interpolate.CubicSpline(Qf_c,Vf_c,extrapolate=True)
+        int_dVdQ_c = interpolate.CubicSpline(Qf_c,dVdQ_c,extrapolate=True)
+
+        Qmax = np.min([np.max(Qf_d),np.max(Qf_c)])
+        Qmin = np.max([np.min(Qf_d),np.min(Qf_c)])
+        Qfull = np.max([np.max(Qf_d),np.max(Qf_c)])
+
+        Qin = np.arange(Qmin,Qmax,d_int)
+        V_d_int = int_V_d(Qin)
+        V_c_int = int_V_c(Qin)
+        dVdQ_d_int = int_dVdQ_d(Qin)
+        dVdQ_c_int = int_dVdQ_c(Qin)
+        V_avg = (V_d_int+V_c_int)/2
+        dVdQ_avg = (dVdQ_d_int+dVdQ_c_int)/2
+
+        return Qin, V_avg, dVdQ_avg, Qfull
+    
+    def _filter_qv_data(self, Qdata,Vdata, window_length=3001, polyorder=3):
+        """
+        Method used for eSOH calculation
+        """
+        qf = savgol_filter(Qdata,window_length,polyorder,0)
+        dQ = -savgol_filter(Qdata,window_length,polyorder,1)
+        vf = savgol_filter(Vdata,window_length,polyorder,0)
+        dV = savgol_filter(Vdata,window_length,polyorder,1)
+        dVdQ = dV/dQ
+        return qf,vf,dVdQ
+    
+    def _get_peaks(self, q, dVdQ):
+        """
+        Method used for eSOH calculation
+        """
+        q_max = max(q)
+        pks_,_ = find_peaks(dVdQ,prominence=0.01)
+        pks = [pk for pk in pks_ if q[pk]>=0.1*q_max and q[pk]<=0.9*q_max ]
+        q_peaks = q[pks]
+        if len(q_peaks) >0:
+            q1 = q_peaks[0]
+            q2 = q_peaks[-1]
+        else:
+            q1 =  q[0]
+            q2 =  q[-1]
+        return q1,q2
+    
+    def _calc_un(self, sto):
+        """
+        Method used for eSOH calculation
+        """
+
+        p_eq = UN_VAR1[0:8]
+        a_eq = UN_VAR1[8:15]
+        b_eq = UN_VAR1[15:]
+        u_eq2=p_eq[-1]+p_eq[-2]*np.exp((sto-a_eq[-1])/b_eq[-1])
+        for i in range(6):
+            u_eq2 += p_eq[i]*np.tanh((sto-a_eq[i])/b_eq[i])
+
+        p_eq = UN_VAR2[0:8]
+        a_eq = UN_VAR2[8:15]
+        b_eq = UN_VAR2[15:]
+        u_eq1=p_eq[-1]+p_eq[-2]*np.exp((sto-a_eq[-1])/b_eq[-1])
+        for i in range(6):
+            u_eq1 += p_eq[i]*np.tanh((sto-a_eq[i])/b_eq[i])
+        u_eq = (u_eq1 + u_eq2)/2
+
+        return u_eq
+
+    def _calc_up(self, sto):
+        """
+        Method used for eSOH calculation
+        """
+        u_eq = P1*(sto**9) + P2*(sto**8) + P3*(sto**7) + P4*(sto**6) + P5*(sto**5) + P6*(sto**4) + P7*(sto**3) + P8*(sto**2) + P9*sto + P10
+
+        return u_eq
+    
+    def _calc_opc(self, x, q):
+        """
+        Method used for eSOH calculation
+        """
+        ocp = self._calc_up(x[3]+q/x[2]) - self._calc_un(x[1]-q/x[0])
+        return ocp
+
+    def _fitfunc(self, x, q_data, v_data, dVdQdata, w1, w2, w3, dVdQ_bool):
+        """
+        Method used for eSOH calculation
+        """
+        model = np.concatenate([
+                [self._calc_opc(x,q)]
+                for q in q_data
+            ]
+        )
+        qa, qb = self._get_peaks(q_data,dVdQdata)
+        q_max = np.max(q_data)
+        # Q1 = 0*0.1*Qmax
+        q1 = 0.1*q_max
+        q2 = 0.9*q_max
+        if qa>0 and qa<0.5*q_max  and dVdQ_bool:
+            q3 = qa - 0.05*q_max
+            q4 = qa + 0.05*q_max
+        else:
+            q3 = 0.25*q_max
+            q4 = 0.45*q_max
+        if qb< q_max and qb > 0.5*q_max and dVdQ_bool:
+            q5 = qb - 0.05*q_max
+            q6 = qb + 0.05*q_max
+        else:
+            q5 = 0.7*q_max
+            q6 = 0.9*q_max
+        wvec = np.ones(len(q_data))
+        for i,q in enumerate(q_data):
+            if q<q1 or q>q2:
+                wvec[i]=w1
+            if q>=q1 and q<=q2:
+                wvec[i]=w2
+            if q>=q3 and q<=q4:
+                wvec[i]=w3
+            if q>=q5 and q<=q6:
+                wvec[i]=w3    
+        vd = np.multiply(v_data,wvec)
+        vs = np.multiply(model,wvec)
+        error = vd-vs
+        out = np.linalg.norm(error)/np.sqrt(len(vd))
+        return out
+        
+    def esoh_est(self, q_data, v_data, dVdQ_data, q_full, w1=1,w2=1,w3=1, dVdQ_bool=True, x0 = [4.2,0.85,5.5,0.3], lb = [1, 0, 1, 0], ub = [5, 1, 6.5, 1], win=5):
+        """
+        Method used for eSOH calculation
+        """
+        cap = q_full
+        bounds = Bounds(lb, ub)
+        nleq1 = lambda x: -cap/x[0]+x[1]
+        nlcon1 = NonlinearConstraint(nleq1, 0, 1)
+        nleq2 = lambda x:  cap/x[2]+x[3]
+        nlcon2 = NonlinearConstraint(nleq2, 0, 1)
+        result = minimize(self._fitfunc, x0, args=(q_data,v_data,dVdQ_data,w1,w2,w3,dVdQ_bool), bounds=bounds,constraints=[nlcon1,nlcon2])
+        res = result.x
+        cn = res[0]
+        cp = res[2]
+        x100 = res[1]
+        y100 = res[3]
+        x0 = res[1]-cap/res[0]
+        y0 = res[3]+cap/res[2]
+        theta = [cn,x0,x100,cp,y0,y100]
+        theta = [round(tt,4) for tt in theta]
+        v_fit = np.concatenate([
+                [self._calc_opc(res,Q)]
+                for Q in q_data
+            ]
+        )
+        err_V = 1e3*np.linalg.norm(v_data-v_fit)/np.sqrt(len(v_data))
+        err_V = round(err_V,1)
+        cap = round(cap,3)
+        _,_,dVdQ_fit = self._filter_qv_data(q_data,v_fit,window_length=win,polyorder=3)
+        q1_data,q2_data = self._get_peaks(q_data,dVdQ_data)
+        q1_fit,q2_fit = self._get_peaks(q_data,dVdQ_fit)
+        p1_err = q1_data-q1_fit
+        p2_err = q2_data-q2_fit
+        p12_data = q2_data-q1_data
+        p12_fit = q2_fit-q1_fit
+        p12_err = p12_data-p12_fit
+        q_bool = (q_data>0.1*cap) & (q_data<0.9*cap)
+        dVdQ_data_f = dVdQ_data[q_bool]
+        dVdQ_fit_f = dVdQ_fit[q_bool]
+        q_f = q_data[q_bool]
+        
+        err_dVdQ = 1e3*np.linalg.norm(dVdQ_data_f-dVdQ_fit_f)/np.sqrt(len(v_data))
+        err_dVdQ = round(err_dVdQ,1)
+
+        return theta, cap, err_V, err_dVdQ, p1_err, p2_err, p12_err
+
     def update_cycle_metrics_hppc(self, rpt_subcycle, cell_cycle_metrics, i, pulse_currents):
         """
         Update cell cycle metrics based on the RPT subcycle data.
