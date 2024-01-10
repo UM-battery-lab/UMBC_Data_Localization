@@ -401,10 +401,10 @@ class DataProcessor:
                 theta, cap, err_v, err_dVdQ, p1_err, p2_err, p12_err = self.esoh_est(q_data, v_data, dVdQ_data, q_full, w1=W1, w2=W2, w3=W3, dVdQ_bool=False)
                 if err_v > 20:
                     self.logger.warning(f"Error in V estimation is too high: {err_v}. For {rpt_subcycle['Test name']}")
-                    theta = np.NaN
+                    theta[:] = np.NaN
 
             except Exception as e:
-                theta, cap, err_v, err_dVdQ, p1_err, p2_err, p12_err = np.NaN, np.NaN, np.NaN, np.NaN, np.NaN, np.NaN, np.NaN
+                theta, cap, err_v, err_dVdQ, p1_err, p2_err, p12_err = np.full(6, np.NaN), np.NaN, np.NaN, np.NaN, np.NaN, np.NaN, np.NaN
                 self.logger.error(f"Error while processing eSOH for {rpt_subcycle['Test name']}: {e}")
 
             # Update the cell_cycle_metrics with eSOH data
