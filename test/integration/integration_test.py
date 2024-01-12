@@ -18,10 +18,10 @@ import gc
 def present_cell(cell_num):
 
 
-  #   cell_name="GMJuly2022_CELL"+f'{cell_num:03d}'
+    cell_name="GMJuly2022_CELL"+f'{cell_num:03d}'
     #cell_name="GMFEB23S_CELL"+f'{cell_num:03d}'
 
-    cell_name = 'UMBL2022FEB_CELL' + f'{cell_num:03d}' 
+    #cell_name = 'UMBL2022FEB_CELL' + f'{cell_num:03d}' 
 
 
     dataManager = DataManager(use_redis=False)
@@ -58,14 +58,14 @@ if (__name__ == '__main__'):
     #with Pool(16) as pool:
     with get_context("spawn").Pool(16) as pool:
     #pool=Pool(16)          
-#         result = pool.map(present_cell, range(1,105) )
+        result = pool.map(present_cell, range(1,105) )
 # #            result = pool.map(present_cell, [26,44,16,52,50,86,54,41,45] )
         #result = pool.map(present_cell, range(1,40) )
         #result = pool.map(present_cell, range(30,76,2) )
         #result = pool.map(present_cell, range(1,75) )
         # result = pool.map(present_cell, range(40,80) ) 
         # result = pool.map(present_cell, range(80,105) )     
-        result = pool.map(present_cell,[152097,152091,152051,152087,152042,152094,152045,152054,152039,152065,152041,152046,152057,152078,152033,152088,152036,152084,152085,152047,152072,152048])
+ #       result = pool.map(present_cell,[152097,152091,152051,152087,152042,152094,152045,152054,152039,152065,152041,152046,152057,152078,152033,152088,152036,152084,152085,152047,152072,152048])
     pool.close()
     pool.join()
     print(result)

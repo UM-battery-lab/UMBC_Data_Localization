@@ -13,8 +13,8 @@ from src.presenter.Presenter import Presenter
 from src.viewer.Viewer import Viewer
 from matplotlib import pyplot as plt
 import matplotlib   
-#matplotlib.use('QtAgg')
-matplotlib.use('TkAgg')
+matplotlib.use('QtAgg')
+#matplotlib.use('TkAgg')
 #matplotlib.use('GTK3Agg') 
 # Importing gc module
 import gc
@@ -74,23 +74,26 @@ def process_cell_test():
     # cell_names=['GMJuly2022_CELL046']
     cell_names=['GMJuly2022_CELL099']
     cell_names=['GMJuly2022_CELL085','GMJuly2022_CELL088','GMJuly2022_CELL044','GMJuly2022_CELL046']
-    
+    cell_names=['GMJuly2022_CELL029','GMJuly2022_CELL043']
+    cell_names=['GMJuly2022_CELL043']
+    cell_names=['GMJuly2022_CELL054','GMJuly2022_CELL043']
+
+
+    dataManager = DataManager(use_redis=False)
+    def save_figs(figs, cell_name, time_name):
+        dataManager.save_figs(figs, cell_name, time_name, keep_open=True)
+    presenter = Presenter()
+    viewer = Viewer(call_back=save_figs)
+    #cell_name = "UMBL2022FEB_CELL152051"
+
+    dataManager.attach(presenter)
+    presenter.attach(viewer)
     for cell_name in cell_names:
-        dataManager = DataManager(use_redis=False)
-        def save_figs(figs, cell_name, time_name):
-            dataManager.save_figs(figs, cell_name, time_name, keep_open=True)
-        presenter = Presenter()
-        viewer = Viewer(call_back=save_figs)
-        #cell_name = "UMBL2022FEB_CELL152051"
-
-        dataManager.attach(presenter)
-        presenter.attach(viewer)
-
         cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt = None, None, None, None
         # test process_cell
 
 
-        cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt = dataManager.process_cell(cell_name, reset=True);#, reset=True)#, start_time='2023-07-01_00-00-00', end_time='2023-07-28_23-59-59')
+        cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt = dataManager.process_cell(cell_name, reset=False, start_time='2022-09-01_00-00-00', end_time='2022-10-02_23-59-59');#, reset=True)#)
     #    cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt = dataManager.process_cell(cell_name, reset=True, start_time='2022-09-13_10-00-00', end_time='2022-09-24_10-00-00');#, reset=True)#)
         
 
@@ -179,10 +182,10 @@ if __name__ == '__main__':
 
     # filter_test()
 
-#     process_cell_test()
+     process_cell_test()
     #process_cell_test()
 #    #process_tr_test()
-    consistency_test()
+#    consistency_test()
 #    onetest()
     # read_csv_test()
     #update_cycle_stats_test()
