@@ -185,9 +185,9 @@ if __name__ == '__main__':
 
     # filter_test()
 
-    # process_cell_test()
+    process_cell_test()
     #process_cell_test()
-    process_tr_test()
+    #process_tr_test()
 #    consistency_test()
 #    onetest()
     # read_csv_test()
