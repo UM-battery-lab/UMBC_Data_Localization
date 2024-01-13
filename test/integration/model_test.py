@@ -92,8 +92,9 @@ def process_cell_test():
         cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt = None, None, None, None
         # test process_cell
 
-
-        cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt = dataManager.process_cell(cell_name, reset=False, start_time='2022-09-01_00-00-00', end_time='2022-10-02_23-59-59');#, reset=True)#)
+        cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt = dataManager.process_cell(cell_name, reset=True);#, reset=True)#)
+   
+    #    cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt = dataManager.process_cell(cell_name, reset=False, start_time='2022-09-01_00-00-00', end_time='2022-10-02_23-59-59');#, reset=True)#)
     #    cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt = dataManager.process_cell(cell_name, reset=True, start_time='2022-09-13_10-00-00', end_time='2022-09-24_10-00-00');#, reset=True)#)
         
 
@@ -123,6 +124,8 @@ def process_cell_test():
 
 def process_tr_test():
     tr_name = 'GMJuly2022_CELL025_Test7B_1_P0C_5P0PSI_20230412_R0_CH055'
+    tr_name = 'GMJuly2022_CELL054_EIS_1_P25C_15P0PSI_20220926_R0_CH004_02_BCD_CA4'
+    tr_name = 'GMJuly2022_CELL054_EIS_1_P25C_15P0PSI_20220926_R0_CH004_01_MB_CA4'
     dataManager = DataManager(use_redis=False)
     presenter = Presenter()
     viewer = Viewer()
@@ -182,9 +185,9 @@ if __name__ == '__main__':
 
     # filter_test()
 
-     process_cell_test()
+    # process_cell_test()
     #process_cell_test()
-#    #process_tr_test()
+    process_tr_test()
 #    consistency_test()
 #    onetest()
     # read_csv_test()
