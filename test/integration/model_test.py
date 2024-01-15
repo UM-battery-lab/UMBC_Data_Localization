@@ -76,9 +76,9 @@ def process_cell_test():
     cell_names=['GMJuly2022_CELL085','GMJuly2022_CELL088','GMJuly2022_CELL044','GMJuly2022_CELL046']
     cell_names=['GMJuly2022_CELL029','GMJuly2022_CELL043']
     cell_names=['GMJuly2022_CELL043']
-    cell_names=['GMJuly2022_CELL054','GMJuly2022_CELL043']
-
-
+    cell_names=['GMJuly2022_CELL054','GMJuly2022_CELL043','GMJuly2022_CELL029','GMJuly2022_CELL901REF']
+    # cell_names=["GMJuly2022_CELL"+f'{cell_num:03d}' for cell_num in range(99,105) ]
+    #cell_names=["UMBL2022FEB_CELL"+f'{cell_num:03d}' for cell_num in [152097,152091,152051,152087,152042,152094,152045,152054,152039,152065,152041,152046,152057,152078,152033,152088,152036,152084,152085,152047,152072,152048]]
     dataManager = DataManager(use_redis=False)
     def save_figs(figs, cell_name, time_name):
         dataManager.save_figs(figs, cell_name, time_name, keep_open=True)
@@ -185,11 +185,13 @@ if __name__ == '__main__':
 
     # filter_test()
 
-    process_cell_test()
-    #process_cell_test()
+   
+   #process_cell_test()
     #process_tr_test()
-#    consistency_test()
+    consistency_test()
 #    onetest()
+    process_cell_test()
+
     # read_csv_test()
     #update_cycle_stats_test()
  #   sanity_check_test()

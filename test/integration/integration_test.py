@@ -17,37 +17,23 @@ import gc
 from functools import partial
 
 # Integration test
-def present_cell(MydataManager,cell_num):
+def present_cell(cell_numR):
 
 
-    cell_name="GMJuly2022_CELL"+f'{cell_num:03d}'
-    #cell_name="GMFEB23S_CELL"+f'{cell_num:03d}'
-
-    #cell_name = 'UMBL2022FEB_CELL' + f'{cell_num:03d}' 
-
-
+    #newfunc= partial(present_cell,dataManager)        
+    
 
     # test process_cell
     #try:
-    cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt = MydataManager.process_cell(cell_name, reset=True)#, start_time='2023-07-01_00-00-00', end_time='2023-07-28_23-59-59')
+    #cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt = dataManager.process_cell(cell_name, reset=True)#, start_time='2023-07-01_00-00-00', end_time='2023-07-28_23-59-59')
     #except Exception as e:
     #    print(e)
         # Returns the number of
     # objects it has collected
     # and deallocated
-    collected = gc.collect()
-    
-    # Prints Garbage collector 
-    # as 0 object
-    print("Garbage collector: collected",
-            "%d objects." % collected)
-    
-if (__name__ == '__main__'):
+    cell_names=["GMJuly2022_CELL"+f'{cell_num:03d}' for cell_num in range(cell_numR,cell_numR+10) ]
+    #cell_names=["GMFEB23S_CELL"+f'{cell_num:03d}' for cell_num in range(cell_numR,cell_numR+10) ]
 
-        #for i in range
-    # for cell in range(31,32): # 75
-    #     present_cell(cell)
-    #set_start_method("spawn")
     dataManager = DataManager(use_redis=False)
     def save_figs(figs, cell_name, time_name):
         dataManager.save_figs(figs, cell_name, time_name)
@@ -56,14 +42,36 @@ if (__name__ == '__main__'):
     #cell_name = "UMBL2022FEB_CELL152051"
     presenter.attach(viewer)
     dataManager.attach(presenter)
-
-    newfunc= partial(present_cell,dataManager)        
     
+    for cell_name in cell_names:
+        cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt = None, None, None, None
+        # test process_cell
+
+        cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt = dataManager.process_cell(cell_name, reset=True);#, reset=True)#)
+   
+        # Returns the number of
+        # objects it has collected
+        # and deallocated
+        collected = gc.collect()
+        
+        # Prints Garbage collector 
+        # as 0 object
+        print("Garbage collector: collected",
+                "%d objects." % collected)
+
+    
+if (__name__ == '__main__'):
+
+        #for i in range
+    # for cell in range(31,32): # 75
+    #     present_cell(cell)
+    #set_start_method("spawn")
+ 
 
     #with Pool(16) as pool:
-    with get_context("spawn").Pool(16) as pool:
+    with get_context("spawn").Pool(10) as pool:
     #pool=Pool(16) 
-        result = pool.map(newfunc, range(1,105) )
+        result = pool.map(present_cell, range(0,111,10) )
 # #            result = pool.map(present_cell, [26,44,16,52,50,86,54,41,45] )
         #result = pool.map(present_cell, range(1,40) )
         #result = pool.map(present_cell, range(30,76,2) )
