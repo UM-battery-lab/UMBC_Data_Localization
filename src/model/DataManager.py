@@ -565,7 +565,7 @@ class DataManager(metaclass=SingletonMeta):
         sanity_csv = self.dataIO.read_sanity_check_csv()
         header = next(sanity_csv)
         # Get the index of the columns
-        project_index, cell_name_index, neware_rack_index, channel_index = header.index('Project'), header.index('Cell Name'), header.index('Neware Rack'), header.index('Channel')
+        project_index, cell_name_index, channel_index = header.index('Project'), header.index('Cell Name'), header.index('Channel')
         start_date_index, removal_date_index = header.index('Start Date (Aging)'), header.index('Removal Date')
         
         wrong_trs = {}
@@ -573,7 +573,7 @@ class DataManager(metaclass=SingletonMeta):
         for row in sanity_csv:
             try:
                 # Get the test records for the cell
-                project, cell_number, correct_neware_rack, correct_channel = row[project_index], row[cell_name_index], row[neware_rack_index], row[channel_index]
+                project, cell_number, correct_channel = row[project_index], row[cell_name_index], row[channel_index]
                 start_date, removal_date = row[start_date_index], row[removal_date_index]
                 cell_name = project + "_CELL" + cell_number.zfill(3)
                 cell_trs = [tr for tr in trs if tr.name.startswith(cell_name)]
@@ -593,11 +593,10 @@ class DataManager(metaclass=SingletonMeta):
             # Check the neware trs
             for tr in neware_trs:
                 try:
-                    neware_rack = tr.name.split("_")[-4]
-                    channel = tr.name.split("_")[-3] + '-' +tr.name.split("_")[-2]
-                    if neware_rack != correct_neware_rack or channel != correct_channel:
+                    channel = tr.name.split("_")[-4] + tr.name.split("_")[-3] + '-' +tr.name.split("_")[-2]
+                    if channel != correct_channel:
                         self.logger.warning(f'Neware tr: {tr.name} has wrong neware rack or channel')
-                        wrong_trs[tr.name] = [correct_neware_rack, correct_channel]
+                        wrong_trs[tr.name] = [correct_channel]
                 except Exception as e:
                     self.logger.error(f"Error while checking neware tr: {tr.name}, {e}")
                     continue
