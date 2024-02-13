@@ -307,7 +307,7 @@ class DataProcessor:
         for j,rpt_file in enumerate(rpt_filenames):
             rpt_idx = cell_cycle_metrics[cell_cycle_metrics['Test name'] == rpt_file].index
 
-            ch_rpt = pd.DataFrame()
+            pre_rpt = pd.DataFrame()
             esoh_record_line = -1
             # for each section of the RPT...
             for i in rpt_idx:
@@ -327,14 +327,14 @@ class DataProcessor:
                 rpt_subcycle['Data'] = [cell_data[['Time [ms]', 'Current [A]', 'Voltage [V]', 'Ah throughput [A.h]', 'Temperature [degC]', 'Step index']][(t>t_start) & (t<t_end)]]
                 
                 self.update_cycle_metrics_hppc(rpt_subcycle, cell_cycle_metrics, i, pulse_currents)
-                index_code = self.update_cycle_metrics_esoh(rpt_subcycle, cell_cycle_metrics, i, ch_rpt, esoh_record_line)
+                index_code = self.update_cycle_metrics_esoh(rpt_subcycle, cell_cycle_metrics, i, pre_rpt, esoh_record_line)
                 if index_code >= 0:
-                    # Update the charge subcycle line and data
-                    ch_rpt = rpt_subcycle
+                    # Update the previous subcycle line and data
+                    pre_rpt = rpt_subcycle
                     esoh_record_line = i
                 elif index_code == -1:
-                    # Reset the charge subcycle line and data
-                    ch_rpt = pd.DataFrame()
+                    # Reset the previous subcycle line and data
+                    pre_rpt = pd.DataFrame()
                     esoh_record_line = -1
             
                 # add vdf data to dictionary
@@ -363,7 +363,7 @@ class DataProcessor:
         
         return cell_rpt_data
     
-    def update_cycle_metrics_esoh(self, rpt_subcycle, cell_cycle_metrics, index, ch_subcycle, record_line_index):
+    def update_cycle_metrics_esoh(self, rpt_subcycle, cell_cycle_metrics, index, pre_subcycle: pd.DataFrame, record_line_index):
         """
         Method used for eSOH calculation
 
@@ -383,18 +383,24 @@ class DataProcessor:
         # Skip the Formation data
         if '_F_' in cell_cycle_metrics.loc[index, 'Test name']:
             return -2
-        if rpt_subcycle['Protocol'] == 'C/20 charge':
-            ch_subcycle = rpt_subcycle
-            # This ch subcycle line will be the record line for the eSOH data
-            return index
-        
+
         if record_line_index > 0 and rpt_subcycle['Protocol'] == 'HPPC':
             td = (cell_cycle_metrics["Time [ms]"].iloc[index] - cell_cycle_metrics["Time [ms]"].iloc[record_line_index])/1e3/3600
             if td < 10:
                 return -1
         
-        if rpt_subcycle['Protocol'] == 'C/20 discharge':
-            dh_subcycle = rpt_subcycle
+        if rpt_subcycle['Protocol'] == 'C/20 discharge' or  rpt_subcycle['Protocol'] == 'C/20 charge':
+            # If there is a previous subcycle, process eSOH
+            if isinstance(pre_subcycle, pd.DataFrame) and pre_subcycle.empty:
+                return index
+            if isinstance(pre_subcycle, dict) and not bool(pre_subcycle):
+                return index
+            if pre_subcycle['Protocol'] == 'C/20 charge':
+                ch_subcycle = rpt_subcycle
+                dh_subcycle = pre_subcycle
+            else:
+                ch_subcycle = pre_subcycle
+                dh_subcycle = rpt_subcycle
             try:
                 self.logger.info(f"Processing eSOH for {rpt_subcycle['Test name']}")
                 q_data, v_data, dVdQ_data, q_full = self._load_V_data(ch_subcycle, dh_subcycle)
@@ -1268,6 +1274,8 @@ class DataProcessor:
         # save cycle metrics to separate dataframe and sort. only keep columns where charge and discharge cycles start. Label the type of protocol
         cycle_metrics_columns = ['Time [ms]','Ah throughput [A.h]', 'Test type','Protocol','discharge_cycle_indicator','cycle_indicator','charge_cycle_indicator','capacity_check_indicator', 'Test name']
         cell_cycle_metrics = cell_data[cycle_metrics_columns][(cell_data.discharge_cycle_indicator==True) | (cell_data.charge_cycle_indicator==True)].copy()
+        self.logger.info(f"Found {len(cell_data)} cell data")
+        self.logger.info(f"Found {len(cell_cycle_metrics)} cycles")
         # cell_cycle_metrics.sort_values(by=['Time [ms]'])
         cell_cycle_metrics.reset_index(drop=True, inplace=True)
         return cell_data, cell_cycle_metrics
