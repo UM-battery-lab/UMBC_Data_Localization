@@ -82,11 +82,12 @@ def process_cell_test():
     
     cell_names=['GMJuly2022_CELL008','GMJuly2022_CELL024','GMJuly2022_CELL030','GMJuly2022_CELL035','GMJuly2022_CELL030','GMJuly2022_CELL035','GMJuly2022_CELL093']
     cell_names=['GMJuly2022_CELL022']
+    cell_names=['GMFEB23S_CELL069']
     # cell_names=["GMJuly2022_CELL"+f'{cell_num:03d}' for cell_num in range(99,105) ]
     #cell_names=["UMBL2022FEB_CELL"+f'{cell_num:03d}' for cell_num in [152097,152091,152051,152087,152042,152094,152045,152054,152039,152065,152041,152046,152057,152078,152033,152088,152036,152084,152085,152047,152072,152048]]
     dataManager = DataManager(use_redis=False)
     def save_figs(figs, cell_name, time_name):
-        dataManager.save_figs(figs, cell_name, time_name, keep_open=False)
+        dataManager.save_figs(figs, cell_name, time_name, keep_open=True)
     presenter = Presenter()
     viewer = Viewer(call_back=save_figs)
     #cell_name = "UMBL2022FEB_CELL152051"
@@ -97,8 +98,8 @@ def process_cell_test():
         cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt = None, None, None, None
         # test process_cell
 
-        cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt = dataManager.process_cell(cell_name);#, reset=True)#)
-   
+        cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt = dataManager.process_cell(cell_name, reset=True);#)#)
+        plt.show()
     #    cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt = dataManager.process_cell(cell_name, reset=False, start_time='2022-09-01_00-00-00', end_time='2022-10-02_23-59-59');#, reset=True)#)
     #    cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt = dataManager.process_cell(cell_name, reset=True, start_time='2022-09-13_10-00-00', end_time='2022-09-24_10-00-00');#, reset=True)#)
         
@@ -193,9 +194,9 @@ if __name__ == '__main__':
    
    #process_cell_test()
     #process_tr_test()
-    consistency_test()
+    #consistency_test()
 #    onetest()
-    #process_cell_test()
+    process_cell_test()
 
     # read_csv_test()
     #update_cycle_stats_test()

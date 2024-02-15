@@ -100,9 +100,9 @@ class Viewer():
 
         
         # drop egregious outliers from the plot.... for diagnostics.
-        t_vdf = expansion.t_vdf[expansion.exp_vdf>-5000]
-        exp_vdf = expansion.exp_vdf[expansion.exp_vdf>-5000]
-        T_vdf = expansion.T_vdf[expansion.exp_vdf>-5000]
+        t_vdf = expansion.t_vdf[expansion.exp_vdf>-5000 & expansion.exp_vdf<5000]
+        exp_vdf = expansion.exp_vdf[expansion.exp_vdf>-5000 & expansion.exp_vdf<5000]
+        T_vdf = expansion.T_vdf[expansion.exp_vdf>-5000 & expansion.exp_vdf<5000]
 
         t_cycle = cycle_metrics.t_cycle
         Q_c = cycle_metrics.Q_c
@@ -197,10 +197,10 @@ class Viewer():
         T = timeseries.T
         AhT = timeseries.AhT
 
-        t_vdf = expansion.t_vdf[expansion.exp_vdf>-5000]
+        t_vdf = expansion.t_vdf[expansion.exp_vdf>-5000 & expansion.exp_vdf<5000]
 
-        exp_vdf = expansion.exp_vdf[expansion.exp_vdf>-5000]
-        T_vdf = expansion.T_vdf[expansion.exp_vdf>-5000]
+        exp_vdf = expansion.exp_vdf[expansion.exp_vdf>-5000 & expansion.exp_vdf<5000 ]
+        T_vdf = expansion.T_vdf[expansion.exp_vdf>-5000 & expansion.exp_vdf<5000]
 
         t_cycle = cycle_metrics.t_cycle
         Q_c = cycle_metrics.Q_c
@@ -259,6 +259,10 @@ class Viewer():
             ax3.plot_date(t_vdf[cycle_idx_vdf], exp_vdf[cycle_idx_vdf], "x")
             # ax3.plot_date(t_vdf[cycle_idx_vdf], exp_vdf[cycle_idx_vdf], "x")
         ax3.set_ylabel("Expansion [um]")
+        med_expansion=np.median(t_vdf)
+        min_expansion=np.minimum(t_vdf)
+        max_expansion=np.maximum(t_vdf)
+        ax3.set_ylim([np.max(med_expansion-200,0),med_expansion+500])
         ax3.grid()
 
         # plot AhT 
