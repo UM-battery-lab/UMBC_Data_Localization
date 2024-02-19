@@ -94,7 +94,8 @@ class DataIO:
             if not project_name:
                 self.logger.warning(f"The device {dev.name} does not have a project name. Put it in the Unknown_Project.")
                 project_name = "Unknown_Project"
-            self._create_directory(device_folder)
+            # Use the lazy creation of the directory
+            # self._create_directory(device_folder)
             devices_id.append(dev.id)
             devices_name.append(dev.name)
             projects_name.append(project_name)
