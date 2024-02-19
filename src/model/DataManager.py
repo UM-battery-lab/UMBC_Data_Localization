@@ -328,10 +328,11 @@ class DataManager(metaclass=SingletonMeta):
         self.dirStructure.check_project_name(devices_id, projects_name)
             
         # Step 3: Check for empty or incomplete folders and delete them.
+        # TODO: The empty folders check is disabled for now
         empty_folders, valid_folders = self.dataIO._check_folders()
-        if empty_folders:
-            self.logger.info(f'Empty or incomplete folders found: {empty_folders}')
-            self.dataDeleter.delete_folders(empty_folders)
+        # if empty_folders:
+        #     self.logger.info(f'Empty or incomplete folders found: {empty_folders}')
+        #     self.dataDeleter.delete_folders(empty_folders)
 
         # Convert to sets for easier operations
         valid_folders_set = set(valid_folders)
@@ -357,13 +358,14 @@ class DataManager(metaclass=SingletonMeta):
                     self.logger.info(f'Appended record for folder {test_folder}')
 
         # Step 5: Check for records in the directory structure that don't have corresponding folders on disk.
-        orphaned_records = recorded_folders_set - valid_folders_set
-        if orphaned_records:
-            self.logger.info(f'Orphaned records found without corresponding folders on disk: {orphaned_records}')
-            for orphaned_record in orphaned_records:
-                # Delete the orphaned record from the directory structure based on its test_folder.
-                self.dirStructure.delete_record(test_folder=orphaned_record)
-                self.logger.info(f'Deleted {len(orphaned_records)} orphaned records from directory structure.')
+        # TODO: The orphaned records check is disabled for now
+        # orphaned_records = recorded_folders_set - valid_folders_set
+        # if orphaned_records:
+        #     self.logger.info(f'Orphaned records found without corresponding folders on disk: {orphaned_records}')
+        #     for orphaned_record in orphaned_records:
+        #         # Delete the orphaned record from the directory structure based on its test_folder.
+        #         self.dirStructure.delete_record(test_folder=orphaned_record)
+        #         self.logger.info(f'Deleted {len(orphaned_records)} orphaned records from directory structure.')
 
         # Step 6: Check for local test records that are not consistent with the test records in Voltaiq Studio
         self.logger.info('Checking for local test records that are not consistent with the test records in Voltaiq Studio...')
