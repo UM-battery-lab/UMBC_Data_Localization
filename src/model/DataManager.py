@@ -430,7 +430,7 @@ class DataManager(metaclass=SingletonMeta):
             self.logger.error(f'Error {e} while getting calibration parameters')
 
         # Process data
-        cell_cycle_metrics, cell_data, cell_data_vdf, _ = self.dataProcessor.process_cell(records_cycler, records_vdf, cell_cycle_metrics, cell_data, cell_data_vdf, calibration_parameters)
+        cell_cycle_metrics, cell_data, cell_data_vdf, project_name = self.dataProcessor.process_cell(records_cycler, records_vdf, cell_cycle_metrics, cell_data, cell_data_vdf, calibration_parameters)
         #Save new data to pickle if there was new data
         self.notify(tr_name, cell_cycle_metrics, cell_data, cell_data_vdf, None, None, None)
         return cell_cycle_metrics, cell_data, cell_data_vdf
@@ -463,6 +463,8 @@ class DataManager(metaclass=SingletonMeta):
             The dataframe of cell data vdf for the cell
         cell_data_rpt: dataframe    
             The dataframe of cell data rpt for the cell
+        project_name: str
+            Name of project that the cell belongs to
         """
         cell_cycle_metrics, cell_data, cell_data_vdf = None, None, None
         if not reset:
@@ -487,16 +489,17 @@ class DataManager(metaclass=SingletonMeta):
             self.logger.error(f'Error {e} while getting calibration parameters')
 
         # Process data
-        cell_cycle_metrics, cell_data, cell_data_vdf, update = self.dataProcessor.process_cell(records_cycler, records_vdf, cell_cycle_metrics, cell_data, cell_data_vdf, calibration_parameters, numFiles)
+        project_name = self.dirStructure.cell_to_project(cell_name)
+        cell_cycle_metrics, cell_data, cell_data_vdf, update = self.dataProcessor.process_cell(records_cycler, records_vdf, project_name, cell_cycle_metrics, cell_data, cell_data_vdf, calibration_parameters, numFiles)
         #Save new data to pickle if there was new data
         cell_data_rpt = None
         if update:
             self.logger.info(f'Updating processed data for cell {cell_name}...')
-            project_name = self.dirStructure.cell_to_project(cell_name)
+            # project_name = self.dirStructure.cell_to_project(cell_name)
             cell_data_rpt = self.dataProcessor.summarize_rpt_data(cell_data, cell_data_vdf, cell_cycle_metrics, project_name)
             self.dataIO.save_processed_data(cell_name, cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt)
         self.notify(cell_name, cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt, start_time, end_time)
-        return cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt
+        return cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt, project_name
     
     def process_project(self, project_name, numFiles = 1000):
         """

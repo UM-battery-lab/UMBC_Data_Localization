@@ -16,8 +16,8 @@ from src.utils.DateConverter import DateConverter
 from src.config.df_config import CYCLE_ID_LIMS, DEFAULT_TRACE_KEYS, DEFAULT_DF_LABELS
 from src.config.calibration_config import X1, X2, C
 from src.config.esoh_config import W1, W2, W3, UN_VAR1, UN_VAR2, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10
-from src.config.pulse_config import GMJULY2022_PULSE_CURRENTS, GMFEB23_PULSE_CURRENTS, DEFAULT_PULSE_CURRENTS, UMBL2022FEB_PULSE_CURRENTS, Qmax
-
+# from src.config.pulse_config import GMJULY2022_PULSE_CURRENTS, GMFEB23_PULSE_CURRENTS, DEFAULT_PULSE_CURRENTS, UMBL2022FEB_PULSE_CURRENTS, Qmax
+from src.config.proj_config import PROJECT
 
 class DataProcessor:
     """
@@ -41,7 +41,7 @@ class DataProcessor:
         Using the test records to process and update the cell data, cycle metrics, and expansion data
     sort_records(records, start_time=None, end_time=None)
         Sort the records by start time from low to high
-    summarize_rpt_data(cell_data, cell_data_vdf, cell_cycle_metrics)
+    summarize_rpt_data(cell_data, cell_data_vdf, cell_cycle_metrics, project_name)
         Get the summary data for each RPT file
     """
     def __init__(self, dataFilter: DataFilter, dirStructure: DirStructure, dateConverter: DateConverter):
@@ -52,7 +52,7 @@ class DataProcessor:
         self.logger = setup_logger()
 
 
-    def process_cell(self, records_cycler, records_vdf, cell_cycle_metrics=None, cell_data=None, cell_data_vdf=None, calibration_parameters=None, numFiles=1000, cycle_id_lims=CYCLE_ID_LIMS):
+    def process_cell(self, records_cycler, records_vdf, project_name, cell_cycle_metrics=None, cell_data=None, cell_data_vdf=None, calibration_parameters=None, numFiles=1000, cycle_id_lims=CYCLE_ID_LIMS):
         """
         Using the test records to process and update the cell data, cycle metrics, and expansion data
 
@@ -62,6 +62,8 @@ class DataProcessor:
             The list of records of the cycler data
         records_vdf: list of dict
             The list of records of the expansion data
+        project_name: str
+            The project name of the cell            
         cell_cycle_metrics: DataFrame, optional
             The old dataframe of the cell cycle metrics
         cell_data: DataFrame, optional
@@ -93,7 +95,7 @@ class DataProcessor:
             for record in records_new_data: 
                 self.logger.debug(f"Processing cycler data: {record['tr_name']}")
                 # process test file
-                cell_data_new, cell_cycle_metrics_new = self._process_cycler_data([record], cycle_id_lims=cycle_id_lims, numFiles = numFiles)
+                cell_data_new, cell_cycle_metrics_new = self._process_cycler_data([record], cycle_id_lims=cycle_id_lims, project_name= project_name, numFiles = numFiles)
                 # load test data to df and get start and end times
                 df_test = self._record_to_df(record, test_trace_keys = ['aux_vdf_timestamp_epoch_0'], df_labels =['Time [ms]'])
                 if df_test is None:
@@ -105,7 +107,7 @@ class DataProcessor:
                 cell_cycle_metrics['Ah throughput [A.h]'] = cell_data['Ah throughput [A.h]'][(cell_data.discharge_cycle_indicator==True) | (cell_data.charge_cycle_indicator==True)]
         else:
             records_new_data = records_cycler.copy()
-            cell_data, cell_cycle_metrics = self._process_cycler_data(records_new_data, cycle_id_lims=cycle_id_lims, numFiles = numFiles)
+            cell_data, cell_cycle_metrics = self._process_cycler_data(records_new_data, cycle_id_lims=cycle_id_lims, project_name= project_name, numFiles = numFiles)
         
         # Process the expansion data
         if len(records_vdf)==0: 
@@ -287,7 +289,7 @@ class DataProcessor:
         cell_cycle_metrics: DataFrame
             The dataframe of the cell cycle metrics
         project_name: str
-            The project name
+            The project name for the cell
         
         Returns
         -------
@@ -298,13 +300,13 @@ class DataProcessor:
         cycle_summary_cols = [c for c in cell_cycle_metrics.columns.to_list() if '[' in c] + ['Test name', 'Protocol']
         cell_rpt_data = pd.DataFrame() 
         # Determine the pulse currents based on project name
-        pulse_currents = DEFAULT_PULSE_CURRENTS
-        if project_name == 'GMJuly2022':
-            pulse_currents = GMJULY2022_PULSE_CURRENTS
-        elif project_name == 'GMFEB23S':
-            pulse_currents = GMFEB23_PULSE_CURRENTS
-        elif project_name == 'UMBL2022FEB':
-            pulse_currents = UMBL2022FEB_PULSE_CURRENTS
+        # pulse_currents = DEFAULT_PULSE_CURRENTS
+        if project_name in PROJECT.keys(): 
+            project_settings = PROJECT[project_name]
+        else:
+            project_settings = PROJECT['Default']
+        pulse_currents = project_settings['pulse_currents']
+        I_C20 = project_settings['I_C20']
 
         # for each RPT file (not sure what it'll do if there are multiple RPT files for 1 RPT...)
         for j,rpt_file in enumerate(rpt_filenames):
@@ -314,7 +316,7 @@ class DataProcessor:
             # for each section of the RPT...
             for i in rpt_idx:
                 rpt_subcycle = pd.DataFrame()
-                #find timestamps for partial cycle
+                # find timestamps for partial cycle
                 t_start = cell_cycle_metrics['Time [ms]'].loc[i]-30
                 try: # end of partial cycle = next time listed
                     t_end = cell_cycle_metrics['Time [ms]'].loc[i+1]+30
@@ -329,7 +331,7 @@ class DataProcessor:
                 rpt_subcycle['Data'] = [cell_data[['Time [ms]', 'Current [A]', 'Voltage [V]', 'Ah throughput [A.h]', 'Temperature [degC]', 'Step index']][(t>t_start) & (t<t_end)]]
                 
                 self.update_cycle_metrics_hppc(rpt_subcycle, cell_cycle_metrics, i, pulse_currents)
-                index_code = self.update_cycle_metrics_esoh(rpt_subcycle, cell_cycle_metrics, i, pre_rpt, esoh_record_line)
+                index_code = self.update_cycle_metrics_esoh(rpt_subcycle, cell_cycle_metrics, i, pre_rpt, esoh_record_line, I_slow = I_C20)
                 if index_code >= 0:
                     # Update the previous subcycle line and data
                     pre_rpt = rpt_subcycle
@@ -353,7 +355,6 @@ class DataProcessor:
             cell_rpt_data = cell_rpt_data[[cols[len(cols)-1]] + cols[0:-1]] 
         # Creating a temporary column 'temp_sort' with the sorting values
             
-        #cell_rpt_data['temp_sort'] = cell_rpt_data['Data'].apply(lambda x: x['Time [ms]'].iloc[0] if not x.empty else float('inf'))
         try:
             cell_rpt_data['temp_sort'] = cell_rpt_data['Data'].apply(lambda x: x['Time [ms]'].iloc[0] if not x.empty else float('inf'))
             cell_rpt_data = cell_rpt_data.sort_values(by='temp_sort')
@@ -365,7 +366,7 @@ class DataProcessor:
         
         return cell_rpt_data
     
-    def update_cycle_metrics_esoh(self, rpt_subcycle, cell_cycle_metrics, index, pre_subcycle: pd.DataFrame, record_line_index):
+    def update_cycle_metrics_esoh(self, rpt_subcycle, cell_cycle_metrics, index, pre_subcycle: pd.DataFrame, record_line_index, I_slow):
         """
         Method used for eSOH calculation
 
@@ -381,6 +382,8 @@ class DataProcessor:
             The dataframe of the charge subcycle
         record_line_index: int
             The index for the record line
+        I_slow: float
+            The RPT dis/charge current magnitude (e.g. C/20) [A]
         """
         # Skip the Formation data
         if '_F_' in cell_cycle_metrics.loc[index, 'Test name']:
@@ -398,15 +401,18 @@ class DataProcessor:
             if isinstance(pre_subcycle, dict) and not bool(pre_subcycle):
                 return index
             if pre_subcycle['Protocol'] == 'C/20 charge':
-                ch_subcycle = rpt_subcycle
-                dh_subcycle = pre_subcycle
-            else:
-                ch_subcycle = pre_subcycle
+                # ch_subcycle = rpt_subcycle
+                # dh_subcycle = pre_subcycle
                 dh_subcycle = rpt_subcycle
+                ch_subcycle = pre_subcycle
+            else:
+                # ch_subcycle = pre_subcycle
+                # dh_subcycle = rpt_subcycle
+                dh_subcycle = pre_subcycle
+                ch_subcycle = rpt_subcycle
             try:
                 self.logger.info(f"Processing eSOH for {rpt_subcycle['Test name']}")
-                # I_c20 = np.mean(cell_cycle_metrics['Charge capacity [A.h]'][0:5])/20 # use avg of first 2-3 cycle capacities as proxy for nominal capacity
-                q_data, v_data, dVdQ_data, q_full = self._load_V_data(ch_subcycle, dh_subcycle) #, I_slow = I_c20,I_threshold=0.005
+                q_data, v_data, dVdQ_data, q_full = self._load_V_data(ch_subcycle, dh_subcycle, I_slow = I_slow,I_threshold= 0.005)
                 theta, cap, err_v, err_dVdQ, p1_err, p2_err, p12_err = self.esoh_est(q_data, v_data, dVdQ_data, q_full, w1=W1, w2=W2, w3=W3, dVdQ_bool=False)
                 if err_v > 20:
                     self.logger.warning(f"Error in V estimation is too high: {err_v}. For {rpt_subcycle['Test name']}")
@@ -444,8 +450,8 @@ class DataProcessor:
         d_ch["Time [ms]"] = d_ch["Time [ms]"]-d_ch["Time [ms]"].iloc[0]
         d_ch=d_ch[d_ch["Time [ms]"]<=1e8]
         d_dh=d_dh[d_dh["Time [ms]"]<=1e8]
-        d_ch1=d_ch[(d_ch["Current [A]"]>0)] # charge current is + (from plotting)
-        d_dh1=d_dh[(d_dh["Current [A]"]<0)] # discharge current is - (from plotting)
+        d_ch1=d_ch[(d_ch["Current [A]"]>0)] # charge current is + 
+        d_dh1=d_dh[(d_dh["Current [A]"]<0)] # discharge current is - 
         d_ch=d_ch[(d_ch["Current [A]"]>(I_slow-I_threshold)) & (d_ch["Current [A]"]<(I_slow+I_threshold))] # look for C/20 current
         d_dh=d_dh[(d_dh["Current [A]"]<-(I_slow-I_threshold)) & (d_dh["Current [A]"]>-(I_slow+I_threshold))]
         q_cv = max(d_ch1["Ah throughput [A.h]"])-max(d_ch["Ah throughput [A.h]"])
@@ -891,7 +897,7 @@ class DataProcessor:
     def _create_default_cell_data_vdf(self):
         return pd.DataFrame(columns=['Time [ms]','Expansion [-]', 'Expansion ref [-]', 'Temperature [degC]','cycle_indicator','Drive Current [-]','Expansion STDDEV [cnt]','Ref STDDEV [cnt]'])
 
-    def _process_cycler_data(self, records_neware, cycle_id_lims, numFiles=1000):
+    def _process_cycler_data(self, records_neware, cycle_id_lims, project_name, numFiles=1000):
         """
         Process cycler data from a list of test records
 
@@ -901,6 +907,8 @@ class DataProcessor:
             The list of test records
         cycle_id_lims: list of ints
             The cycle number limits for charge, discharge, and total cycles
+        project_name: str
+            The project name for the cell 
         numFiles: int, optional
             The max number of files to process
 
@@ -916,9 +924,15 @@ class DataProcessor:
         cell_data, cell_cycle_metrics = self._combine_cycler_data(records_neware, cycle_id_lims, numFiles = numFiles)
         
         # calculate capacities 
+        Qmax = PROJECT[project_name]['Qmax']
+        if project_name in PROJECT.keys(): 
+            Qmax = PROJECT[project_name]['Qmax']
+        else:
+            Qmax = PROJECT['Default']['Qmax']
+
         charge_t_idx = list(cell_data[cell_data.charge_cycle_indicator ==True].index)
         discharge_t_idx = list(cell_data[cell_data.discharge_cycle_indicator ==True].index)
-        Q_c, Q_d = self._calc_capacities(cell_data['Time [ms]'], cell_data['Current [A]'], cell_data['Ah throughput [A.h]'], charge_t_idx, discharge_t_idx)
+        Q_c, Q_d = self._calc_capacities(cell_data['Time [ms]'], cell_data['Current [A]'], cell_data['Ah throughput [A.h]'], charge_t_idx, discharge_t_idx, Qmax)
         # find average current
         I_avg_c,I_avg_d = self._avg_cycle_data_x(cell_data['Time [ms]'], cell_data['Current [A]'], charge_t_idx, discharge_t_idx)
         # Find min/max metrics
@@ -1015,7 +1029,7 @@ class DataProcessor:
                 y_min.append(data[cycle_idx_minmax[i]])  
         return y_max, y_min
 
-    def _calc_capacities(self, t, I, AhT, charge_idx, discharge_idx):
+    def _calc_capacities(self, t, I, AhT, charge_idx, discharge_idx, Qmax):
         """
         Calculate the charge and discharge capacities
 
@@ -1061,7 +1075,7 @@ class DataProcessor:
                     Q_d.append(Q) 
         return np.array(Q_c), np.array(Q_d)
 
-    def _combine_cycler_data(self, records_cycler, cycle_id_lims, numFiles=1000, last_AhT = 0):
+    def _combine_cycler_data(self, records_cycler, cycle_id_lims, numFiles=1000, last_AhT = 0, Qmax=3.8):
         """
         Combine cycler data from multiple files into a single dataframe.
         PROCESS CYCLER DATA.
