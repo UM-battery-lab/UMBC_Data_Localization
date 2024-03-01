@@ -16,7 +16,7 @@ from src.utils.DateConverter import DateConverter
 from src.config.df_config import CYCLE_ID_LIMS, DEFAULT_TRACE_KEYS, DEFAULT_DF_LABELS
 from src.config.calibration_config import X1, X2, C
 from src.config.esoh_config import W1, W2, W3, UN_VAR1, UN_VAR2, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10
-from src.config.pulse_config import GMJULY2022_PULSE_CURRENTS, GMFEB23_PULSE_CURRENTS, DEFAULT_PULSE_CURRENTS, Qmax
+from src.config.pulse_config import GMJULY2022_PULSE_CURRENTS, GMFEB23_PULSE_CURRENTS, DEFAULT_PULSE_CURRENTS, UMBL2022FEB_PULSE_CURRENTS, Qmax
 
 
 class DataProcessor:
@@ -303,10 +303,12 @@ class DataProcessor:
             pulse_currents = GMJULY2022_PULSE_CURRENTS
         elif project_name == 'GMFEB23S':
             pulse_currents = GMFEB23_PULSE_CURRENTS
+        elif project_name == 'UMBL2022FEB':
+            pulse_currents = UMBL2022FEB_PULSE_CURRENTS
+
         # for each RPT file (not sure what it'll do if there are multiple RPT files for 1 RPT...)
         for j,rpt_file in enumerate(rpt_filenames):
             rpt_idx = cell_cycle_metrics[cell_cycle_metrics['Test name'] == rpt_file].index
-
             pre_rpt = pd.DataFrame()
             esoh_record_line = -1
             # for each section of the RPT...
@@ -403,7 +405,8 @@ class DataProcessor:
                 dh_subcycle = rpt_subcycle
             try:
                 self.logger.info(f"Processing eSOH for {rpt_subcycle['Test name']}")
-                q_data, v_data, dVdQ_data, q_full = self._load_V_data(ch_subcycle, dh_subcycle)
+                # I_c20 = np.mean(cell_cycle_metrics['Charge capacity [A.h]'][0:5])/20 # use avg of first 2-3 cycle capacities as proxy for nominal capacity
+                q_data, v_data, dVdQ_data, q_full = self._load_V_data(ch_subcycle, dh_subcycle) #, I_slow = I_c20,I_threshold=0.005
                 theta, cap, err_v, err_dVdQ, p1_err, p2_err, p12_err = self.esoh_est(q_data, v_data, dVdQ_data, q_full, w1=W1, w2=W2, w3=W3, dVdQ_bool=False)
                 if err_v > 20:
                     self.logger.warning(f"Error in V estimation is too high: {err_v}. For {rpt_subcycle['Test name']}")
@@ -411,7 +414,7 @@ class DataProcessor:
 
             except Exception as e:
                 theta, cap, err_v, err_dVdQ, p1_err, p2_err, p12_err = np.full(6, np.NaN), np.NaN, np.NaN, np.NaN, np.NaN, np.NaN, np.NaN
-                self.logger.error(f"Error while processing eSOH for {rpt_subcycle['Test name']}: {e}")
+                self.logger.error(f"Error while processing eSOH for {rpt_subcycle['Test name']}: {e}") # ERROR: can only assign an iterable
 
             # Update the cell_cycle_metrics with eSOH data
             cell_cycle_metrics.at[record_line_index, 'C'] = cap
@@ -429,7 +432,7 @@ class DataProcessor:
             return -1
         return -2
     
-    def _load_V_data(self, ch_rpt, dh_rpt, d_int=0.01):
+    def _load_V_data(self, ch_rpt, dh_rpt, I_slow, I_threshold, d_int=0.01): # , I_slow = 0.177,I_threshold=0.003default for whatever cell sravan set these currents for...
         """
         Method used for eSOH calculation
         """
@@ -441,10 +444,10 @@ class DataProcessor:
         d_ch["Time [ms]"] = d_ch["Time [ms]"]-d_ch["Time [ms]"].iloc[0]
         d_ch=d_ch[d_ch["Time [ms]"]<=1e8]
         d_dh=d_dh[d_dh["Time [ms]"]<=1e8]
-        d_ch1=d_ch[(d_ch["Current [A]"]>0)]
-        d_dh1=d_dh[(d_dh["Current [A]"]<0)]
-        d_ch=d_ch[(d_ch["Current [A]"]>0.174) & (d_ch["Current [A]"]<0.18)]
-        d_dh=d_dh[(d_dh["Current [A]"]<-0.174) & (d_dh["Current [A]"]>-0.18)]
+        d_ch1=d_ch[(d_ch["Current [A]"]>0)] # charge current is + (from plotting)
+        d_dh1=d_dh[(d_dh["Current [A]"]<0)] # discharge current is - (from plotting)
+        d_ch=d_ch[(d_ch["Current [A]"]>(I_slow-I_threshold)) & (d_ch["Current [A]"]<(I_slow+I_threshold))] # look for C/20 current
+        d_dh=d_dh[(d_dh["Current [A]"]<-(I_slow-I_threshold)) & (d_dh["Current [A]"]>-(I_slow+I_threshold))]
         q_cv = max(d_ch1["Ah throughput [A.h]"])-max(d_ch["Ah throughput [A.h]"])
         # Filter data points with only V>2.7 V and V< 4.2V
         d_ch=d_ch[(d_ch["Voltage [V]"]>=2.7) & (d_ch["Voltage [V]"]<=4.2)]
@@ -746,8 +749,9 @@ class DataProcessor:
         t_cycle_vdf, cycle_idx_vdf, matched_timestamp_indices = self._find_matching_timestamp(cycle_timestamps, t_vdf, t_match_threshold=10000)  
 
         # add cycle indicator. These should align with cycles timestamps previously defined by cycler data
-        cell_data_vdf['cycle_indicator'] = list(map(lambda x: x in cycle_idx_vdf, range(len(cell_data_vdf))))
-        
+        cell_data_vdf['cycle_indicator'] = pd.array([False]*len(cell_data_vdf))
+        cell_data_vdf['cycle_indicator'].iloc[cycle_idx_vdf] = True
+
         # find min/max expansion
         cycle_idx_vdf_minmax = [i for i in cycle_idx_vdf if i is not np.nan]
         cycle_idx_vdf_minmax.append(len(t_vdf)-1) #append end
@@ -1606,7 +1610,7 @@ class DataProcessor:
         t: floats
             The time data
         t_match_threshold: float, optional
-            The threshold for matching timestamps
+            The threshold for matching timestamps in seconds
         nan_pad: bool, optional
             Whether to pad with nan
         
@@ -1619,23 +1623,16 @@ class DataProcessor:
         list of ints
             The list of matched timestamp indices
         """
+        # find matched_timestamps by use timestamps as series index to use "get_indexer"
+        t_test = t.drop_duplicates()
+        t_test = pd.Series(t_test, index = t_test)
+        mapped_indices_uniq = t_test.index.get_indexer(desired_timestamps, method="nearest", tolerance = t_match_threshold*1000)
+        matched_timestamp_indices = np.argwhere(mapped_indices_uniq!=-1)[:,0] #indices of mapped_indices_uniq that are not -1 = desired_timestamps with valid matches
+        mapped_indices_uniq = mapped_indices_uniq[mapped_indices_uniq!=-1] # matching timestamp indices in t_test
+        matched_timestamps = t_test.iloc[mapped_indices_uniq].index
 
-        # find indices for "desired_timestamps" in an array of timestamps "t" within "t_match_threshold" seconds  
-        mapped_indices = [] #indexes t
-        matched_timestamp_indices =[] # indexes desired_timestamps
-        matched_timestamps = [] # value of t closest to desired_timestamp. includes nan if can't find matching timestamp.
-        # for each timestamp... 
-        for k, desired_timestamp in enumerate(desired_timestamps):
-            # if smallest dt < t_match_threshold
-            time_diff_seconds = (t - desired_timestamp)
-            min_time_diff = np.min(abs(time_diff_seconds))
-
-            if min_time_diff < t_match_threshold:
-                matched_idx = np.argmin(abs(time_diff_seconds))
-                mapped_indices.append(matched_idx)
-                matched_timestamps.append(t.iloc[matched_idx])
-                matched_timestamp_indices.append(k)
-            elif nan_pad: # else if pad with nan if requested
-                matched_timestamps.append(np.nan)
+        # use the matching vdf timestamps to find the index in the vdf data 
+        t_test2 = pd.Series(t, index = t)
+        mapped_indices = t_test2.index.get_indexer_for(matched_timestamps)
 
         return matched_timestamps, mapped_indices, matched_timestamp_indices
