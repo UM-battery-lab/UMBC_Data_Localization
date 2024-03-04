@@ -46,7 +46,8 @@ def process_cell_test():
     # umbl_cell_nums = [152097,152091,152051,152087,152042,152094,152045,152054,152039,152065,152041,152046,152057,152078,152033,152088,152036,152084,152085,152047,152072,152048]
     # umbl_cells = ['UMBL2022FEB' +'_CELL' + f'{cell:03d}' for cell in umbl_cell_nums]
     cell_names = ["UMBL2022FEB_CELL152087"]
-    
+    cell_names=["GMJuly2022_CELL049"]
+
     for cell_name in cell_names:
         dataManager = DataManager(use_redis=False)
         def save_figs(figs, cell_name, time_name):
@@ -139,7 +140,7 @@ if __name__ == '__main__':
 
     # filter_test()
 
-     process_cell_test()
+    process_cell_test()
     #process_cell_test()
 #    #process_tr_test()
 #    consistency_test()

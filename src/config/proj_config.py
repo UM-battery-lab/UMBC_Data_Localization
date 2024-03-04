@@ -14,7 +14,13 @@ PROJECT = {
         'Qmax': 3.8,
         'I_C20': 0.177,
     },
-    'GMJULY2022':{
+    'GMJuly2022':{
+        'pulse_currents':GMJULY2022_PULSE_CURRENTS,
+        'nominal_capacity':3.5, #A.h
+        'Qmax': 3.8,
+        'I_C20': 0.177,
+    },
+        'Unknown Project':{
         'pulse_currents':GMJULY2022_PULSE_CURRENTS,
         'nominal_capacity':3.5, #A.h
         'Qmax': 3.8,
