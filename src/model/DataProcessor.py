@@ -16,7 +16,6 @@ from src.utils.DateConverter import DateConverter
 from src.config.df_config import CYCLE_ID_LIMS, DEFAULT_TRACE_KEYS, DEFAULT_DF_LABELS
 from src.config.calibration_config import X1, X2, C
 from src.config.esoh_config import W1, W2, W3, UN_VAR1, UN_VAR2, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10
-# from src.config.pulse_config import GMJULY2022_PULSE_CURRENTS, GMFEB23_PULSE_CURRENTS, DEFAULT_PULSE_CURRENTS, UMBL2022FEB_PULSE_CURRENTS, Qmax
 from src.config.proj_config import PROJECT
 
 class DataProcessor:
@@ -304,7 +303,7 @@ class DataProcessor:
         if project_name in PROJECT.keys(): 
             project_settings = PROJECT[project_name]
         else:
-            project_settings = PROJECT['Default']
+            project_settings = PROJECT['DEFAULT']
         pulse_currents = project_settings['pulse_currents']
         I_C20 = project_settings['I_C20']
 
@@ -928,7 +927,7 @@ class DataProcessor:
         if project_name in PROJECT.keys(): 
             Qmax = PROJECT[project_name]['Qmax']
         else:
-            Qmax = PROJECT['Default']['Qmax']
+            Qmax = PROJECT['DEFAULT']['Qmax']
 
         charge_t_idx = list(cell_data[cell_data.charge_cycle_indicator ==True].index)
         discharge_t_idx = list(cell_data[cell_data.discharge_cycle_indicator ==True].index)

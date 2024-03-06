@@ -76,7 +76,7 @@ class DirStructure:
         except Exception as e:
             self.logger.error(f'Error while loading json file: {e}')
             return []
-        
+
     def _save(self, path, data):
         try:
             os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -101,6 +101,9 @@ class DirStructure:
             self.structure.append(record)   # First, append the new record to the structure
         except Exception as e:
             self.logger.error(f'Error while appending record: {e}')
+        self.save_dir_structure()
+
+    def save_dir_structure(self):
         try:
             self._save(self.dirStructurePath, self.structure)  # Then, try to save the structure
         except Exception as e:
@@ -122,15 +125,17 @@ class DirStructure:
                 record[key] = None
         self._save(self.dirStructurePath, self.structure)
     
-    def check_project_name(self, devices_id, projects_name):
+    def check_project_name(self, devices_id, projects_name, devices_name=None):
         self.logger.info(f"Checking project name for {len(devices_id)} devices")
         for record in self.structure:
             if record['device_id'] in devices_id:
                 record['project_name'] = projects_name[devices_id.index(record['device_id'])]
+                if devices_name:
+                    record['dev_name'] = devices_name[devices_id.index(record['device_id'])]
             # TODO: Delete the actual data folder if the project name is not in the list
             else:
                 self.logger.warning(f"Device {record['device_id']} is not in the list")
-                self.structure.remove(record)
+                # self.structure.remove(record)
         self._save(self.dirStructurePath, self.structure)
 
     def _rollback(self):
@@ -190,12 +195,12 @@ class DirStructure:
     def load_processed_dev_folder(self, dev_name):
         for record in self.structure:
             if record['dev_name'] == dev_name:
-                return os.path.join(self.rootPath, 'Processed', record['project_name'], record['dev_name'])
+                return os.path.join(self.rootPath, 'PROCESSED', record['project_name'], record['dev_name'])
         self.logger.warning(f"No processed test record for {dev_name}")
         return None
     
     def load_processed_folder(self):
-        return os.path.join(self.rootPath, 'Processed')
+        return os.path.join(self.rootPath, 'PROCESSED')
     
     def load_ccm_folder(self):
         return os.path.join(self.load_processed_folder(), 'CCM')

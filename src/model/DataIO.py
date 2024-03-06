@@ -90,14 +90,13 @@ class DataIO:
         projects_name = []
         for dev in devs:
             project_name = self.extract_project_name(dev.tags)
-            device_folder = os.path.join(self.rootPath, project_name if project_name else "Unknown_Project", dev.name)
             if not project_name:
-                self.logger.warning(f"The device {dev.name} does not have a project name. Put it in the Unknown_Project.")
-                project_name = "Unknown_Project"
+                self.logger.warning(f"The device {dev.name} does not have a project name. Put it in the UNKNOWN_PROJECT.")
+                project_name = "UNKNOWN_PROJECT"
             # Use the lazy creation of the directory
             # self._create_directory(device_folder)
             devices_id.append(dev.id)
-            devices_name.append(dev.name)
+            devices_name.append(dev.name.upper())
             projects_name.append(project_name)
         return devices_id, devices_name, projects_name
     
@@ -147,17 +146,18 @@ class DataIO:
 
     def extract_project_name(self, tags):
         prefix = "Project Name:"
-        project_name = "Unknown_Project"
+        project_name = "UNKNOWN_PROJECT"
         for tag in tags:
             if tag.startswith(prefix):
-                project_name = tag.split(prefix)[1].strip()
+                # Use UPPERCASE for the project name
+                project_name = tag.split(prefix)[1].strip().upper()
         return project_name
     
     def _handle_single_record(self, tr, df, cycle_stat, dev_name, project_name):
         device_folder = os.path.join(self.rootPath, project_name if project_name else '', dev_name)
         if not project_name:
             self.logger.warning(f"The device {dev_name} does not have a project name.")
-            project_name = "Unknown_Project"
+            project_name = "UNKNOWN_PROJECT"
         # device_folder = os.path.join(self.rootPath, dev_name)
         if device_folder is None:
             self.logger.error(f'Device folder not found for device id {tr.device_id}')
@@ -651,7 +651,7 @@ class DataIO:
                 continue
             # # Ignore the Processed data folder
             # TODO: Do not hardcode the folder name
-            if 'voltaiq_data/Processed' in root:
+            if 'voltaiq_data/PROCESSED' in root:
                 continue
             if 'voltaiq_data/CCM' in root:
                 continue
@@ -739,4 +739,3 @@ class DataIO:
             shutil.copy2(src, dest)
         except Exception as e:
             self.logger.error(f"Error copying file from {src} to {dest}: {e}")
-    

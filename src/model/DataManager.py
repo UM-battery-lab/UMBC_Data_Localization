@@ -193,6 +193,8 @@ class DataManager(metaclass=SingletonMeta):
             return
 
         devices_id, devices_name, projects_name  = self.dataIO.create_dev_dic(devs)
+        # Check the directory structure and update it
+        self.dirStructure.check_project_name(devices_id, projects_name, devices_name)
         self.dirStructure.update_project_devices(devices_id, devices_name, projects_name)
         self._update_batch_data(new_trs, devices_id, devices_name, projects_name) 
     
@@ -319,7 +321,7 @@ class DataManager(metaclass=SingletonMeta):
                 project_name = projects_name[devices_id.index(dev.id)]
                 if project_name is None:
                     self.logger.error(f'No project name found for device {dev.name}')
-                    project_name = 'Unknown_Project'
+                    project_name = 'UNKNOWN_PROJECT'
                 self.logger.info(f'Moving device folder {dev.name} to project folder {project_name}')
                 dst_folder = os.path.join(self.dirStructure.rootPath, project_name, dev.name)
                 self.dataIO.merge_folders(src_folder, dst_folder)
@@ -356,6 +358,7 @@ class DataManager(metaclass=SingletonMeta):
                 if dev_name:
                     self.dirStructure.append_record(tr, dev_name, project_name)
                     self.logger.info(f'Appended record for folder {test_folder}')
+            # self.dirStructure.save_dir_structure()
 
         # Step 5: Check for records in the directory structure that don't have corresponding folders on disk.
         # TODO: The orphaned records check is disabled for now
@@ -466,6 +469,7 @@ class DataManager(metaclass=SingletonMeta):
         project_name: str
             Name of project that the cell belongs to
         """
+        cell_name = cell_name.upper()
         cell_cycle_metrics, cell_data, cell_data_vdf = None, None, None
         if not reset:
             cell_cycle_metrics, cell_data, cell_data_vdf, _ = self.load_processed_data(cell_name)
