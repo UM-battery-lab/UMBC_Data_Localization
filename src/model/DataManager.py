@@ -193,6 +193,8 @@ class DataManager(metaclass=SingletonMeta):
             return
 
         devices_id, devices_name, projects_name  = self.dataIO.create_dev_dic(devs)
+        # Check the directory structure and update it
+        self.dirStructure.check_project_name(devices_id, projects_name, devices_name)
         self.dirStructure.update_project_devices(devices_id, devices_name, projects_name)
         self._update_batch_data(new_trs, devices_id, devices_name, projects_name) 
     
@@ -319,7 +321,7 @@ class DataManager(metaclass=SingletonMeta):
                 project_name = projects_name[devices_id.index(dev.id)]
                 if project_name is None:
                     self.logger.error(f'No project name found for device {dev.name}')
-                    project_name = 'Unknown_Project'
+                    project_name = 'UNKNOWN_PROJECT'
                 self.logger.info(f'Moving device folder {dev.name} to project folder {project_name}')
                 dst_folder = os.path.join(self.dirStructure.rootPath, project_name, dev.name)
                 self.dataIO.merge_folders(src_folder, dst_folder)
@@ -356,6 +358,7 @@ class DataManager(metaclass=SingletonMeta):
                 if dev_name:
                     self.dirStructure.append_record(tr, dev_name, project_name)
                     self.logger.info(f'Appended record for folder {test_folder}')
+            # self.dirStructure.save_dir_structure()
 
         # Step 5: Check for records in the directory structure that don't have corresponding folders on disk.
         # TODO: The orphaned records check is disabled for now
@@ -430,7 +433,7 @@ class DataManager(metaclass=SingletonMeta):
             self.logger.error(f'Error {e} while getting calibration parameters')
 
         # Process data
-        cell_cycle_metrics, cell_data, cell_data_vdf, _ = self.dataProcessor.process_cell(records_cycler, records_vdf, cell_cycle_metrics, cell_data, cell_data_vdf, calibration_parameters)
+        cell_cycle_metrics, cell_data, cell_data_vdf, project_name = self.dataProcessor.process_cell(records_cycler, records_vdf, cell_cycle_metrics, cell_data, cell_data_vdf, calibration_parameters)
         #Save new data to pickle if there was new data
         self.notify(tr_name, cell_cycle_metrics, cell_data, cell_data_vdf, None, None, None)
         return cell_cycle_metrics, cell_data, cell_data_vdf
@@ -463,7 +466,10 @@ class DataManager(metaclass=SingletonMeta):
             The dataframe of cell data vdf for the cell
         cell_data_rpt: dataframe    
             The dataframe of cell data rpt for the cell
+        project_name: str
+            Name of project that the cell belongs to
         """
+        cell_name = cell_name.upper()
         cell_cycle_metrics, cell_data, cell_data_vdf = None, None, None
         if not reset:
             cell_cycle_metrics, cell_data, cell_data_vdf, _ = self.load_processed_data(cell_name)
@@ -487,16 +493,17 @@ class DataManager(metaclass=SingletonMeta):
             self.logger.error(f'Error {e} while getting calibration parameters')
 
         # Process data
-        cell_cycle_metrics, cell_data, cell_data_vdf, update = self.dataProcessor.process_cell(records_cycler, records_vdf, cell_cycle_metrics, cell_data, cell_data_vdf, calibration_parameters, numFiles)
+        project_name = self.dirStructure.cell_to_project(cell_name)
+        cell_cycle_metrics, cell_data, cell_data_vdf, update = self.dataProcessor.process_cell(records_cycler, records_vdf, project_name, cell_cycle_metrics, cell_data, cell_data_vdf, calibration_parameters, numFiles)
         #Save new data to pickle if there was new data
         cell_data_rpt = None
         if update:
             self.logger.info(f'Updating processed data for cell {cell_name}...')
-            project_name = self.dirStructure.cell_to_project(cell_name)
+            # project_name = self.dirStructure.cell_to_project(cell_name)
             cell_data_rpt = self.dataProcessor.summarize_rpt_data(cell_data, cell_data_vdf, cell_cycle_metrics, project_name)
             self.dataIO.save_processed_data(cell_name, cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt)
         self.notify(cell_name, cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt, start_time, end_time)
-        return cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt
+        return cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt, project_name
     
     def process_project(self, project_name, numFiles = 1000):
         """
@@ -669,6 +676,39 @@ class DataManager(metaclass=SingletonMeta):
                     # Copy the file to the target folder
                     self.dataIO.copy_file(source_file, target_file)
         self.logger.info('Duplicating ccm csv and pkl.gz files completed.')
+
+    def clean_unknown_project(self):
+        """
+        Clean the unknown project folder, and move the device folders to the correct project folder.
+        Also update the directory structure.
+        """
+        self.logger.info('Starting cleaning unknown project folder...')
+        proj_to_dev_id_name = self.dirStructure.load_project_devices()
+        dev_to_id_proj = {}
+        # Wrong id to correct id and project
+        wrong_id_to_id_proj = {}
+        for proj, devs_id_name in proj_to_dev_id_name.items():
+            if proj == 'UNKNOWN_PROJECT':
+                continue
+            for dev_id, dev_name in devs_id_name:
+                dev_to_id_proj[dev_name] = (dev_id, proj)
+        # Check the unknown project
+        for dev_id_name in proj_to_dev_id_name['UNKNOWN_PROJECT']:
+            wrong_id, dev_name = dev_id_name[0], dev_id_name[1]
+            if dev_name in dev_to_id_proj:
+                dev_id, proj = dev_to_id_proj[dev_name]
+                wrong_id_to_id_proj[wrong_id] = (dev_id, proj)
+                self.logger.info(f'Moving device folder {dev_name} to project folder {proj}')
+                src_folder = os.path.join(self.dirStructure.rootPath, 'UNKNOWN_PROJECT', dev_name)
+                if not os.path.exists(src_folder):
+                    self.logger.warning(f'Device folder {dev_name} not found in UNKNOWN_PROJECT folder')
+                    continue
+                dst_folder = os.path.join(self.dirStructure.rootPath, proj, dev_name)
+                self.dataIO.merge_folders(src_folder, dst_folder)
+                # Delete the record in the project_devices.json
+
+        # Check the directory structure and update it
+        self.dirStructure.fix_unknown_project(wrong_id_to_id_proj)
 
     # Below are the methods for testing
     def test_createdb(self):

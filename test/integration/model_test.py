@@ -43,45 +43,18 @@ def consistency_test():
 
 def process_cell_test():
     # test process_cell
-    #cell_name='GMFEB23S_CELL044'
-    #'GMJuly2022_CELL015'
-    #'UMBL2022FEB_CELL152051'
-    cell_name='GMJuly2022_CELL901REF'
-    cell_name='GMJuly2022_CELL073'
-    #cell_name='GMJuly2022_CELL018'
+    # umbl_cell_nums = [152097,152091,152051,152087,152042,152094,152045,152054,152039,152065,152041,152046,152057,152078,152033,152088,152036,152084,152085,152047,152072,152048]
+    # umbl_cells = ['UMBL2022FEB' +'_CELL' + f'{cell:03d}' for cell in umbl_cell_nums]
+    cell_names = ["UMBL2022FEB_CELL152087"]
+    cell_names=["GMJuly2022_CELL049"]
 
-    #cell_name='GMJuly2022_CELL012'
-#    cell_name='GMJuly2022_CELL041'
-#    cell_name='GMJuly2022_CELL016'
-    cell_name='GMJuly2022_CELL085'
-    # Hamid cells 16 and 41
-    #cell_name='GMFEB23S_CELL066'
- #   cell_name='GMJuly2022_CELL104'
-
-   # cell_name='GMFEB23S_CELL031'
-   # cell_name='GMFEB23S_CELL072'
-    cell_name='GMFEB23S_CELL045'
-    cell_name='GMFEB23S_CELL046'
-   # cell_name='GMFEB23S_CELL048'
-
-    cell_name='GMJuly2022_CELL015'
-    cell_name='GMJuly2022_CELL029'
-    cell_name='GMJuly2022_CELL044'
-    cell_name='GMJuly2022_CELL087'
-    cell_names=['GMJuly2022_CELL011','GMJuly2022_CELL031','GMJuly2022_CELL046']
-    cell_names=['GMFEB23S_CELL046','GMFEB23S_CELL048','GMFEB23S_CELL034','GMFEB23S_CELL036','GMFEB23S_CELL038','GMFEB23S_CELL040','GMFEB23S_CELL042','GMFEB23S_CELL044','GMFEB23S_CELL050']
-    # cell_names=['GMJuly2022_CELL031']
-    # cell_names=['GMJuly2022_CELL046']
-    cell_names=['GMJuly2022_CELL099']
-    cell_names=['GMJuly2022_CELL085','GMJuly2022_CELL088','GMJuly2022_CELL044','GMJuly2022_CELL046']
-    
     for cell_name in cell_names:
         dataManager = DataManager(use_redis=False)
         def save_figs(figs, cell_name, time_name):
             dataManager.save_figs(figs, cell_name, time_name, keep_open=True)
         presenter = Presenter()
         viewer = Viewer(call_back=save_figs)
-        #cell_name = "UMBL2022FEB_CELL152051"
+        
 
         dataManager.attach(presenter)
         presenter.attach(viewer)
@@ -105,18 +78,6 @@ def process_cell_test():
         print("Garbage collector: collected",
                 "%d objects." % collected)
 
-
-
-# t[len(t)-1]
-# 1691409656500.0
-# t[0]
-# 1666131009000.0
-    #cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt = dataManager.process_cell('GMJuly2022_CELL901REF', reset=True)#901REF')
-
-        # print(cell_data)
-        # print(cell_data_vdf)
-        # print(cell_cycle_metrics)
-        # plt.show()
 
 def process_tr_test():
     tr_name = 'GMJuly2022_CELL025_Test7B_1_P0C_5P0PSI_20230412_R0_CH055'
@@ -179,7 +140,7 @@ if __name__ == '__main__':
 
     # filter_test()
 
-     process_cell_test()
+    process_cell_test()
     #process_cell_test()
 #    #process_tr_test()
 #    consistency_test()
