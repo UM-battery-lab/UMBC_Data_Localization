@@ -251,4 +251,39 @@ class DirStructure:
             if record['dev_name'] == cell_name:
                 return record['project_name']
         return None
-        
+    
+    def fix_unknown_project(self, wrong_id_to_id_proj):
+        """
+        Function to fix the unknown project name for the devices.
+        The wrong device id will be replaced by the correct device id.
+        And the 'UNKNOWN_PROJECT' will be replaced by the correct project name.
+
+        Parameters
+        ----------
+        wrong_id_to_id_proj: dict
+            The dictionary of the wrong device id to the correct device id and project name
+        """
+        for record in self.structure:
+            if record['device_id'] in wrong_id_to_id_proj and record['project_name'] == 'UNKNOWN_PROJECT':
+                record['project_name'] = wrong_id_to_id_proj[record['device_id']][1]
+                record['device_id'] = wrong_id_to_id_proj[record['device_id']][0]
+        self.save_dir_structure()
+
+        proj_to_devs_id_name = self.load_project_devices()
+        unknown_list = proj_to_devs_id_name['UNKNOWN_PROJECT']
+        unknown_list = [item for item in unknown_list if item[0] not in wrong_id_to_id_proj]
+        proj_to_devs_id_name['UNKNOWN_PROJECT'] = unknown_list
+        self._save(self.projectDevicesPath, proj_to_devs_id_name)
+
+    def fix_duplicate_records(self):
+        """
+        Fix the duplicate records in the directory structure
+        """
+        uuids = [record['uuid'] for record in self.structure]
+        if len(uuids) != len(set(uuids)):
+            self.logger.warning("Duplicate records found")
+            duplicate_uuids = [uuid for uuid in uuids if uuids.count(uuid) > 1]
+            for uuid in duplicate_uuids:
+                records = [record for record in self.structure if record['uuid'] == uuid]
+                for record in records[1:]:
+                    self.structure.remove(record)

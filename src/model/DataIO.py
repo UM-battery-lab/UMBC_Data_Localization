@@ -694,7 +694,8 @@ class DataIO:
                     os.makedirs(d)
                 self.merge_folders(s, d)
             else:
-                shutil.copy2(s, d)
+                if not os.path.exists(d):
+                    shutil.copy2(s, d)
         # Remove the source folder
         shutil.rmtree(src)
 

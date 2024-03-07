@@ -677,6 +677,39 @@ class DataManager(metaclass=SingletonMeta):
                     self.dataIO.copy_file(source_file, target_file)
         self.logger.info('Duplicating ccm csv and pkl.gz files completed.')
 
+    def clean_unknown_project(self):
+        """
+        Clean the unknown project folder, and move the device folders to the correct project folder.
+        Also update the directory structure.
+        """
+        self.logger.info('Starting cleaning unknown project folder...')
+        proj_to_dev_id_name = self.dirStructure.load_project_devices()
+        dev_to_id_proj = {}
+        # Wrong id to correct id and project
+        wrong_id_to_id_proj = {}
+        for proj, devs_id_name in proj_to_dev_id_name.items():
+            if proj == 'UNKNOWN_PROJECT':
+                continue
+            for dev_id, dev_name in devs_id_name:
+                dev_to_id_proj[dev_name] = (dev_id, proj)
+        # Check the unknown project
+        for dev_id_name in proj_to_dev_id_name['UNKNOWN_PROJECT']:
+            wrong_id, dev_name = dev_id_name[0], dev_id_name[1]
+            if dev_name in dev_to_id_proj:
+                dev_id, proj = dev_to_id_proj[dev_name]
+                wrong_id_to_id_proj[wrong_id] = (dev_id, proj)
+                self.logger.info(f'Moving device folder {dev_name} to project folder {proj}')
+                src_folder = os.path.join(self.dirStructure.rootPath, 'UNKNOWN_PROJECT', dev_name)
+                if not os.path.exists(src_folder):
+                    self.logger.warning(f'Device folder {dev_name} not found in UNKNOWN_PROJECT folder')
+                    continue
+                dst_folder = os.path.join(self.dirStructure.rootPath, proj, dev_name)
+                self.dataIO.merge_folders(src_folder, dst_folder)
+                # Delete the record in the project_devices.json
+
+        # Check the directory structure and update it
+        self.dirStructure.fix_unknown_project(wrong_id_to_id_proj)
+
     # Below are the methods for testing
     def test_createdb(self):
         """
