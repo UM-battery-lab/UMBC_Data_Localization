@@ -47,7 +47,9 @@ def process_cell_test():
     # umbl_cells = ['UMBL2022FEB' +'_CELL' + f'{cell:03d}' for cell in umbl_cell_nums]
     cell_names = ["UMBL2022FEB_CELL152087"]
     cell_names=["GMJuly2022_CELL049"]
-
+    cell_names=['GMFEB23S_CELL069']
+    # cell_names=["GMJuly2022_CELL"+f'{cell_num:03d}' for cell_num in range(1,105) ]
+    cell_names=["GMFEB23S_CELL"+f'{cell_num:03d}' for cell_num in range(0,77) ]
     for cell_name in cell_names:
         dataManager = DataManager(use_redis=False)
         def save_figs(figs, cell_name, time_name):
@@ -63,7 +65,7 @@ def process_cell_test():
         # test process_cell
 
 
-        cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt = dataManager.process_cell(cell_name, reset=True);#, reset=True)#, start_time='2023-07-01_00-00-00', end_time='2023-07-28_23-59-59')
+        cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt,junk = dataManager.process_cell(cell_name, reset=True);#, reset=True)#, start_time='2023-07-01_00-00-00', end_time='2023-07-28_23-59-59')
     #    cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt = dataManager.process_cell(cell_name, reset=True, start_time='2022-09-13_10-00-00', end_time='2022-09-24_10-00-00');#, reset=True)#)
         
 

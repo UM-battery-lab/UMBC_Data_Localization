@@ -923,7 +923,7 @@ class DataProcessor:
         cell_data, cell_cycle_metrics = self._combine_cycler_data(records_neware, cycle_id_lims, numFiles = numFiles)
         
         # calculate capacities 
-        Qmax = PROJECT[project_name]['Qmax']
+        # Qmax = PROJECT[project_name]['Qmax']
         if project_name in PROJECT.keys(): 
             Qmax = PROJECT[project_name]['Qmax']
         else:
