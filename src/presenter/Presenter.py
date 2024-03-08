@@ -1,11 +1,10 @@
 from src.dto.DataTransferObject import TimeSeriesDTO, ExpansionDTO, CycleMetricsDTO, IndexMetricsDTO, CellDataDTO
 from src.utils.Logger import setup_logger
 from src.utils.DateConverter import DateConverter
-from src.utils.ObserverPattern import Subject, Observer
+from src.viewer.Viewer import Viewer
 import pandas as pd
 
-@Subject
-@Observer
+
 class Presenter():
     """
     Presenter class to present data to the frontend
@@ -28,8 +27,9 @@ class Presenter():
     get_cycle_metrics_AhT(cell_cycle_metrics, cell_data, cell_data_vdf)
         Get cycle metrics for a cell
     """
-    def __init__(self):
+    def __init__(self, viewer=Viewer()):
         self.dateConverter = DateConverter()
+        self.viewer = viewer
         self.logger = setup_logger()
 
     def update(self, cell_name, cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt, start_time, end_time):
@@ -39,8 +39,7 @@ class Presenter():
         measured_data_time = self.get_measured_data_time(cell_cycle_metrics, cell_data, cell_data_vdf)
         cycle_metrics_time = self.get_cycle_metrics_time(cell_cycle_metrics, cell_data, cell_data_vdf)
         cycle_metrics_AhT = self.get_cycle_metrics_AhT(cell_cycle_metrics, cell_data, cell_data_vdf)
-        time_name = f"{start_time}To{end_time}" if start_time and end_time else ""
-        self.notify(cell_name, measured_data_time, cycle_metrics_time, cycle_metrics_AhT, time_name)
+        return self.viewer.update(cell_name, measured_data_time, cycle_metrics_time, cycle_metrics_AhT)
     
     def _timestamp_to_datetime(self, data, start_time=None, end_time=None):
         start_time = self.dateConverter._str_to_timestamp(start_time) if start_time else None

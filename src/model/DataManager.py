@@ -7,12 +7,12 @@ from src.model.DataProcessor import DataProcessor
 from src.utils.Logger import setup_logger
 from src.utils.SinglentonMeta import SingletonMeta
 from src.utils.DateConverter import DateConverter
-from src.utils.ObserverPattern import Subject
+from src.presenter.Presenter import Presenter
 import os
 import gc
 import re
 
-@Subject
+
 class DataManager(metaclass=SingletonMeta):
     """
     The class to manage all the local data
@@ -64,7 +64,7 @@ class DataManager(metaclass=SingletonMeta):
         Get the cycle metrics csv for a cell
     """
     _is_initialized = False
-    def __init__(self, use_redis=False):
+    def __init__(self, presenter: Presenter, use_redis=False):
         if DataManager._is_initialized:
             return
         self.dirStructure = DirStructure()
@@ -75,6 +75,7 @@ class DataManager(metaclass=SingletonMeta):
         self.dateConverter = DateConverter()
         self.dataProcessor = DataProcessor(self.dataFilter, self.dirStructure, self.dateConverter)
         self.logger = setup_logger()
+        self.presenter = presenter
         DataManager._is_initialized = True
 
     def _createdb(self):
@@ -435,7 +436,7 @@ class DataManager(metaclass=SingletonMeta):
         # Process data
         cell_cycle_metrics, cell_data, cell_data_vdf, project_name = self.dataProcessor.process_cell(records_cycler, records_vdf, cell_cycle_metrics, cell_data, cell_data_vdf, calibration_parameters)
         #Save new data to pickle if there was new data
-        self.notify(tr_name, cell_cycle_metrics, cell_data, cell_data_vdf, None, None, None)
+        self.presenter.update(tr_name, cell_cycle_metrics, cell_data, cell_data_vdf, None, None, None)
         return cell_cycle_metrics, cell_data, cell_data_vdf
 
 
@@ -502,7 +503,13 @@ class DataManager(metaclass=SingletonMeta):
             # project_name = self.dirStructure.cell_to_project(cell_name)
             cell_data_rpt = self.dataProcessor.summarize_rpt_data(cell_data, cell_data_vdf, cell_cycle_metrics, project_name)
             self.dataIO.save_processed_data(cell_name, cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt)
-        self.notify(cell_name, cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt, start_time, end_time)
+
+        # Present the data
+        fig_1, fig_2, fig_3 = self.presenter.update(cell_name, cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt, start_time, end_time)
+        time_name = f"{start_time}To{end_time}" if start_time and end_time else ""
+
+        self.save_figs([fig_1, fig_2, fig_3], cell_name, time_name, keep_open=True)
+
         return cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt, project_name
     
     def process_project(self, project_name, numFiles = 1000):
@@ -684,6 +691,7 @@ class DataManager(metaclass=SingletonMeta):
         """
         self.logger.info('Starting cleaning unknown project folder...')
         proj_to_dev_id_name = self.dirStructure.load_project_devices()
+        print(proj_to_dev_id_name.keys())
         dev_to_id_proj = {}
         # Wrong id to correct id and project
         wrong_id_to_id_proj = {}
@@ -692,16 +700,25 @@ class DataManager(metaclass=SingletonMeta):
                 continue
             for dev_id, dev_name in devs_id_name:
                 dev_to_id_proj[dev_name] = (dev_id, proj)
+        print(dev_to_id_proj['GMJULY2022_CELL093'])
         # Check the unknown project
         for dev_id_name in proj_to_dev_id_name['UNKNOWN_PROJECT']:
             wrong_id, dev_name = dev_id_name[0], dev_id_name[1]
-            if dev_name in dev_to_id_proj:
-                dev_id, proj = dev_to_id_proj[dev_name]
+            possible_proj = dev_name.split('_')[0].upper()
+            if dev_name == 'GMJULY2022_CELL093':
+                print(f"!!!GMJULY2022_CELL093: {dev_id}, {proj}")
+            if dev_name in dev_to_id_proj or possible_proj in proj_to_dev_id_name:
+                if dev_name in dev_to_id_proj:
+                    dev_id, proj = dev_to_id_proj[dev_name]
+                else:
+                    dev_id, proj = wrong_id, possible_proj
+                if dev_name == 'GMJULY2022_CELL093':
+                    print(f"!GMJULY2022_CELL093: {dev_id}, {proj}")
                 wrong_id_to_id_proj[wrong_id] = (dev_id, proj)
                 self.logger.info(f'Moving device folder {dev_name} to project folder {proj}')
                 src_folder = os.path.join(self.dirStructure.rootPath, 'UNKNOWN_PROJECT', dev_name)
                 if not os.path.exists(src_folder):
-                    self.logger.warning(f'Device folder {dev_name} not found in UNKNOWN_PROJECT folder')
+                    # self.logger.warning(f'Device folder {dev_name} not found in UNKNOWN_PROJECT folder')
                     continue
                 dst_folder = os.path.join(self.dirStructure.rootPath, proj, dev_name)
                 self.dataIO.merge_folders(src_folder, dst_folder)

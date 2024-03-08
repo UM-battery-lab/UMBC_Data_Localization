@@ -1,12 +1,11 @@
 from matplotlib import pyplot as plt   
 from src.utils.Logger import setup_logger
 from src.dto.DataTransferObject import CellDataDTO
-from src.utils.ObserverPattern import Observer
 from scipy.signal import savgol_filter
 import numpy as np # for arrays
 from src.utils.DateConverter import DateConverter
 from datetime import timedelta
-@Observer
+
 class Viewer():
     """
     The class to view data from the local disk
@@ -31,10 +30,9 @@ class Viewer():
     plot_cycle_metrics_AhT(cell, cell_data: CellDataDTO, downsample = 100)
         Plot the cycle metrics of a cell and the AhT
     """
-    def __init__(self, call_back = None):
+    def __init__(self):
         self.plt = plt 
         self.logger = setup_logger()
-        self.call_back = call_back
 
     def downsample_data(self,t,i,v,dv=2e-3,di=0.1,dt=100):
         # mean_dt=np.mean(np.diff(t))
@@ -73,12 +71,11 @@ class Viewer():
         return t_ds,i_ds,v_ds,index
     
 
-    def update(self, cell_name, measured_data_time, cycle_metrics_time, cycle_metrics_AhT, time_name):
+    def update(self, cell_name, measured_data_time, cycle_metrics_time, cycle_metrics_AhT):
         fig_1 = self.plot_process_cell(cell_name, measured_data_time)
         fig_2 = self.plot_cycle_metrics_time(cell_name, cycle_metrics_time)
         fig_3 = self.plot_cycle_metrics_AhT(cell_name, cycle_metrics_AhT)
-        if self.call_back:
-            self.call_back([fig_1, fig_2, fig_3], cell_name, time_name)
+        return fig_1, fig_2, fig_3
 
 
     def plot_process_cell(self, cell, cell_data: CellDataDTO, downsample = 100):
