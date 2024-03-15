@@ -297,6 +297,24 @@ class DataManager(metaclass=SingletonMeta):
         """
         return self.dataFilter.filter_trs_and_dfs(device_id, tr_name_substring, start_time, tags)
     
+    def filter_cycle_stats(self, device_id=None, tr_name_substring=None):
+        """
+        Filter the cycle stats locally with the specified device id or name
+
+        Parameters
+        ----------
+        device_id: str, optional
+            The device id of the cycle stats to be found
+        tr_name_substring: str, optional
+            The substring of the tr name of the cycle stats to be found
+        
+        Returns
+        -------
+        list of cycle stats
+            The list of cycle stats that match the specified device id or name
+        """
+        return self.dataFilter.filter_cycle_stats(device_id, tr_name_substring)
+
     def check_and_repair_consistency(self):
         """
         Check the consistency between the directory structure and local database, and repair the inconsistency
@@ -343,6 +361,8 @@ class DataManager(metaclass=SingletonMeta):
 
         # Step 4: Check for folders present on disk but not recorded in the directory structure.
         unrecorded_folders = valid_folders_set - recorded_folders_set
+        trs_name_to_update = []
+        folder_to_delete = []
         if unrecorded_folders:
             self.logger.info(f'{len(unrecorded_folders)} folders not recorded in directory structure')
             trs = self.dataIO.load_trs(list(unrecorded_folders))
@@ -355,11 +375,21 @@ class DataManager(metaclass=SingletonMeta):
                     project_name = projects_name[devices_id.index(tr.device_id)]
                 except Exception as e:
                     self.logger.error(f'Error {e} while getting device name or project name for test record {tr.name} by device id {tr.device_id}')
+                    # Delete this folder from the disk
+                    folder_to_delete.append(test_folder)
+                    trs_name_to_update.append(tr.name)
                     continue
+                              
                 if dev_name:
                     self.dirStructure.append_record(tr, dev_name, project_name)
                     self.logger.info(f'Appended record for folder {test_folder}')
             # self.dirStructure.save_dir_structure()
+
+        # Redownload the test record and update the directory structure
+        self.dataDeleter.delete_folders(folder_to_delete)
+        trs_all = self.dataFetcher.fetch_trs()
+        trs = [tr for tr in trs_all if tr.name in trs_name_to_update]
+        self.update_test_data(trs, None, len(trs))
 
         # Step 5: Check for records in the directory structure that don't have corresponding folders on disk.
         # TODO: The orphaned records check is disabled for now
@@ -700,20 +730,15 @@ class DataManager(metaclass=SingletonMeta):
                 continue
             for dev_id, dev_name in devs_id_name:
                 dev_to_id_proj[dev_name] = (dev_id, proj)
-        print(dev_to_id_proj['GMJULY2022_CELL093'])
         # Check the unknown project
         for dev_id_name in proj_to_dev_id_name['UNKNOWN_PROJECT']:
             wrong_id, dev_name = dev_id_name[0], dev_id_name[1]
             possible_proj = dev_name.split('_')[0].upper()
-            if dev_name == 'GMJULY2022_CELL093':
-                print(f"!!!GMJULY2022_CELL093: {dev_id}, {proj}")
             if dev_name in dev_to_id_proj or possible_proj in proj_to_dev_id_name:
                 if dev_name in dev_to_id_proj:
                     dev_id, proj = dev_to_id_proj[dev_name]
                 else:
                     dev_id, proj = wrong_id, possible_proj
-                if dev_name == 'GMJULY2022_CELL093':
-                    print(f"!GMJULY2022_CELL093: {dev_id}, {proj}")
                 wrong_id_to_id_proj[wrong_id] = (dev_id, proj)
                 self.logger.info(f'Moving device folder {dev_name} to project folder {proj}')
                 src_folder = os.path.join(self.dirStructure.rootPath, 'UNKNOWN_PROJECT', dev_name)

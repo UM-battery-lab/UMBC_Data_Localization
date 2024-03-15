@@ -26,18 +26,25 @@ def createdb_test():
     dataManager.test_createdb()#
 
 def filter_test():
-    dataManager = DataManager()
-    # test filter
-    trs, dfs = dataManager.filter_trs_and_dfs(tr_name_substring='GMJuly2022_CELL018')
-    for tr in trs:
-        print(tr)
-        print(dfs)
+    viewer = Viewer()
+    presenter = Presenter(viewer=viewer)
+    dataManager = DataManager(presenter=presenter ,use_redis=False)
+    # # test filter
+    # trs, dfs = dataManager.filter_trs_and_dfs(tr_name_substring='GMJuly2022_CELL018')
+    # for tr in trs:
+    #     print(tr)
+    #     print(dfs)
     # dfs = dataManager.filter_dfs(tr_name_substring='GMJuly2022_CELL018')
     # for df in dfs:
     #     print(df.columns)
+    cycle_stats = dataManager.filter_cycle_stats(tr_name_substring='GMJuly2022_CELL018')
+    print(cycle_stats.cyc_end_datapoint_time)
+
 
 def consistency_test():
-    dataManager = DataManager()
+    v = Viewer()
+    p = Presenter(viewer=v)
+    dataManager = DataManager(presenter=p ,use_redis=False)
     # test consistency
     dataManager.check_and_repair_consistency()
 
@@ -104,9 +111,11 @@ def duplicate_ccm_test():
 
 
 def clean_unknown_project():
-    dataManager = DataManager()
+    v = Viewer()
+    p = Presenter(viewer=v)
+    dataManager = DataManager(presenter=p ,use_redis=False)
     dataManager.clean_unknown_project()
 
 if __name__ == '__main__':
-    process_cell_test()
+    consistency_test()
 
