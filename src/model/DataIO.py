@@ -89,7 +89,7 @@ class DataIO:
         devices_name = []
         projects_name = []
         for dev in devs:
-            project_name = self.extract_project_name(dev.tags)
+            project_name = self.extract_project_name(dev.tags, dev.name)
             if not project_name:
                 self.logger.warning(f"The device {dev.name} does not have a project name. Put it in the UNKNOWN_PROJECT.")
                 project_name = "UNKNOWN_PROJECT"
@@ -144,13 +144,16 @@ class DataIO:
         """
         self._save_to_pickle(df, df_path)
 
-    def extract_project_name(self, tags):
+    def extract_project_name(self, tags, dev_name=None):
         prefix = "Project Name:"
         project_name = "UNKNOWN_PROJECT"
         for tag in tags:
             if tag.startswith(prefix):
                 # Use UPPERCASE for the project name
                 project_name = tag.split(prefix)[1].strip().upper()
+        # Try to extract the project name from the test record name
+        if not project_name == "UNKNOWN_PROJECT" and dev_name:
+            project_name = dev_name.split('_')[0].upper()
         return project_name
     
     def _handle_single_record(self, tr, df, cycle_stat, dev_name, project_name):
