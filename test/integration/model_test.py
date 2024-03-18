@@ -53,7 +53,7 @@ def process_cell_test():
     # umbl_cell_nums = [152097,152091,152051,152087,152042,152094,152045,152054,152039,152065,152041,152046,152057,152078,152033,152088,152036,152084,152085,152047,152072,152048]
     # umbl_cells = ['UMBL2022FEB' +'_CELL' + f'{cell:03d}' for cell in umbl_cell_nums]
     cell_names = ["GMFEB23S_CELL003"]
-    cell_names=["GMJULY2022_CELL"+f'{cell_num:03d}' for cell_num in range(2,120) ]
+    cell_names=["GMJULY2022_CELL"+f'{cell_num:03d}' for cell_num in range(60,120) ]
     for cell_name in cell_names:
         viewer = Viewer()
         presenter = Presenter(viewer=viewer)
@@ -117,5 +117,6 @@ def clean_unknown_project():
     dataManager.clean_unknown_project()
 
 if __name__ == '__main__':
-    consistency_test()
+    # consistency_test()
+    # clean_unknown_project()
     process_cell_test()
