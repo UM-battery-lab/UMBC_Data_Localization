@@ -43,15 +43,16 @@ class DataProcessor:
     summarize_rpt_data(cell_data, cell_data_vdf, cell_cycle_metrics, project_name)
         Get the summary data for each RPT file
     """
-    def __init__(self, dataFilter: DataFilter, dirStructure: DirStructure, dateConverter: DateConverter):
+    def __init__(self, dataFilter: DataFilter, dirStructure: DirStructure, dateConverter: DateConverter, project_name: str):
         self.dataFilter = dataFilter
         self.dirStructure = dirStructure
         self.dateConverter = dateConverter
         self.last_AHT=0
         self.logger = setup_logger()
+        self.project_name = project_name
 
 
-    def process_cell(self, records_cycler, records_vdf, project_name, cell_cycle_metrics=None, cell_data=None, cell_data_vdf=None, calibration_parameters=None, numFiles=1000, cycle_id_lims=CYCLE_ID_LIMS):
+    def process_cell(self, records_cycler, records_vdf, cell_cycle_metrics=None, cell_data=None, cell_data_vdf=None, calibration_parameters=None, numFiles=1000, cycle_id_lims=CYCLE_ID_LIMS):
         """
         Using the test records to process and update the cell data, cycle metrics, and expansion data
 
@@ -94,7 +95,7 @@ class DataProcessor:
             for record in records_new_data: 
                 self.logger.debug(f"Processing cycler data: {record['tr_name']}")
                 # process test file
-                cell_data_new, cell_cycle_metrics_new = self._process_cycler_data([record], cycle_id_lims=cycle_id_lims, project_name= project_name, numFiles = numFiles)
+                cell_data_new, cell_cycle_metrics_new = self._process_cycler_data([record], cycle_id_lims=cycle_id_lims, project_name= self.project_name, numFiles = numFiles)
                 # load test data to df and get start and end times
                 df_test = self._record_to_df(record, test_trace_keys = ['aux_vdf_timestamp_epoch_0'], df_labels =['Time [ms]'])
                 if df_test is None:
@@ -106,7 +107,7 @@ class DataProcessor:
                 cell_cycle_metrics['Ah throughput [A.h]'] = cell_data['Ah throughput [A.h]'][(cell_data.discharge_cycle_indicator==True) | (cell_data.charge_cycle_indicator==True)]
         else:
             records_new_data = records_cycler.copy()
-            cell_data, cell_cycle_metrics = self._process_cycler_data(records_new_data, cycle_id_lims=cycle_id_lims, project_name= project_name, numFiles = numFiles)
+            cell_data, cell_cycle_metrics = self._process_cycler_data(records_new_data, cycle_id_lims=cycle_id_lims, numFiles = numFiles)
         
         # Process the expansion data
         if len(records_vdf)==0: 
@@ -275,7 +276,7 @@ class DataProcessor:
         return df    
 
       
-    def summarize_rpt_data(self, cell_data, cell_data_vdf, cell_cycle_metrics, project_name):
+    def summarize_rpt_data(self, cell_data, cell_data_vdf, cell_cycle_metrics):
         """
         Get the summary data for each RPT file
 
@@ -300,8 +301,8 @@ class DataProcessor:
         cell_rpt_data = pd.DataFrame() 
         # Determine the pulse currents based on project name
         # pulse_currents = DEFAULT_PULSE_CURRENTS
-        if project_name in PROJECT.keys(): 
-            project_settings = PROJECT[project_name]
+        if self.project_name in PROJECT.keys(): 
+            project_settings = PROJECT[self.project_name]
         else:
             project_settings = PROJECT['DEFAULT']
         pulse_currents = project_settings['pulse_currents']
@@ -896,7 +897,7 @@ class DataProcessor:
     def _create_default_cell_data_vdf(self):
         return pd.DataFrame(columns=['Time [ms]','Expansion [-]', 'Expansion ref [-]', 'Temperature [degC]','cycle_indicator','Drive Current [-]','Expansion STDDEV [cnt]','Ref STDDEV [cnt]'])
 
-    def _process_cycler_data(self, records_neware, cycle_id_lims, project_name, numFiles=1000):
+    def _process_cycler_data(self, records_neware, cycle_id_lims, numFiles=1000):
         """
         Process cycler data from a list of test records
 
@@ -923,8 +924,9 @@ class DataProcessor:
         cell_data, cell_cycle_metrics = self._combine_cycler_data(records_neware, cycle_id_lims, numFiles = numFiles)
         
         # calculate capacities 
-        if project_name in PROJECT.keys(): 
-            Qmax = PROJECT[project_name]['Qmax']
+        # Qmax = PROJECT[project_name]['Qmax']
+        if self.project_name in PROJECT.keys(): 
+            Qmax = PROJECT[self.project_name]['Qmax']
         else:
             Qmax = PROJECT['DEFAULT']['Qmax']
 

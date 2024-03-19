@@ -73,7 +73,7 @@ class DataManager(metaclass=SingletonMeta):
         self.dataIO = DataIO(self.dirStructure, self.dataDeleter, use_redis)
         self.dataFilter = DataFilter(self.dataIO, self.dirStructure)
         self.dateConverter = DateConverter()
-        self.dataProcessor = DataProcessor(self.dataFilter, self.dirStructure, self.dateConverter)
+        self.dataProcessor = DataProcessor(self.dataFilter, self.dirStructure, self.dateConverter, "")
         self.logger = setup_logger()
         self.presenter = presenter
         DataManager._is_initialized = True
@@ -495,13 +495,14 @@ class DataManager(metaclass=SingletonMeta):
 
         # Process data
         project_name = self.dirStructure.cell_to_project(cell_name)
-        cell_cycle_metrics, cell_data, cell_data_vdf, update = self.dataProcessor.process_cell(records_cycler, records_vdf, project_name, cell_cycle_metrics, cell_data, cell_data_vdf, calibration_parameters, numFiles)
+
+        cell_cycle_metrics, cell_data, cell_data_vdf, update = self.dataProcessor.process_cell(records_cycler, records_vdf, cell_cycle_metrics, cell_data, cell_data_vdf, calibration_parameters, numFiles)
         #Save new data to pickle if there was new data
         cell_data_rpt = None
         if update:
             self.logger.info(f'Updating processed data for cell {cell_name}...')
             # project_name = self.dirStructure.cell_to_project(cell_name)
-            cell_data_rpt = self.dataProcessor.summarize_rpt_data(cell_data, cell_data_vdf, cell_cycle_metrics, project_name)
+            cell_data_rpt = self.dataProcessor.summarize_rpt_data(cell_data, cell_data_vdf, cell_cycle_metrics)
             self.dataIO.save_processed_data(cell_name, cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt)
 
         # Present the data
