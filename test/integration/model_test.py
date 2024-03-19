@@ -54,6 +54,8 @@ def process_cell_test():
     # umbl_cells = ['UMBL2022FEB' +'_CELL' + f'{cell:03d}' for cell in umbl_cell_nums]
     cell_names = ["GMFEB23S_CELL003"]
     cell_names=["GMJULY2022_CELL"+f'{cell_num:03d}' for cell_num in range(60,120) ]
+    cell_names=["GMFEB23S_CELL"+f'{cell_num:03d}' for cell_num in range(0,76) ]
+
     for cell_name in cell_names:
         viewer = Viewer()
         presenter = Presenter(viewer=viewer)
