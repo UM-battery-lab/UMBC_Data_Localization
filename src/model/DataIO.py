@@ -152,7 +152,7 @@ class DataIO:
                 # Use UPPERCASE for the project name
                 project_name = tag.split(prefix)[1].strip().upper()
         # Try to extract the project name from the test record name
-        if not project_name == "UNKNOWN_PROJECT" and dev_name:
+        if project_name == "UNKNOWN_PROJECT" and dev_name:
             project_name = dev_name.split('_')[0].upper()
         return project_name
     
