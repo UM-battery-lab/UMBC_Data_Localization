@@ -373,10 +373,14 @@ class DataManager(metaclass=SingletonMeta):
                     dev_name = devices_name[devices_id.index(tr.device_id)]
                     project_name = projects_name[devices_id.index(tr.device_id)]
                 except Exception as e:
-                    self.logger.error(f'Error {e} while getting device name or project name for test record {tr.name} by device id {tr.device_id}')
-                    # Delete this folder from the disk
-                    old_tr_name_to_path[tr.name] = os.path.join(test_folder, 'tr.pkl.gz')
-                    continue
+                    try:
+                        self.logger.error(f'Error {e} while getting device name or project name for test record {tr.name} by device id {tr.device_id}') #
+                        # Delete this folder from the disk
+                        old_tr_name_to_path[tr.name] = os.path.join(test_folder, 'tr.pkl.gz')
+                        continue
+                    except Exception as e:
+                        self.logger.error(f'Error {e}')
+                        continue
 
                 if dev_name:
                     self.dirStructure.append_record(tr, dev_name, project_name)

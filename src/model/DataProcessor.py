@@ -1410,7 +1410,7 @@ class DataProcessor:
                     Cumah[(gap+1):]=Cumah[gap]+Cumah[(gap+1):]-Cumah[gap+1]
 
         class_count = 10 # basically needs to change by more than 10% of the full range.
-        class_range = Cumah.ptp()
+        class_range = np.maximum(1e-3,Cumah.ptp())
         class_width = class_range / (class_count - 1)
         class_offset = Cumah.min() - class_width / 2
 
@@ -1508,15 +1508,26 @@ class DataProcessor:
 
         # Filter to identify cycles based on threshold inputs
         #charge_start_idx, discharge_start_idx = self._filter_cycle_idx(current_sign_change_idx, t, I, V, AhT, V_max_cycle=V_max_cycle, V_min_cycle=V_min_cycle, dt_min = dt_min, dAh_min = dAh_min)
-        # fig, (ax1,ax2,ax3) = plt.subplots(3,1)
+        # def close_event():
+        #     plt.close() #timer calls this function after 3 seconds and closes the window 
+
+
+        # fig, (ax1,ax2,ax3,ax4) = plt.subplots(4,1)
+        # timer = fig.canvas.new_timer(interval = 3000) #creating a timer object and setting an interval of 3000 milliseconds
+        # timer.add_callback(close_event)
         # ax1.plot(t,Cumah)
         # ax1.plot(t[charge_start_idx],Cumah[charge_start_idx],'rx')
         # ax1.plot(t[discharge_start_idx],Cumah[discharge_start_idx],'bo')
         # ax2.plot(t,Cumah)
         # ax2.plot(t[turning_points],Cumah[turning_points],'rx')
         # ax3.plot(t,I)
-        # # ax3.plot(t[charge_start_idx],Cumah[charge_start_idx],'rx')
-        # # ax3.plot(t[discharge_start_idx],Cumah[discharge_start_idx],'bo')
+        # ax3.plot(t[charge_start_idx],I[charge_start_idx],'rx')
+        # ax4.plot(t,V)
+        # ax4.plot(t[charge_start_idx],V[charge_start_idx],'rx')
+
+        # ax3.plot(t[charge_start_idx],Cumah[charge_start_idx],'rx')
+        # ax3.plot(t[discharge_start_idx],Cumah[discharge_start_idx],'bo')
+        # timer.start()
         # plt.show()
             
 
