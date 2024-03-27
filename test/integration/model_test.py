@@ -55,8 +55,8 @@ def process_cell_test():
     cell_names = ["GMFEB23S_CELL003"]
     #cell_names=["GMJULY2022_CELL"+f'{cell_num:03d}' for cell_num in range(1,120) ]
     cell_names=["GMFEB23S_CELL"+f'{cell_num:03d}' for cell_num in range(1,76) ]
-   # cell_names=["GMJULY2022_CELL"+f'{cell_num:03d}' for cell_num in [9] ] #85,4
-
+    #cell_names=["GMJULY2022_CELL"+f'{cell_num:03d}' for cell_num in [85,4,9,49,56,34,93,89,18,61,98,88,95 ] ] #85,4
+    cell_names=["GMJULY2022_CELL085"]
 
     for cell_name in cell_names:
         viewer = Viewer()
@@ -65,9 +65,9 @@ def process_cell_test():
 
         # test process_cell
 
-        cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt, junk = dataManager.process_cell(cell_name, reset=True);#, reset=True)#, start_time='2023-07-01_00-00-00', end_time='2023-07-28_23-59-59')
+        cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt, junk = dataManager.process_cell(cell_name, reset=True, start_time='2022-07-01_00-00-00', end_time='2022-09-28_23-59-59')
     #    cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt = dataManager.process_cell(cell_name, reset=True, start_time='2022-09-13_10-00-00', end_time='2022-09-24_10-00-00');#, reset=True)#)
-
+        plt.show()
         # Returns the number of
         # objects it has collected
         # and deallocated
@@ -81,6 +81,8 @@ def process_cell_test():
 
 def process_tr_test():
     tr_name = 'GMJuly2022_CELL025_Test7B_1_P0C_5P0PSI_20230412_R0_CH055'
+    tr_name = 'GMJuly2022_CELL085_RPT_1_P25C_25P0PSI_20220914_R0_CH030_20220914104354_36_4_6_2818579441'
+    tr_name = 'GMJuly2022_CELL085_6b_1_P25C_25P0PSI_20220930_R0_CH030_20220930225513_36_4_6_2818579451'
     viewer = Viewer()
     presenter = Presenter(viewer=viewer)
     dataManager = DataManager(presenter=presenter ,use_redis=False)
@@ -121,6 +123,7 @@ def clean_unknown_project():
     dataManager.clean_unknown_project()
 
 if __name__ == '__main__':
-  #  consistency_test()
-  #  clean_unknown_project()
+   # consistency_test()
+   # clean_unknown_project()
     process_cell_test()
+    #process_tr_test()
