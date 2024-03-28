@@ -56,7 +56,7 @@ def process_cell_test():
     #cell_names=["GMJULY2022_CELL"+f'{cell_num:03d}' for cell_num in range(1,120) ]
     cell_names=["GMFEB23S_CELL"+f'{cell_num:03d}' for cell_num in range(1,76) ]
     #cell_names=["GMJULY2022_CELL"+f'{cell_num:03d}' for cell_num in [85,4,9,49,56,34,93,89,18,61,98,88,95 ] ] #85,4
-    cell_names=["GMJULY2022_CELL085"]
+    cell_names=["GMJULY2022_CELL088"]
 
     for cell_name in cell_names:
         viewer = Viewer()
@@ -65,7 +65,7 @@ def process_cell_test():
 
         # test process_cell
 
-        cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt, junk = dataManager.process_cell(cell_name, reset=True, start_time='2022-07-01_00-00-00', end_time='2022-09-28_23-59-59')
+        cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt, junk = dataManager.process_cell(cell_name, reset=True)#, start_time='2022-07-01_00-00-00', end_time='2022-09-28_23-59-59')
     #    cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt = dataManager.process_cell(cell_name, reset=True, start_time='2022-09-13_10-00-00', end_time='2022-09-24_10-00-00');#, reset=True)#)
         plt.show()
         # Returns the number of

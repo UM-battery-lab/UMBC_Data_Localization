@@ -185,8 +185,10 @@ class DataIO:
         #TODO: If VDF and Other data start at same time, this one file could overwrite to another. 
         #If this really happen, we should change the df.pkl.gz to vdf.pkl.gz and arbin.pkl.gz something like this.
         if os.path.exists(tr_path) and os.path.exists(df_path):
-            self.logger.error(f'File already exists: {tr_path} and {df_path}, skipping...')
-            return None
+            
+            self.logger.error(f'File already exists: {tr_path} and {df_path}, Delting and re-downloading...')
+            #self.logger.error(f'File already exists: {tr_path} and {df_path}, skipping...')
+            #return None
         try:
             # Guarantee the transactional integrity
             self._save_to_pickle(tr, tr_path)
