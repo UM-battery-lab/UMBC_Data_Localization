@@ -336,14 +336,14 @@ class DataManager(metaclass=SingletonMeta):
         for dev in devs:
             if os.path.exists(os.path.join(self.dirStructure.rootPath, dev.name)):
                 self.logger.warning(f'Found device folder {dev.name} not in the corrosponding peoject folder')
-                src_folder = os.path.join(self.dirStructure.rootPath, dev.name)
-                project_name = projects_name[devices_id.index(dev.id)]
-                if project_name is None:
-                    self.logger.error(f'No project name found for device {dev.name}')
-                    project_name = 'UNKNOWN_PROJECT'
-                self.logger.info(f'Moving device folder {dev.name} to project folder {project_name}')
-                dst_folder = os.path.join(self.dirStructure.rootPath, project_name, dev.name)
-                self.dataIO.merge_folders(src_folder, dst_folder)
+                # src_folder = os.path.join(self.dirStructure.rootPath, dev.name)
+                # project_name = projects_name[devices_id.index(dev.id)]
+                # if project_name is None:
+                #     self.logger.error(f'No project name found for device {dev.name}')
+                #     project_name = 'UNKNOWN_PROJECT'
+                # self.logger.info(f'Moving device folder {dev.name} to project folder {project_name}')
+                #dst_folder = os.path.join(self.dirStructure.rootPath, project_name, dev.name)
+                #self.dataIO.merge_folders(src_folder, dst_folder)
         
         # Step 2: Check if the project name be recorded in the directory structure is the same as the project name in the tags
         self.dirStructure.check_project_name(devices_id, projects_name)
