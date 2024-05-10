@@ -1287,9 +1287,57 @@ class DataProcessor:
             cell_data.loc[removed_capacity_check_idx,'capacity_check_indicator'] = False
         cell_data['cycle_indicator'] = cell_data.charge_cycle_indicator #default cycle indicator on charge
 
+        # Calculate 10s&8min Resistance for Cycle
+        cycle_numbers = cell_data["Cycle index"].unique()
+        # Add columns for 10s and 8min resistance
+        cell_data["R10"] = np.nan
+        cell_data["R480"] = np.nan
+        
+        for cycle in cycle_numbers:
+            cycle_range = (cell_data["Cycle index"] == cycle)
+            cycle_current = cell_data["Current [A]"].loc[cycle_range]
+            cycle_voltage = cell_data["Voltage [V]"].loc[cycle_range]
+            
+            # get voltge difference
+            voltage_min = cycle_voltage.min()
+            index_of_min_voltage = cycle_voltage.idxmin()
+            time_voltage_min = cell_data.loc[index_of_min_voltage, "Test Time [ms]"]
+            r10_target_time = time_voltage_min + 10 # 10s
+            
+            r10_filtered_times = cell_data.loc[cycle_range & (cell_data["Test Time [ms]"] > r10_target_time)]
+            r10_corresponding_voltage = r10_filtered_times["Voltage [V]"].iloc[0]
+            
+            # get current C-rate before relaxation
+            currents_before_min_voltage = cycle_current.loc[:index_of_min_voltage]
+            non_zero_currents = currents_before_min_voltage[currents_before_min_voltage != 0]
+            if len(non_zero_currents) == 0:
+                continue
+            last_non_zero_current = non_zero_currents.iloc[-1]
+            
+            # get 10s-resistance:
+            r10 = (r10_corresponding_voltage - voltage_min) / (-last_non_zero_current)
+            
+            # repeat to get 8 mim Resistance:
+            r480_target_time = time_voltage_min + 480 # 480s
+
+            r480_filtered_times = cell_data.loc[cycle_range & (cell_data["Test Time [ms]"] > r480_target_time)]
+            r480_corresponding_voltage = r480_filtered_times["Voltage [V]"].iloc[0]
+            
+            # get current C-rate before relaxation
+            currents_before_min_voltage = cycle_current.loc[:index_of_min_voltage]
+            non_zero_currents = currents_before_min_voltage[currents_before_min_voltage != 0]
+            last_non_zero_current = non_zero_currents.iloc[-1]
+            
+            # get 10s-resistance:
+            r480 = (r480_corresponding_voltage - voltage_min)/(-last_non_zero_current)
+
+            cell_data.loc[cycle_range & (cell_data['discharge_cycle_indicator']), 'R10'] = r10
+            cell_data.loc[cycle_range & (cell_data['discharge_cycle_indicator']), 'R480'] = r480
+
         # save cycle metrics to separate dataframe and sort. only keep columns where charge and discharge cycles start. Label the type of protocol
-        cycle_metrics_columns = ['Time [ms]','Ah throughput [A.h]', 'Test type','Protocol','discharge_cycle_indicator','cycle_indicator','charge_cycle_indicator','capacity_check_indicator', 'Test name']
+        cycle_metrics_columns = ['Time [ms]','Ah throughput [A.h]', 'Test type','Protocol','discharge_cycle_indicator','cycle_indicator','charge_cycle_indicator','capacity_check_indicator', 'Test name', 'R10', 'R480']
         cell_cycle_metrics = cell_data[cycle_metrics_columns][(cell_data.discharge_cycle_indicator==True) | (cell_data.charge_cycle_indicator==True)].copy()
+        cell_data.drop(columns=['R10', 'R480'], inplace=True)
         self.logger.info(f"Found {len(cell_data)} cell data")
         self.logger.info(f"Found {len(cell_cycle_metrics)} cycles")
         # cell_cycle_metrics.sort_values(by=['Time [ms]'])
