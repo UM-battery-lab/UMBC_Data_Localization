@@ -11,7 +11,7 @@ from src.presenter.Presenter import Presenter
 import os
 import gc
 import re
-
+from matplotlib import pyplot as plt
 
 class DataManager(metaclass=SingletonMeta):
     """
@@ -543,6 +543,28 @@ class DataManager(metaclass=SingletonMeta):
         self.save_figs([fig_1, fig_2, fig_3], cell_name, time_name, keep_open=True)
 
         return cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt, project_name
+    
+    def show_cell_images(self, cell_name, start_time=None, end_time=None):
+        """
+        Load the processed data for a cell and show the images
+
+        Parameters
+        ----------
+        cell_name: str
+            The name of the cell to be processed
+        start_time: str, optional
+            The start time of the test records to be processed, in the format of 'YYYY-MM-DD_HH-MM-SS'
+        end_time: str, optional
+            The end time of the test records to be processed, in the format of 'YYYY-MM-DD_HH-MM-SS'
+
+        Returns
+        -------
+        None
+        """
+        cell_name = cell_name.upper()
+        cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt = self.load_processed_data(cell_name)
+        fig_1, fig_2, fig_3 = self.presenter.update(cell_name, cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt, start_time, end_time)
+        plt.show()
     
     def process_project(self, project_name, numFiles = 1000):
         """
