@@ -253,7 +253,11 @@ class Viewer():
         if not all(t_vdf.isnull()):
             ax3.plot_date(t_vdf[0::downsample],exp_vdf[0::downsample],'-') 
             # ax3.plot_date(t_vdf[0::downsample],exp_vdf_ref[0::downsample],'--', c='grey') 
-            ax3.plot_date(t_vdf[cycle_idx_vdf], exp_vdf[cycle_idx_vdf], "x")
+            try:
+                ax3.plot_date(t_vdf[cycle_idx_vdf], exp_vdf[cycle_idx_vdf], "x")
+            except Exception as e:
+                print("excption in plot line 259 \n ")
+                print(e )
             # ax3.plot_date(t_vdf[cycle_idx_vdf], exp_vdf[cycle_idx_vdf], "x")
         ax3.set_ylabel("Expansion [um]")
         ax3.grid()

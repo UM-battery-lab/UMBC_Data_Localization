@@ -51,13 +51,17 @@ def consistency_test():
 def process_cell_test():
     # test process_cell
     # umbl_cell_nums = [152097,152091,152051,152087,152042,152094,152045,152054,152039,152065,152041,152046,152057,152078,152033,152088,152036,152084,152085,152047,152072,152048]
-    # umbl_cells = ['UMBL2022FEB' +'_CELL' + f'{cell:03d}' for cell in umbl_cell_nums]
-    cell_names = ["GMFEB23S_CELL003"]
+    # cell_names  = ['UMBL2022FEB' +'_CELL' + f'{cell:03d}' for cell in umbl_cell_nums]
+    #cell_names = ["GMFEB23S_CELL019"]
     #cell_names=["GMJULY2022_CELL"+f'{cell_num:03d}' for cell_num in range(1,120) ]
     cell_names=["GMFEB23S_CELL"+f'{cell_num:03d}' for cell_num in range(1,76) ]
+    cell_names = ["GMFEB23S_CELL044"]
     #cell_names=["GMJULY2022_CELL"+f'{cell_num:03d}' for cell_num in [85,4,9,49,56,34,93,89,18,61,98,88,95 ] ] #85,4
-    #cell_names=["GMJULY2022_CELL088"]
-    cell_names=["UMBL2022FEB_CELL152"+f'{cell_num:03d}' for cell_num in range(33,127) ]
+    #cell_names=["GMJULY2022_CELL094"]
+    #cell_names=["GMJULY2022_CELL086"]
+    #cell_names=["GMJULY2022_CELL053"]
+  #   cell_names=["GMJULY2022_CELL100"]
+    #cell_names=["UMBL2022FEB_CELL152"+f'{cell_num:03d}' for cell_num in range(33,127) ]
 # cell 27 has a problem...
     for cell_name in cell_names:
         viewer = Viewer()
@@ -68,7 +72,7 @@ def process_cell_test():
 
         cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt, junk = dataManager.process_cell(cell_name, reset=True)#, start_time='2022-07-01_00-00-00', end_time='2022-09-28_23-59-59')
     #    cell_cycle_metrics, cell_data, cell_data_vdf, cell_data_rpt = dataManager.process_cell(cell_name, reset=True, start_time='2022-09-13_10-00-00', end_time='2022-09-24_10-00-00');#, reset=True)#)
-        #plt.show()
+        plt.show()
         # Returns the number of
         # objects it has collected
         # and deallocated

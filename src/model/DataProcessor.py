@@ -453,7 +453,11 @@ class DataProcessor:
         d_dh1=d_dh[(d_dh["Current [A]"]<0)] # discharge current is - 
         d_ch=d_ch[(d_ch["Current [A]"]>(I_slow-I_threshold)) & (d_ch["Current [A]"]<(I_slow+I_threshold))] # look for C/20 current
         d_dh=d_dh[(d_dh["Current [A]"]<-(I_slow-I_threshold)) & (d_dh["Current [A]"]>-(I_slow+I_threshold))]
-        q_cv = max(d_ch1["Ah throughput [A.h]"])-max(d_ch["Ah throughput [A.h]"])
+        if(len(d_ch) >0):
+            q_cv = max(d_ch1["Ah throughput [A.h]"])-max(d_ch["Ah throughput [A.h]"])
+        else:
+            q_cv = max(d_ch1["Ah throughput [A.h]"])-0
+            # siegelb, plot voltage data here to check why these are partial cycles,somthing in the cycle detection is off.
         # Filter data points with only V>2.7 V and V< 4.2V
         d_ch=d_ch[(d_ch["Voltage [V]"]>=2.7) & (d_ch["Voltage [V]"]<=4.2)]
         d_dh=d_dh[(d_dh["Voltage [V]"]>=2.7) & (d_dh["Voltage [V]"]<=4.2)]
@@ -1305,6 +1309,8 @@ class DataProcessor:
             r10_target_time = time_voltage_min + 10 # 10s
             
             r10_filtered_times = cell_data.loc[cycle_range & (cell_data["Test Time [ms]"] > r10_target_time)]
+            if len(r10_filtered_times) == 0:
+                continue
             r10_corresponding_voltage = r10_filtered_times["Voltage [V]"].iloc[0]
             
             # get current C-rate before relaxation
@@ -1321,6 +1327,9 @@ class DataProcessor:
             r480_target_time = time_voltage_min + 480 # 480s
 
             r480_filtered_times = cell_data.loc[cycle_range & (cell_data["Test Time [ms]"] > r480_target_time)]
+           
+            if len(r480_filtered_times) == 0:
+                continue
             r480_corresponding_voltage = r480_filtered_times["Voltage [V]"].iloc[0]
             
             # get current C-rate before relaxation
